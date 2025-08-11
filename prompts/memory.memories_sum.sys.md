@@ -38,16 +38,14 @@
 
 # WRONG examples with (explanation of error), never output memories like these 
 > Dog Information (no useful facts)
+> The user requested current RAM and CPU status. (No exact facts to memorize)
 > User greeted with 'hi' (just conversation, not useful in the future )
 > Respond with a warm greeting and invite further conversation (do not memorize AI's instructions or thoughts)
 > User's name (details missing, not useful)
 > Today is Monday (just date, no value in this information)
 > Market inquiry (just a topic without detail)
 > RAM Status (just a topic without detail)
-> The user requested current RAM and CPU status. (No exact facts to memorize)
 
 
 # Further WRONG examples
 - Hello
-- The user requested current RAM and CPU status.
-- 
