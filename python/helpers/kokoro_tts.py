@@ -4,6 +4,7 @@ import base64
 import io
 import warnings
 import asyncio
+import torch
 import soundfile as sf
 from python.helpers import runtime
 from python.helpers.print_style import PrintStyle
@@ -12,8 +13,9 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 _pipeline = None
-_voice = "am_puck,am_onyx"
+_voice = "am_puck"
 _speed = 1.1
+_device = "cuda" if torch.cuda.is_available() else "cpu"
 is_updating_model = False
 
 
@@ -40,7 +42,11 @@ async def _preload():
         if not _pipeline:
             PrintStyle.standard("Loading Kokoro TTS model...")
             from kokoro import KPipeline
-            _pipeline = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
+            _pipeline = KPipeline(
+                lang_code="a",
+                repo_id="hexgrad/Kokoro-82M",
+                device=_device,
+            )
     finally:
         is_updating_model = False
 
@@ -73,19 +79,30 @@ def _is_downloaded():
     return _pipeline is not None
 
 
-async def synthesize_sentences(sentences: list[str]):
+def set_voice(voice: str):
+    """Set default Kokoro voice"""
+    global _voice
+    _voice = voice
+
+
+def set_device(use_gpu: bool):
+    """Select CPU or GPU for inference. Reloads model if changed."""
+    global _device, _pipeline
+    desired = "cuda" if use_gpu and torch.cuda.is_available() else "cpu"
+    if desired != _device:
+        _device = desired
+        _pipeline = None  # Force reload on next use
+
+
+async def synthesize_sentences(sentences: list[str], voice: str | None = None):
     """Generate audio for multiple sentences and return concatenated base64 audio"""
     try:
-        # return await runtime.call_development_function(_synthesize_sentences, sentences)
-        return await _synthesize_sentences(sentences)
+        return await _synthesize_sentences(sentences, voice)
     except Exception as e:
-        # if not runtime.is_development():
         raise e
-        # Fallback to direct execution if RFC fails in development
-        # return await _synthesize_sentences(sentences)
 
 
-async def _synthesize_sentences(sentences: list[str]):
+async def _synthesize_sentences(sentences: list[str], voice: str | None = None):
     await _preload()
 
     combined_audio = []
@@ -93,12 +110,16 @@ async def _synthesize_sentences(sentences: list[str]):
     try:
         for sentence in sentences:
             if sentence.strip():
-                segments = _pipeline(sentence.strip(), voice=_voice, speed=_speed) # type: ignore
+                segments = _pipeline(
+                    sentence.strip(),
+                    voice=voice or _voice,
+                    speed=_speed,
+                )  # type: ignore
                 segment_list = list(segments)
 
                 for segment in segment_list:
                     audio_tensor = segment.audio
-                    audio_numpy = audio_tensor.detach().cpu().numpy() # type: ignore
+                    audio_numpy = audio_tensor.detach().cpu().numpy()  # type: ignore
                     combined_audio.extend(audio_numpy)
 
         # Convert combined audio to bytes
@@ -111,4 +132,4 @@ async def _synthesize_sentences(sentences: list[str]):
 
     except Exception as e:
         PrintStyle.error(f"Error in Kokoro TTS synthesis: {e}")
-        raise    
+        raise

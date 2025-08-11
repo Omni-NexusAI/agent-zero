@@ -88,6 +88,8 @@ class Settings(TypedDict):
     stt_waiting_timeout: int
 
     tts_kokoro: bool
+    tts_kokoro_voice: str
+    tts_kokoro_gpu: bool
 
     mcp_servers: str
     mcp_client_init_timeout: int
@@ -891,6 +893,71 @@ def convert_out(settings: Settings) -> SettingsOutput:
         }
     )
 
+    tts_fields.append(
+        {
+            "id": "tts_kokoro_voice",
+            "title": "Kokoro voice",
+            "description": "Select the voice used for Kokoro TTS",
+            "type": "select",
+            "value": settings["tts_kokoro_voice"],
+            "options": [
+                {"value": "af_alloy", "label": "🇺🇸 👩 Alloy"},
+                {"value": "af_aoede", "label": "🇺🇸 👩 Aoede"},
+                {"value": "af_bella", "label": "🇺🇸 👩 Bella"},
+                {"value": "af_heart", "label": "🇺🇸 👩 Heart"},
+                {"value": "af_jessica", "label": "🇺🇸 👩 Jessica"},
+                {"value": "af_kore", "label": "🇺🇸 👩 Kore"},
+                {"value": "af_nicole", "label": "🇺🇸 👩 Nicole"},
+                {"value": "af_nova", "label": "🇺🇸 👩 Nova"},
+                {"value": "af_river", "label": "🇺🇸 👩 River"},
+                {"value": "af_sarah", "label": "🇺🇸 👩 Sarah"},
+                {"value": "af_sky", "label": "🇺🇸 👩 Sky"},
+                {"value": "am_adam", "label": "🇺🇸 👨 Adam"},
+                {"value": "am_echo", "label": "🇺🇸 👨 Echo"},
+                {"value": "am_eric", "label": "🇺🇸 👨 Eric"},
+                {"value": "am_fenrir", "label": "🇺🇸 👨 Fenrir"},
+                {"value": "am_liam", "label": "🇺🇸 👨 Liam"},
+                {"value": "am_michael", "label": "🇺🇸 👨 Michael"},
+                {"value": "am_onyx", "label": "🇺🇸 👨 Onyx"},
+                {"value": "am_puck", "label": "🇺🇸 👨 Puck"},
+                {"value": "bf_alice", "label": "🇬🇧 Alice"},
+                {"value": "bf_emma", "label": "🇬🇧 Emma"},
+                {"value": "bf_isabella", "label": "🇬🇧 Isabella"},
+                {"value": "bf_lily", "label": "🇬🇧 Lily"},
+                {"value": "bm_daniel", "label": "🇬🇧 Daniel"},
+                {"value": "bm_fable", "label": "🇬🇧 Fable"},
+                {"value": "bm_george", "label": "🇬🇧 George"},
+                {"value": "bm_lewis", "label": "🇬🇧 Lewis"},
+                {"value": "ff_siwis", "label": "🇫🇷 Siwis"},
+                {"value": "if_sara", "label": "🇮🇹 Sara"},
+                {"value": "im_nicola", "label": "🇮🇹 Nicola"},
+                {"value": "jf_alpha", "label": "🇯🇵 Alpha"},
+                {"value": "jf_gongitsune", "label": "🇯🇵 Gongitsune"},
+                {"value": "jf_nezumi", "label": "🇯🇵 Nezumi"},
+                {"value": "jf_tebukuro", "label": "🇯🇵 Tebukuro"},
+                {"value": "jm_kumo", "label": "🇯🇵 Kumo"},
+                {"value": "zf_xiaobei", "label": "🇨🇳 Xiaobei"},
+                {"value": "zf_xiaoni", "label": "🇨🇳 Xiaoni"},
+                {"value": "zf_xiaoxiao", "label": "🇨🇳 Xiaoxiao"},
+                {"value": "zf_xiaoyi", "label": "🇨🇳 Xiaoyi"},
+                {"value": "zm_yunjian", "label": "🇨🇳 Yunjian"},
+                {"value": "zm_yunxi", "label": "🇨🇳 Yunxi"},
+                {"value": "zm_yunxia", "label": "🇨🇳 Yunxia"},
+                {"value": "zm_yunyang", "label": "🇨🇳 Yunyang"},
+            ],
+        }
+    )
+
+    tts_fields.append(
+        {
+            "id": "tts_kokoro_gpu",
+            "title": "Use GPU for Kokoro TTS",
+            "description": "Toggle to run Kokoro TTS on GPU when available",
+            "type": "switch",
+            "value": settings["tts_kokoro_gpu"],
+        }
+    )
+
     speech_section: SettingsSection = {
         "id": "speech",
         "title": "Speech",
@@ -1231,6 +1298,8 @@ def get_default_settings() -> Settings:
         stt_silence_duration=1000,
         stt_waiting_timeout=2000,
         tts_kokoro=True,
+        tts_kokoro_voice="am_puck",
+        tts_kokoro_gpu=True,
         mcp_servers='{\n    "mcpServers": {}\n}',
         mcp_client_init_timeout=10,
         mcp_client_tool_timeout=120,
@@ -1244,6 +1313,7 @@ def _apply_settings(previous: Settings | None):
     if _settings:
         from agent import AgentContext
         from initialize import initialize_agent
+        from python.helpers import kokoro_tts
 
         config = initialize_agent()
         for ctx in AgentContext._contexts.values():
@@ -1259,6 +1329,13 @@ def _apply_settings(previous: Settings | None):
             task = defer.DeferredTask().start_task(
                 whisper.preload, _settings["stt_model_size"]
             )  # TODO overkill, replace with background task
+
+        # apply kokoro settings
+        if not previous or _settings["tts_kokoro_voice"] != previous["tts_kokoro_voice"]:
+            kokoro_tts.set_voice(_settings["tts_kokoro_voice"])
+
+        if not previous or _settings["tts_kokoro_gpu"] != previous["tts_kokoro_gpu"]:
+            kokoro_tts.set_device(_settings["tts_kokoro_gpu"])
 
         # force memory reload on embedding model change
         if not previous or (

@@ -23,6 +23,8 @@ const model = {
 
   // TTS Settings
   tts_kokoro: false,
+  tts_kokoro_voice: "am_puck",
+  tts_kokoro_gpu: true,
 
   // TTS State
   isSpeaking: false,
@@ -389,7 +391,10 @@ const model = {
   async speakWithKokoro(text, waitForPrevious = false, terminator = null) {
     try {
       // synthesize on the backend
-      const response = await sendJsonData("/synthesize", { text });
+      const response = await sendJsonData("/synthesize", {
+        text,
+        voice: this.tts_kokoro_voice,
+      });
 
       // wait for previous to finish if requested
       while (waitForPrevious && this.isSpeaking) await sleep(25);
