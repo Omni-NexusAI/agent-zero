@@ -89,7 +89,9 @@ class Settings(TypedDict):
 
     tts_kokoro: bool
     tts_kokoro_voice: str
+    tts_kokoro_voice_secondary: str
     tts_kokoro_gpu: bool
+    tts_record_mode: bool
 
     mcp_servers: str
     mcp_client_init_timeout: int
@@ -893,6 +895,52 @@ def convert_out(settings: Settings) -> SettingsOutput:
         }
     )
 
+    voice_options = [
+        {"value": "af_alloy", "label": "🇺🇸 👩 Alloy"},
+        {"value": "af_aoede", "label": "🇺🇸 👩 Aoede"},
+        {"value": "af_bella", "label": "🇺🇸 👩 Bella"},
+        {"value": "af_heart", "label": "🇺🇸 👩 Heart"},
+        {"value": "af_jessica", "label": "🇺🇸 👩 Jessica"},
+        {"value": "af_kore", "label": "🇺🇸 👩 Kore"},
+        {"value": "af_nicole", "label": "🇺🇸 👩 Nicole"},
+        {"value": "af_nova", "label": "🇺🇸 👩 Nova"},
+        {"value": "af_river", "label": "🇺🇸 👩 River"},
+        {"value": "af_sarah", "label": "🇺🇸 👩 Sarah"},
+        {"value": "af_sky", "label": "🇺🇸 👩 Sky"},
+        {"value": "am_adam", "label": "🇺🇸 👨 Adam"},
+        {"value": "am_echo", "label": "🇺🇸 👨 Echo"},
+        {"value": "am_eric", "label": "🇺🇸 👨 Eric"},
+        {"value": "am_fenrir", "label": "🇺🇸 👨 Fenrir"},
+        {"value": "am_liam", "label": "🇺🇸 👨 Liam"},
+        {"value": "am_michael", "label": "🇺🇸 👨 Michael"},
+        {"value": "am_onyx", "label": "🇺🇸 👨 Onyx"},
+        {"value": "am_puck", "label": "🇺🇸 👨 Puck"},
+        {"value": "bf_alice", "label": "🇬🇧 Alice"},
+        {"value": "bf_emma", "label": "🇬🇧 Emma"},
+        {"value": "bf_isabella", "label": "🇬🇧 Isabella"},
+        {"value": "bf_lily", "label": "🇬🇧 Lily"},
+        {"value": "bm_daniel", "label": "🇬🇧 Daniel"},
+        {"value": "bm_fable", "label": "🇬🇧 Fable"},
+        {"value": "bm_george", "label": "🇬🇧 George"},
+        {"value": "bm_lewis", "label": "🇬🇧 Lewis"},
+        {"value": "ff_siwis", "label": "🇫🇷 Siwis"},
+        {"value": "if_sara", "label": "🇮🇹 Sara"},
+        {"value": "im_nicola", "label": "🇮🇹 Nicola"},
+        {"value": "jf_alpha", "label": "🇯🇵 Alpha"},
+        {"value": "jf_gongitsune", "label": "🇯🇵 Gongitsune"},
+        {"value": "jf_nezumi", "label": "🇯🇵 Nezumi"},
+        {"value": "jf_tebukuro", "label": "🇯🇵 Tebukuro"},
+        {"value": "jm_kumo", "label": "🇯🇵 Kumo"},
+        {"value": "zf_xiaobei", "label": "🇨🇳 Xiaobei"},
+        {"value": "zf_xiaoni", "label": "🇨🇳 Xiaoni"},
+        {"value": "zf_xiaoxiao", "label": "🇨🇳 Xiaoxiao"},
+        {"value": "zf_xiaoyi", "label": "🇨🇳 Xiaoyi"},
+        {"value": "zm_yunjian", "label": "🇨🇳 Yunjian"},
+        {"value": "zm_yunxi", "label": "🇨🇳 Yunxi"},
+        {"value": "zm_yunxia", "label": "🇨🇳 Yunxia"},
+        {"value": "zm_yunyang", "label": "🇨🇳 Yunyang"},
+    ]
+
     tts_fields.append(
         {
             "id": "tts_kokoro_voice",
@@ -900,51 +948,18 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "description": "Select the voice used for Kokoro TTS",
             "type": "select",
             "value": settings["tts_kokoro_voice"],
-            "options": [
-                {"value": "af_alloy", "label": "🇺🇸 👩 Alloy"},
-                {"value": "af_aoede", "label": "🇺🇸 👩 Aoede"},
-                {"value": "af_bella", "label": "🇺🇸 👩 Bella"},
-                {"value": "af_heart", "label": "🇺🇸 👩 Heart"},
-                {"value": "af_jessica", "label": "🇺🇸 👩 Jessica"},
-                {"value": "af_kore", "label": "🇺🇸 👩 Kore"},
-                {"value": "af_nicole", "label": "🇺🇸 👩 Nicole"},
-                {"value": "af_nova", "label": "🇺🇸 👩 Nova"},
-                {"value": "af_river", "label": "🇺🇸 👩 River"},
-                {"value": "af_sarah", "label": "🇺🇸 👩 Sarah"},
-                {"value": "af_sky", "label": "🇺🇸 👩 Sky"},
-                {"value": "am_adam", "label": "🇺🇸 👨 Adam"},
-                {"value": "am_echo", "label": "🇺🇸 👨 Echo"},
-                {"value": "am_eric", "label": "🇺🇸 👨 Eric"},
-                {"value": "am_fenrir", "label": "🇺🇸 👨 Fenrir"},
-                {"value": "am_liam", "label": "🇺🇸 👨 Liam"},
-                {"value": "am_michael", "label": "🇺🇸 👨 Michael"},
-                {"value": "am_onyx", "label": "🇺🇸 👨 Onyx"},
-                {"value": "am_puck", "label": "🇺🇸 👨 Puck"},
-                {"value": "bf_alice", "label": "🇬🇧 Alice"},
-                {"value": "bf_emma", "label": "🇬🇧 Emma"},
-                {"value": "bf_isabella", "label": "🇬🇧 Isabella"},
-                {"value": "bf_lily", "label": "🇬🇧 Lily"},
-                {"value": "bm_daniel", "label": "🇬🇧 Daniel"},
-                {"value": "bm_fable", "label": "🇬🇧 Fable"},
-                {"value": "bm_george", "label": "🇬🇧 George"},
-                {"value": "bm_lewis", "label": "🇬🇧 Lewis"},
-                {"value": "ff_siwis", "label": "🇫🇷 Siwis"},
-                {"value": "if_sara", "label": "🇮🇹 Sara"},
-                {"value": "im_nicola", "label": "🇮🇹 Nicola"},
-                {"value": "jf_alpha", "label": "🇯🇵 Alpha"},
-                {"value": "jf_gongitsune", "label": "🇯🇵 Gongitsune"},
-                {"value": "jf_nezumi", "label": "🇯🇵 Nezumi"},
-                {"value": "jf_tebukuro", "label": "🇯🇵 Tebukuro"},
-                {"value": "jm_kumo", "label": "🇯🇵 Kumo"},
-                {"value": "zf_xiaobei", "label": "🇨🇳 Xiaobei"},
-                {"value": "zf_xiaoni", "label": "🇨🇳 Xiaoni"},
-                {"value": "zf_xiaoxiao", "label": "🇨🇳 Xiaoxiao"},
-                {"value": "zf_xiaoyi", "label": "🇨🇳 Xiaoyi"},
-                {"value": "zm_yunjian", "label": "🇨🇳 Yunjian"},
-                {"value": "zm_yunxi", "label": "🇨🇳 Yunxi"},
-                {"value": "zm_yunxia", "label": "🇨🇳 Yunxia"},
-                {"value": "zm_yunyang", "label": "🇨🇳 Yunyang"},
-            ],
+            "options": voice_options,
+        }
+    )
+
+    tts_fields.append(
+        {
+            "id": "tts_kokoro_voice_secondary",
+            "title": "Secondary Kokoro voice",
+            "description": "Optional additional voice to blend with the primary voice",
+            "type": "select",
+            "value": settings["tts_kokoro_voice_secondary"],
+            "options": [{"value": "", "label": "None"}, *voice_options],
         }
     )
 
@@ -955,6 +970,16 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "description": "Toggle to run Kokoro TTS on GPU when available",
             "type": "switch",
             "value": settings["tts_kokoro_gpu"],
+        }
+    )
+
+    tts_fields.append(
+        {
+            "id": "tts_record_mode",
+            "title": "Record mode",
+            "description": "Save generated speech audio to disk",
+            "type": "switch",
+            "value": settings["tts_record_mode"],
         }
     )
 
@@ -1299,7 +1324,9 @@ def get_default_settings() -> Settings:
         stt_waiting_timeout=2000,
         tts_kokoro=True,
         tts_kokoro_voice="am_puck",
+        tts_kokoro_voice_secondary="",
         tts_kokoro_gpu=True,
+        tts_record_mode=False,
         mcp_servers='{\n    "mcpServers": {}\n}',
         mcp_client_init_timeout=10,
         mcp_client_tool_timeout=120,

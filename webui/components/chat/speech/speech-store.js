@@ -24,7 +24,9 @@ const model = {
   // TTS Settings
   tts_kokoro: false,
   tts_kokoro_voice: "am_puck",
+  tts_kokoro_voice_secondary: "",
   tts_kokoro_gpu: true,
+  tts_record_mode: false,
 
   // TTS State
   isSpeaking: false,
@@ -394,6 +396,7 @@ const model = {
       const response = await sendJsonData("/synthesize", {
         text,
         voice: this.tts_kokoro_voice,
+        voice2: this.tts_kokoro_voice_secondary,
       });
 
       // wait for previous to finish if requested

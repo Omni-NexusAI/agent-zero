@@ -9,6 +9,7 @@ class Synthesize(ApiHandler):
         text = input.get("text", "")
         ctxid = input.get("ctxid", "")
         voice = input.get("voice") or settings.get_settings()["tts_kokoro_voice"]
+        voice2 = input.get("voice2") or settings.get_settings()["tts_kokoro_voice_secondary"] or None
         
         context = self.get_context(ctxid)
         if not await kokoro_tts.is_downloaded():
@@ -32,7 +33,7 @@ class Synthesize(ApiHandler):
             #     return {"audio_parts": audio_parts, "success": True}
 
             # audio is chunked on the frontend for better flow
-            audio = await kokoro_tts.synthesize_sentences([text], voice)
+            audio = await kokoro_tts.synthesize_sentences([text], voice, voice2)
             return {"audio": audio, "success": True}
         except Exception as e:
             return {"error": str(e), "success": False}
