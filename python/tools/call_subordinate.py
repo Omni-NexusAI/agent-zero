@@ -1,5 +1,6 @@
 from agent import Agent, UserMessage
 from python.helpers.tool import Tool, Response
+import copy
 
 
 class Delegation(Tool):
@@ -11,7 +12,7 @@ class Delegation(Tool):
             or str(reset).lower().strip() == "true"
         ):
             # crate agent
-            sub = Agent(self.agent.number + 1, self.agent.config, self.agent.context)
+            sub = Agent(self.agent.number + 1, copy.deepcopy(self.agent.config), self.agent.context)
             # register superior/subordinate
             sub.set_data(Agent.DATA_NAME_SUPERIOR, self.agent)
             self.agent.set_data(Agent.DATA_NAME_SUBORDINATE, sub)
