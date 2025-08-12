@@ -79,9 +79,25 @@ class TTYSession:
         return await self._proc.wait()
 
     def kill(self):
+        """Force-kill the running child process.
+
+        This is best-effort: if the process has already terminated (which can
+        happen if *close()* was called elsewhere or the child exited by
+        itself) we silently ignore the *ProcessLookupError* raised by
+        *asyncio.subprocess.Process.kill()*. This prevents race conditions
+        where multiple coroutines attempt to close the same session.
+        """
         if self._proc is None:
-            raise RuntimeError("TTYSpawn is not started")
-        self._proc.kill()
+            # Already closed or never started – nothing to do
+            return
+
+        # Only attempt to kill if the process is still running
+        if getattr(self._proc, "returncode", None) is None:
+            try:
+                self._proc.kill()
+            except ProcessLookupError:
+                # Child already gone – treat as successfully killed
+                pass
 
     async def read(self, timeout=None):
         # Return any decoded text the child produced, or None on timeout
