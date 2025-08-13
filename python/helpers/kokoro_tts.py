@@ -17,6 +17,63 @@ _speed = 1.1
 is_updating_model = False
 
 
+def _blend_voice_style(spec: str) -> list[tuple[str, float]]:
+    """Parse a voice blend specification and validate weights.
+
+    The specification is a comma separated list where each entry is a voice
+    name optionally followed by ``:weight``.  Missing weights default to
+    ``1.0``.  The resulting weights are normalised so that they sum to ``1``.
+
+    Parameters
+    ----------
+    spec:
+        Blend specification, e.g. ``"am_puck:0.7,am_onyx:0.3"``.
+
+    Returns
+    -------
+    list[tuple[str, float]]
+        A list of ``(voice, normalised_weight)`` pairs.
+
+    Raises
+    ------
+    ValueError
+        If any weight is negative, the sum of weights is zero, or the
+        specification cannot be parsed.
+    """
+
+    voices: list[str] = []
+    weights: list[float] = []
+
+    for part in spec.split(','):
+        part = part.strip()
+        if not part:
+            continue
+        if ':' in part:
+            name, weight_str = part.split(':', 1)
+            try:
+                weight = float(weight_str)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Invalid weight '{weight_str}' in blend specification: '{spec}'"
+                ) from exc
+        else:
+            name = part
+            weight = 1.0
+        voices.append(name.strip())
+        weights.append(weight)
+
+    if not voices:
+        raise ValueError("No voices specified for blend")
+    if any(w < 0 for w in weights):
+        raise ValueError("Voice blend weights must be non-negative")
+    total = sum(weights)
+    if total == 0:
+        raise ValueError("Voice blend weights must sum to a positive number")
+
+    normalised = [w / total for w in weights]
+    return list(zip(voices, normalised))
+
+
 async def preload():
     try:
         # return await runtime.call_development_function(_preload)
