@@ -45,8 +45,11 @@
                                 <span class="server-name" x-text="server.name"></span>
 
                                 <!-- Enable/disable toggle -->
-                                <input type="checkbox" :checked="server.disabled"
-                                    @change="$store.mcpServersStore.toggleServer(server.name)" />
+                                <label class="switch">
+                                    <input type="checkbox" :checked="server.disabled"
+                                        @change="$store.mcpServersStore.toggleServer(server.name)" />
+                                    <span class="slider server-toggle-slider"></span>
+                                </label>
 
                                 <!-- Tool count (clickable if > 0, only for connected servers without errors) -->
                                 <span class="tool-count" x-show="server.tool_count > 0"
@@ -172,6 +175,11 @@
             color: #F44336;
             opacity: 0.85;
             line-height: 1.2;
+        }
+
+        /* MCP server toggle accent */
+        .switch input:checked + .server-toggle-slider {
+            background-color: #00c340;
         }
 
         .no-servers {
