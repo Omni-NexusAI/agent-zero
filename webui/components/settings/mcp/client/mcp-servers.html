@@ -44,6 +44,10 @@
                                 <!-- Server name -->
                                 <span class="server-name" x-text="server.name"></span>
 
+                                <!-- Enable/disable toggle -->
+                                <input type="checkbox" :checked="server.disabled"
+                                    @change="$store.mcpServersStore.toggleServer(server.name)" />
+
                                 <!-- Tool count (clickable if > 0, only for connected servers without errors) -->
                                 <span class="tool-count" x-show="server.tool_count > 0"
                                     @click="$store.mcpServersStore.onToolCountClick && $store.mcpServersStore.onToolCountClick(server.name)"
