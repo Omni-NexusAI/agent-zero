@@ -85,6 +85,8 @@ class Settings(TypedDict):
     rfc_port_http: int
     rfc_port_ssh: int
 
+    shell_interface: Literal['local','ssh']
+
     stt_model_size: str
     stt_language: str
     stt_silence_threshold: float
@@ -794,6 +796,17 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     dev_fields: list[SettingsField] = []
 
+    dev_fields.append(
+        {
+            "id": "shell_interface",
+            "title": "Shell Interface",
+            "description": "Terminal interface used for Code Execution Tool. Local Python TTY works locally in both dockerized and development environments. SSH always connects to dockerized environment (automatically at localhost or RFC host address).",
+            "type": "select",
+            "value": settings["shell_interface"],
+            "options": [{"value": "local", "label": "Local Python TTY"}, {"value": "ssh", "label": "SSH"}],
+        }
+    )
+
     if runtime.is_development():
         # dev_fields.append(
         #     {
@@ -1415,6 +1428,7 @@ def get_default_settings() -> Settings:
         rfc_password="",
         rfc_port_http=55080,
         rfc_port_ssh=55022,
+        shell_interface="local" if runtime.is_dockerized() else "ssh",
         stt_model_size="base",
         stt_language="en",
         stt_silence_threshold=0.3,
@@ -1577,7 +1591,7 @@ def set_root_password(password: str):
 def get_runtime_config(set: Settings):
     if runtime.is_dockerized():
         return {
-            "code_exec_ssh_enabled": False,
+            "code_exec_ssh_enabled": set["shell_interface"] == "ssh",
             "code_exec_ssh_addr": "localhost",
             "code_exec_ssh_port": 22,
             "code_exec_ssh_user": "root",
@@ -1591,7 +1605,7 @@ def get_runtime_config(set: Settings):
         if host.endswith("/"):
             host = host[:-1]
         return {
-            "code_exec_ssh_enabled": True,
+            "code_exec_ssh_enabled": set["shell_interface"] == "ssh",
             "code_exec_ssh_addr": host,
             "code_exec_ssh_port": set["rfc_port_ssh"],
             "code_exec_ssh_user": "root",

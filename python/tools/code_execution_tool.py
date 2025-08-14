@@ -15,6 +15,7 @@ import re
 
 @dataclass
 class State:
+    ssh_enabled: bool
     shells: dict[int, LocalInteractiveSession | SSHInteractiveSession]
 
 
@@ -77,7 +78,8 @@ class CodeExecution(Tool):
 
     async def prepare_state(self, reset=False, session: int | None = None):
         self.state: State | None = self.agent.get_data("_cet_state")
-        if not self.state:
+        # always reset state when ssh_enabled changes
+        if not self.state or self.state.ssh_enabled != self.agent.config.code_exec_ssh_enabled:
             # initialize shells dictionary if not exists
             shells: dict[int, LocalInteractiveSession | SSHInteractiveSession] = {}
         else:
@@ -114,7 +116,7 @@ class CodeExecution(Tool):
             shells[session] = shell
             await shell.connect()
 
-        self.state = State(shells=shells)
+        self.state = State(shells=shells, ssh_enabled=self.agent.config.code_exec_ssh_enabled)
         self.agent.set_data("_cet_state", self.state)
         return self.state
 
@@ -201,9 +203,10 @@ class CodeExecution(Tool):
 
         # Common shell prompt regex patterns (add more as needed)
         prompt_patterns = [
-            re.compile(r"\\(venv\\).+[$#] ?$"),  # (venv) ...$ or (venv) ...#
+            re.compile(r"\(venv\).+[$#] ?$"),  # (venv) ...$ or (venv) ...#
             re.compile(r"root@[^:]+:[^#]+# ?$"),  # root@container:~#
             re.compile(r"[a-zA-Z0-9_.-]+@[^:]+:[^$#]+[$#] ?$"),  # user@host:~$
+            re.compile(r"bash-\d+\.\d+\$ ?$"),  # bash-3.2$ (version can vary)
         ]
 
         # potential dialog detection
