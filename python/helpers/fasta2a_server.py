@@ -258,7 +258,7 @@ class DynamicA2AProxy:
             # Atomic update of the app
             self.app = new_app
 
-            _PRINTER.print("[A2A] FastA2A server configured successfully")
+            # _PRINTER.print("[A2A] FastA2A server configured successfully")
 
         except Exception as e:
             _PRINTER.print(f"[A2A] Failed to configure FastA2A server: {e}")
