@@ -135,6 +135,7 @@ class SettingsField(TypedDict, total=False):
     step: float
     hidden: bool
     options: list[FieldOption]
+    style: str
 
 
 class SettingsSection(TypedDict, total=False):
@@ -1062,26 +1063,24 @@ def convert_out(settings: Settings) -> SettingsOutput:
     secrets_fields: list[SettingsField] = []
 
     secrets_manager = SecretsManager.get_instance()
-    current_secrets = ""
     try:
-        current_secrets = secrets_manager.read_secrets_raw()
+        secrets = secrets_manager.get_masked_secrets()
     except Exception:
-        current_secrets = ""
-
-    masked_secrets = secrets_manager.get_masked_content(current_secrets) if current_secrets else ""
+        secrets = ""
 
     secrets_fields.append({
         "id": "secrets",
         "title": "Secrets Store",
-        "description": "Store secrets and credentials in .env format. Use placeholders like §§MY_SECRET§§ in agent responses. Values are shown as *** for security. To update a secret, enter the real value - existing secrets with *** will be preserved.",
+        "description": "Store secrets and credentials in .env format e.g. EMAIL_PASSWORD=\"s3cret-p4$$w0rd\", one item per line. You can use comments starting with # to add descriptions for the agent. See <a href=\"javascript:openModal('settings/secrets/example.html')\">example</a>.",
         "type": "textarea",
-        "value": masked_secrets,
+        "value": secrets,
+        "style": "height: 20em",
     })
 
     secrets_section: SettingsSection = {
         "id": "secrets",
         "title": "Secrets Management",
-        "description": "Manage secrets and credentials that agents can reference without exposing values in chat history.",
+        "description": "Manage secrets and credentials that agents can use without exposing values to LLMs, chat history or logs. Placeholders are automatically replaced with values just before tool calls. If bare passwords occur in tool results, they are masked back to placeholders.",
         "fields": secrets_fields,
         "tab": "external",
     }
@@ -1206,8 +1205,8 @@ def convert_out(settings: Settings) -> SettingsOutput:
             memory_section,
             speech_section,
             api_keys_section,
-            auth_section,
             secrets_section,
+            auth_section,
             mcp_client_section,
             mcp_server_section,
             a2a_section,
@@ -1247,13 +1246,6 @@ def convert_in(settings: dict) -> Settings:
                         current[field["id"]] = _env_to_dict(field["value"])
                     elif field["id"].startswith("api_key_"):
                         current["api_keys"][field["id"]] = field["value"]
-                    elif field["id"] == "secrets":
-                        # Handle secrets separately - merge with existing preserving comments/order and support deletions
-                        secrets_manager = SecretsManager.get_instance()
-                        submitted_content = field["value"]
-                        secrets_manager.save_secrets_with_merge(submitted_content)
-                        secrets_manager.clear_cache()  # Clear cache to reload secrets
-                        current[field["id"]] = field["value"]
                     else:
                         current[field["id"]] = field["value"]
     return current
@@ -1364,6 +1356,13 @@ def _write_sensitive_settings(settings: Settings):
         dotenv.save_dotenv_value(dotenv.KEY_ROOT_PASSWORD, settings["root_password"])
     if settings["root_password"]:
         set_root_password(settings["root_password"])
+
+    # Handle secrets separately - merge with existing preserving comments/order and support deletions
+    secrets_manager = SecretsManager.get_instance()
+    submitted_content = settings["secrets"]
+    secrets_manager.save_secrets_with_merge(submitted_content)
+    secrets_manager.clear_cache()  # Clear cache to reload secrets
+
 
 
 def get_default_settings() -> Settings:

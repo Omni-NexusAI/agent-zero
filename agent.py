@@ -6,7 +6,7 @@ nest_asyncio.apply()
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Coroutine, Dict
+from typing import Any, Awaitable, Coroutine, Dict, Literal
 from enum import Enum
 import uuid
 import models
@@ -644,16 +644,26 @@ class Agent:
     ):
         model = self.get_utility_model()
 
+        # call extensions
+        call_data = {
+            "model": model,
+            "system": system,
+            "message": message,
+            "callback": callback,
+            "background": background,
+        }
+        await self.call_extensions("util_model_call_before", call_data=call_data)
+
         # propagate stream to callback if set
         async def stream_callback(chunk: str, total: str):
-            if callback:
-                await callback(chunk)
+            if call_data["callback"]:
+                await call_data["callback"](chunk)
 
-        response, _reasoning = await model.unified_call(
-            system_message=system,
-            user_message=message,
+        response, _reasoning = await call_data["model"].unified_call(
+            system_message=call_data["system"],
+            user_message=call_data["message"],
             response_callback=stream_callback,
-            rate_limiter_callback=self.rate_limiter_callback if not background else None,
+            rate_limiter_callback=self.rate_limiter_callback if not call_data["background"] else None,
         )
 
         return response
@@ -749,28 +759,25 @@ class Agent:
             if tool:
                 await self.handle_intervention()
 
-                # Allow extensions to preprocess tool arguments (e.g., unmask secrets)
-                await self.call_extensions("tool_execute_before", tool_args=tool_args or {}, tool_name=tool_name)
 
                 # Call tool hooks for compatibility
                 await tool.before_execution(**tool_args)
                 await self.handle_intervention()
 
+                # Allow extensions to preprocess tool arguments
+                await self.call_extensions("tool_execute_before", tool_args=tool_args or {}, tool_name=tool_name)
+
                 response = await tool.execute(**tool_args)
                 await self.handle_intervention()
 
-                # Allow extensions to postprocess tool response (e.g., mask secrets)
-                response_data = {"response": response}
-                await self.call_extensions("tool_execute_after", response_data=response_data, tool_name=tool_name)
-                processed_response = response_data["response"]
-
-                # Store result to history
-                self.hist_add_tool_result(tool_name, getattr(processed_response, "message", ""))
-
-                await tool.after_execution(processed_response)
+                # Allow extensions to postprocess tool response
+                await self.call_extensions("tool_execute_after", response=response, tool_name=tool_name)
+                
+                await tool.after_execution(response)
                 await self.handle_intervention()
-                if processed_response.break_loop:
-                    return processed_response.message
+
+                if response.break_loop:
+                    return response.message
             else:
                 error_detail = (
                     f"Tool '{raw_tool_name}' not found or could not be initialized."

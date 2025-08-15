@@ -57,8 +57,9 @@ def _truncate_value(val: T) -> T:
     # If dict, recursively truncate each value
     if isinstance(val, dict):
         for k in list(val.keys()):
-            val[_truncate_key(k)] = _truncate_value(val[k])
+            v = val[k]
             del val[k]
+            val[_truncate_key(k)] = _truncate_value(v)
         return val
     # If list or tuple, recursively truncate each item
     if isinstance(val, list):
@@ -229,6 +230,7 @@ class Log:
             temp=temp,
             update_progress=update_progress,
             id=id,
+            **kwargs,
         )
         return item
 
@@ -241,6 +243,7 @@ class Log:
         kvps: dict | None = None,
         temp: bool | None = None,
         update_progress: ProgressUpdate | None = None,
+        id: Optional[str] = None,  # Add id parameter
         **kwargs,
     ):
         item = self.logs[no]
@@ -259,7 +262,7 @@ class Log:
             kvps = _mask_recursive(kvps)
             kvps = _truncate_value(kvps)
             item.kvps = kvps
-        else:
+        elif item.kvps is None:
             item.kvps = OrderedDict()
         if kwargs:
             kwargs = copy.deepcopy(kwargs)
@@ -274,6 +277,9 @@ class Log:
 
         if temp is not None:
             item.temp = temp
+
+        if id is not None:
+            item.id = id
 
         self.updates += [item.no]
         self._update_progress_from_item(item)

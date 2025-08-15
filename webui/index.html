@@ -632,7 +632,9 @@
                                                 <template x-if="field.type === 'textarea'">
                                                     <textarea :class="field.classes" :value="field.value"
                                                         :readonly="field.readonly === true"
-                                                        @input="field.value = $event.target.value"></textarea>
+                                                        @input="field.value = $event.target.value"
+                                                        :style="field.style"
+                                                    ></textarea>
                                                 </template>
 
                                                 <!-- Switch field -->

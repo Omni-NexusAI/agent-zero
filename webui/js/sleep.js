@@ -1,5 +1,5 @@
 /** Async function that waits for specified number of time units. */
-export async function Sleep(miliseconds = 0, seconds = 0, minutes = 0, hours = 0, days = 0) {
+export async function sleep(miliseconds = 0, seconds = 0, minutes = 0, hours = 0, days = 0) {
   hours += days * 24;
   minutes += hours * 60;
   seconds += minutes * 60;
@@ -26,7 +26,7 @@ export async function Sleep(miliseconds = 0, seconds = 0, minutes = 0, hours = 0
     miliseconds -= chunkDuration;
   }
 }
-export default Sleep;
+export default sleep;
 
 /** Equals to Sleep(0), but can be used to yield break a coroutine after N interations. */
 let yieldIterations = 0;

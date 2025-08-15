@@ -10,6 +10,8 @@ from python.helpers.errors import RepairableException
 from python.helpers import files
 
 
+KEY_DELIMITER = "§§"
+
 @dataclass
 class EnvLine:
     raw: str
@@ -17,7 +19,9 @@ class EnvLine:
     key: Optional[str] = None
     value: Optional[str] = None
     key_part: Optional[str] = None  # original left side including whitespace up to '='
-    inline_comment: Optional[str] = None  # preserves trailing inline comment including leading spaces and '#'
+    inline_comment: Optional[str] = (
+        None  # preserves trailing inline comment including leading spaces and '#'
+    )
 
 
 class StreamingSecretsFilter:
@@ -55,7 +59,7 @@ class StreamingSecretsFilter:
                 continue
             key = self.value_to_key.get(val, "")
             if key:
-                text = text.replace(val, f"§§{key}§§")
+                text = text.replace(val, f"{KEY_DELIMITER}{key}{KEY_DELIMITER}")
         return text
 
     def _longest_suffix_prefix(self, text: str) -> int:
@@ -109,7 +113,7 @@ class StreamingSecretsFilter:
 
 class SecretsManager:
     SECRETS_FILE = "tmp/secrets.env"
-    PLACEHOLDER_PATTERN = r"§§([A-Z_][A-Z0-9_]*)§§"
+    PLACEHOLDER_PATTERN = rf"{KEY_DELIMITER}([A-Za-z_][A-Za-z0-9_]*){KEY_DELIMITER}"
     MASK_VALUE = "***"
 
     _instance: Optional["SecretsManager"] = None
@@ -126,7 +130,6 @@ class SecretsManager:
         self._lock = threading.RLock()
         # instance-level override for secrets file
         self._secrets_file_rel = self.SECRETS_FILE
-
 
     def set_secrets_file(self, relative_path: str):
         """Override the relative secrets file location (useful for tests)."""
@@ -215,11 +218,16 @@ class SecretsManager:
             return ""
 
         env_lines = self.parse_env_lines(content)
-        return self._serialize_env_lines(env_lines, with_values=False, with_comments=True, with_blank=True, with_other=True)
+        return self._serialize_env_lines(
+            env_lines,
+            with_values=False,
+            with_comments=True,
+            with_blank=True,
+            with_other=True,
+            key_delimiter=KEY_DELIMITER,
+        )
 
-
-
-    def create_streaming_filter(self) -> 'StreamingSecretsFilter':
+    def create_streaming_filter(self) -> "StreamingSecretsFilter":
         """Create a streaming-aware secrets filter snapshotting current secret values."""
         return StreamingSecretsFilter(self.load_secrets())
 
@@ -232,58 +240,19 @@ class SecretsManager:
 
         def replacer(match):
             key = match.group(1)
+            key = key.upper()
             if key in secrets:
                 return secrets[key]
             else:
-                # Try common variations for user convenience
-                variations = self._get_key_variations(key)
-                for variation in variations:
-                    if variation in secrets:
-                        return secrets[variation]
-
-                # Show both the original key and available alternatives
-                available_keys = ', '.join(secrets.keys())
-                suggested_variations = [f"§§{var}§§" for var in variations if var in secrets]
-
-                error_msg = f"Secret placeholder '§§{key}§§' not found in secrets store.\n"
+                available_keys = ", ".join(secrets.keys())
+                error_msg = (
+                    f"Secret placeholder '{KEY_DELIMITER}{key}{KEY_DELIMITER}' not found in secrets store.\n"
+                )
                 error_msg += f"Available secrets: {available_keys}"
-
-                if suggested_variations:
-                    error_msg += f"\nDid you mean: {', '.join(suggested_variations)}?"
 
                 raise RepairableException(error_msg)
 
         return re.sub(self.PLACEHOLDER_PATTERN, replacer, text)
-
-    def _get_key_variations(self, key: str) -> List[str]:
-        """Generate common variations of a key name for better UX"""
-        variations = []
-
-        # Common API key variations
-        if key == "OPENAI_API_KEY":
-            variations.extend(["API_KEY_OPENAI", "OPENAI_KEY", "OPENAI"])
-        elif key == "API_KEY_OPENAI":
-            variations.extend(["OPENAI_API_KEY", "OPENAI_KEY", "OPENAI"])
-        elif key == "ANTHROPIC_API_KEY":
-            variations.extend(["API_KEY_ANTHROPIC", "ANTHROPIC_KEY", "ANTHROPIC"])
-        elif key == "API_KEY_ANTHROPIC":
-            variations.extend(["ANTHROPIC_API_KEY", "ANTHROPIC_KEY", "ANTHROPIC"])
-        elif key == "GOOGLE_API_KEY":
-            variations.extend(["API_KEY_GOOGLE", "GOOGLE_KEY", "GOOGLE"])
-        elif key == "API_KEY_GOOGLE":
-            variations.extend(["GOOGLE_API_KEY", "GOOGLE_KEY", "GOOGLE"])
-
-        # General pattern variations
-        if "_API_KEY" in key:
-            # Convert SERVICE_API_KEY to API_KEY_SERVICE
-            service = key.replace("_API_KEY", "")
-            variations.append(f"API_KEY_{service}")
-        elif "API_KEY_" in key:
-            # Convert API_KEY_SERVICE to SERVICE_API_KEY
-            service = key.replace("API_KEY_", "")
-            variations.append(f"{service}_API_KEY")
-
-        return variations
 
     def mask_values(self, text: str) -> str:
         """Replace actual secret values with placeholders in text"""
@@ -294,15 +263,17 @@ class SecretsManager:
         result = text
 
         # Sort by length (longest first) to avoid partial replacements
-        for key, value in sorted(secrets.items(), key=lambda x: len(x[1]), reverse=True):
+        for key, value in sorted(
+            secrets.items(), key=lambda x: len(x[1]), reverse=True
+        ):
             if value and len(value.strip()) > 0:
-                result = result.replace(value, f"§§{key}§§")
+                result = result.replace(value, f"{KEY_DELIMITER}{key}{KEY_DELIMITER}")
 
         return result
 
-    def get_masked_content(self, content: str) -> str:
+    def get_masked_secrets(self) -> str:
         """Get content with values masked for frontend display (preserves comments and unrecognized lines)"""
-        if not content:
+        if not (content:=self.read_secrets_raw()):
             return ""
 
         # Parse content for known keys using python-dotenv
@@ -311,16 +282,17 @@ class SecretsManager:
         # Replace values with mask for keys present
         for ln in env_lines:
             if ln.type == "pair" and ln.key is not None:
+                ln.key = ln.key.upper()
                 if ln.key in secrets_map and secrets_map[ln.key] != "":
                     ln.value = self.MASK_VALUE
         return self._serialize_env_lines(env_lines)
 
     def parse_env_content(self, content: str) -> Dict[str, str]:
-        """Parse .env format content into key-value dict using python-dotenv."""
+        """Parse .env format content into key-value dict using python-dotenv. Keys are always uppercase."""
         env: Dict[str, str] = {}
         for binding in parse_stream(StringIO(content)):
             if binding.key and not binding.error:
-                env[binding.key] = binding.value or ""
+                env[binding.key.upper()] = binding.value or ""
         return env
 
     # Backward-compatible alias for callers using the old private method name
@@ -397,14 +369,25 @@ class SecretsManager:
                     lines.append(EnvLine(raw=raw_line, type="other"))
         return lines
 
-    def _serialize_env_lines(self, lines: List[EnvLine], with_values=True, with_comments=True, with_blank=True, with_other=True) -> str:
+    def _serialize_env_lines(
+        self,
+        lines: List[EnvLine],
+        with_values=True,
+        with_comments=True,
+        with_blank=True,
+        with_other=True,
+        key_delimiter="",
+    ) -> str:
         out: List[str] = []
         for ln in lines:
             if ln.type == "pair" and ln.key is not None:
                 left = ln.key_part if ln.key_part is not None else ln.key
+                left = left.upper()
                 val = ln.value if ln.value is not None else ""
                 comment = ln.inline_comment or ""
-                out.append(f"{left}={val if with_values else ""}{" " + comment if with_comments and comment else ""}")
+                out.append(
+                    f"{key_delimiter}{left}{key_delimiter}{'="'+val+'"' if with_values else ""}{" " + comment if with_comments and comment else ""}"
+                )
             elif ln.type == "blank" and with_blank:
                 out.append(ln.raw)
             elif ln.type == "comment" and with_comments:
@@ -428,7 +411,9 @@ class SecretsManager:
         submitted_lines = self.parse_env_lines(submitted_text)
 
         existing_pairs: Dict[str, EnvLine] = {
-            ln.key: ln for ln in existing_lines if ln.type == "pair" and ln.key is not None
+            ln.key: ln
+            for ln in existing_lines
+            if ln.type == "pair" and ln.key is not None
         }
 
         merged: List[EnvLine] = []
