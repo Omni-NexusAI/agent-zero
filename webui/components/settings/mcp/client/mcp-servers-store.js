@@ -92,6 +92,34 @@ const model = {
     }
   },
 
+  async toggleServer(name) {
+    try {
+      const current = JSON.parse(this.getEditorValue() || "[]");
+      let found = false;
+      for (const srv of current) {
+        if (srv.name === name) {
+          srv.disabled = !srv.disabled;
+          found = true;
+          break;
+        }
+      }
+      if (!found) return;
+      const formatted = JSON.stringify(current, null, 2);
+      this.editor.setValue(formatted);
+      this.editor.clearSelection();
+      const resp = await API.callJsonApi("mcp_servers_apply", {
+        mcp_servers: formatted,
+      });
+      if (resp.success) {
+        this.servers = resp.status;
+        this.servers.sort((a, b) => a.name.localeCompare(b.name));
+      }
+    } catch (error) {
+      console.error("Failed to toggle server:", error);
+      alert("Failed to toggle server: " + error.message);
+    }
+  },
+
   async stopStatusCheck() {
     this.statusCheck = false;
   },
