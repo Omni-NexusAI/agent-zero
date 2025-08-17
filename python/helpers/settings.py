@@ -105,6 +105,9 @@ class Settings(TypedDict):
 
     secrets: str
 
+    # LiteLLM global kwargs applied to all model calls
+    litellm_global_kwargs: dict[str, str]
+
 class PartialSettings(Settings, total=False):
     pass
 
@@ -579,6 +582,28 @@ def convert_out(settings: Settings) -> SettingsOutput:
         "title": "API Keys",
         "description": "API keys for model providers and services used by Agent Zero. You can set multiple API keys separated by a comma (,). They will be used in round-robin fashion.",
         "fields": api_keys_fields,
+        "tab": "external",
+    }
+
+    # LiteLLM global config section
+    litellm_fields: list[SettingsField] = []
+
+    litellm_fields.append(
+        {
+            "id": "litellm_global_kwargs",
+            "title": "LiteLLM global parameters",
+            "description": "Global LiteLLM params (e.g. timeout, stream_timeout) in .env format: one KEY=VALUE per line. Example: <code>stream_timeout=30</code>. Applied to all LiteLLM calls unless overridden. See <a href='https://docs.litellm.ai/docs/set_keys' target='_blank'>LiteLLM</a> and <a href='https://docs.litellm.ai/docs/proxy/timeout' target='_blank'>timeouts</a>.",
+            "type": "textarea",
+            "value": _dict_to_env(settings["litellm_global_kwargs"]),
+            "style": "height: 12em",
+        }
+    )
+
+    litellm_section: SettingsSection = {
+        "id": "litellm",
+        "title": "LiteLLM Global Settings",
+        "description": "Configure global parameters passed to LiteLLM for all providers.",
+        "fields": litellm_fields,
         "tab": "external",
     }
 
@@ -1205,6 +1230,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             memory_section,
             speech_section,
             api_keys_section,
+            litellm_section,
             secrets_section,
             auth_section,
             mcp_client_section,
@@ -1441,6 +1467,7 @@ def get_default_settings() -> Settings:
         mcp_server_token=create_auth_token(),
         a2a_server_enabled=False,
         secrets="",
+        litellm_global_kwargs={},
     )
 
 
