@@ -89,7 +89,6 @@ The following user guide provides instructions for installing and running Agent 
   - `/knowledge` - Knowledge base
   - `/instruments` - Instruments and functions
   - `/prompts` - Prompt files
-  - `/work_dir` - Working directory
   - `.env` - Your API keys
   - `/tmp/settings.json` - Your Agent Zero settings
 
@@ -164,7 +163,7 @@ Agent Zero provides a comprehensive settings interface to customize various aspe
 ### Chat Model Settings
 - **Provider:** Select the chat model provider (e.g., Ollama)
 - **Model Name:** Choose the specific model (e.g., llama3.2)
-- **Temperature:** Adjust response randomness (0 for deterministic, higher values for more creative responses)
+- **API URL:** URL of the API endpoint for the chat model - only needed for custom providers like Ollama, Azure, etc.
 - **Context Length:** Set the maximum token limit for context window
 - **Context Window Space:** Configure how much of the context window is dedicated to chat history
 
