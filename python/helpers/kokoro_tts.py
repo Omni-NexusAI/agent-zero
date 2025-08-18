@@ -4,6 +4,7 @@ import base64
 import io
 import warnings
 import asyncio
+import os
 import soundfile as sf
 from python.helpers import runtime
 from python.helpers.print_style import PrintStyle
@@ -15,6 +16,28 @@ _pipeline = None
 _voice = "am_puck,am_onyx"
 _speed = 1.1
 is_updating_model = False
+
+
+def _resolve_device(device: str | None) -> str | None:
+    """Return a normalised device string or ``None`` for auto-selection.
+
+    Order of precedence: explicit ``device`` argument, environment variable
+    ``KOKORO_TTS_DEVICE``, then automatic device selection inside ``KPipeline``.
+    Supported values are ``"cpu"`` and ``"cuda"`` (or ``"gpu"``).
+    """
+
+    if device is None:
+        device = os.getenv("KOKORO_TTS_DEVICE")
+
+    if not device:
+        return None
+
+    device = device.strip().lower()
+    if device in {"cuda", "gpu"}:
+        return "cuda"
+    if device == "cpu":
+        return "cpu"
+    raise ValueError(f"Invalid Kokoro device '{device}'")
 
 
 def _blend_voice_style(spec: str) -> list[tuple[str, float]]:
@@ -74,19 +97,24 @@ def _blend_voice_style(spec: str) -> list[tuple[str, float]]:
     return list(zip(voices, normalised))
 
 
-async def preload():
+async def preload(device: str | None = None):
+    """Preload the Kokoro TTS model on the requested device.
+
+    ``device`` may be ``"cpu"`` or ``"cuda"``; if omitted it falls back to the
+    ``KOKORO_TTS_DEVICE`` environment variable or auto-selection.
+    """
     try:
-        # return await runtime.call_development_function(_preload)
-        return await _preload()
+        # return await runtime.call_development_function(_preload, device)
+        return await _preload(device)
     except Exception as e:
         # if not runtime.is_development():
         raise e
         # Fallback to direct execution if RFC fails in development
         # PrintStyle.standard("RFC failed, falling back to direct execution...")
-        # return await _preload()
+        # return await _preload(device)
 
 
-async def _preload():
+async def _preload(device: str | None = None):
     global _pipeline, is_updating_model
 
     while is_updating_model:
@@ -97,7 +125,10 @@ async def _preload():
         if not _pipeline:
             PrintStyle.standard("Loading Kokoro TTS model...")
             from kokoro import KPipeline
-            _pipeline = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
+            resolved_device = _resolve_device(device)
+            _pipeline = KPipeline(
+                lang_code="a", repo_id="hexgrad/Kokoro-82M", device=resolved_device
+            )
     finally:
         is_updating_model = False
 
