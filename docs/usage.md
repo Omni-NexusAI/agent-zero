@@ -112,7 +112,7 @@ Agent Zero might then:
 1. Use the `search_engine` and `document_query_tool` to query a reliable source for the Bitcoin price and for the news about cryptocurrency as prompted.
 2. Extract the price from the search results and save the news, extracting their dates and possible impact on the price.
 3. Use the `code_execution_tool` to execute a Python script that performs the graph creation and key points highlighting, using the extracted data and the news dates as inputs.
-4. Return the final chart that you'll find in `/work_dir`, responding to the user with the `response_tool`.
+4. Save the final chart on disk inside the container and provide a link to it with the `response_tool`.
 
 > [!NOTE]
 > The first run of `code_execution_tool` may take a while as it downloads and builds the Agent Zero Docker image. Subsequent runs will be faster.
@@ -145,6 +145,7 @@ Enable voice responses from agents:
 * Toggle the "Speech" switch in the Preferences section of the sidebar
 * Agents will use your system's built-in voice synthesizer to speak their messages
 * Click the "Stop Speech" button above the input area to immediately stop any ongoing speech
+* You can also click the speech button when hovering over messages to speak individual messages or their parts
 
 ![TTS Stop Speech](res/ui-tts-stop-speech.png)
 
@@ -188,18 +189,6 @@ Configure STT settings in the Settings page:
 > ensuring that no data is transmitted to external servers or OpenAI APIs. This
 > enhances user privacy while maintaining functionality.
 
-### Mathematical Expressions
-Agent Zero supports KaTeX for beautiful mathematical typesetting:
-
-* **Inline Math:** Use single dollars `$...$` for inline expressions
-  - Example: Type `The area of a circle is $A = πr^2$`
-  - Renders as: The area of a circle is $A = πr^2$
-
-* **Display Math:** Use double dollars `$$...$$` for centered display equations
-  - Example: Type `$$F = G\frac{m_1m_2}{r^2}$$`
-  - Renders as a centered equation
-
-![KaTeX](res/ui-katex-1.png)
 
 * **Complex Mathematics:** Supports full KaTeX syntax for:
   - Fractions, exponents, and roots
