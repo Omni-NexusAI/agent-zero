@@ -20,7 +20,7 @@ from langchain_community.document_transformers import MarkdownifyTransformer
 from langchain_community.document_loaders.parsers.images import TesseractBlobParser
 
 from langchain_core.documents import Document
-from langchain.schema import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage
 
 from python.helpers.print_style import PrintStyle
 from python.helpers import files, errors
