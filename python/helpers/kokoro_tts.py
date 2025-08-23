@@ -14,8 +14,49 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 _pipeline = None
 _voice = "am_puck,am_onyx"
-_speed = 1.1
+
+
+def _validate_speed(value: float | str) -> float:
+    """Validate and convert a speed value to ``float``.
+
+    Parameters
+    ----------
+    value:
+        The speed as a ``float`` or string representation.
+
+    Returns
+    -------
+    float
+        The validated speed value.
+
+    Raises
+    ------
+    ValueError
+        If the value cannot be converted to ``float`` or is not positive.
+    """
+
+    try:
+        speed = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid Kokoro TTS speed '{value}'") from exc
+    if speed <= 0:
+        raise ValueError("Kokoro TTS speed must be positive")
+    return speed
+
+
+try:
+    _speed = _validate_speed(os.getenv("KOKORO_TTS_SPEED", "1.1"))
+except ValueError:
+    _speed = 1.1
+
 is_updating_model = False
+
+
+def set_speed(speed: float | str) -> None:
+    """Set the default synthesis speed for Kokoro TTS."""
+
+    global _speed
+    _speed = _validate_speed(speed)
 
 
 def _resolve_device(device: str | None) -> str | None:
@@ -161,11 +202,13 @@ def _is_downloaded():
     return _pipeline is not None
 
 
-async def synthesize_sentences(sentences: list[str]):
+async def synthesize_sentences(
+    sentences: list[str], speed: float | str | None = None
+):
     """Generate audio for multiple sentences and return concatenated base64 audio"""
     try:
         # return await runtime.call_development_function(_synthesize_sentences, sentences)
-        return await _synthesize_sentences(sentences)
+        return await _synthesize_sentences(sentences, speed)
     except Exception as e:
         # if not runtime.is_development():
         raise e
@@ -173,15 +216,20 @@ async def synthesize_sentences(sentences: list[str]):
         # return await _synthesize_sentences(sentences)
 
 
-async def _synthesize_sentences(sentences: list[str]):
+async def _synthesize_sentences(
+    sentences: list[str], speed: float | str | None = None
+):
     await _preload()
 
+    local_speed = _speed if speed is None else _validate_speed(speed)
     combined_audio = []
 
     try:
         for sentence in sentences:
             if sentence.strip():
-                segments = _pipeline(sentence.strip(), voice=_voice, speed=_speed) # type: ignore
+                segments = _pipeline(
+                    sentence.strip(), voice=_voice, speed=local_speed
+                )  # type: ignore
                 segment_list = list(segments)
 
                 for segment in segment_list:
