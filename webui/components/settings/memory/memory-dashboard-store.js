@@ -1,77 +1,215 @@
 import { createStore } from "/js/AlpineStore.js";
 import { getContext } from "/index.js";
 import * as API from "/js/api.js";
+import { openModal, closeModal } from "/js/modals.js";
 
-const model = {
+// Memory Dashboard Store
+const memoryDashboardStore = {
+  // Data
   memories: [],
-  loading: true,
-  error: null,
-
-  // Filter states
-  areaFilter: "",
-  searchQuery: "",
   currentPage: 1,
   itemsPerPage: 10,
 
-  // Statistics
+  // State
+  loading: false,
+  loadingSubdirs: false,
+  initializingMemory: false,
+  error: null,
+  message: null,
+
+  // Memory subdirectories
+  memorySubdirs: [],
+  selectedMemorySubdir: "default",
+  memoryInitialized: {},  // Track which subdirs have been initialized
+
+  // Search and filters
+  searchQuery: "",
+  areaFilter: "",
+  limit: parseInt(localStorage.getItem('memoryDashboard_limit') || '100'),
+
+  // Stats
   totalCount: 0,
   knowledgeCount: 0,
   conversationCount: 0,
   areasCount: {},
 
-  // UI state
-  selectedMemory: null,
-  showDetailModal: false,
-  message: null, // For displaying initialization messages
+  // Memory detail modal (standard modal approach)
+  detailMemory: null,
+
+  // Polling
+  pollingInterval: null,
+  pollingEnabled: true,
 
   async initialize() {
-    await this.loadMemories();
+    // Reset state when opening (but keep directory from context)
+    this.currentPage = 1;
+    this.searchQuery = "";
+    this.areaFilter = "";
+
+    // Get current memory subdirectory from application context
+    await this.getCurrentMemorySubdir();
+
+    await this.loadMemorySubdirs();
+
+    // Automatically search with selected subdirectory
+    if (this.selectedMemorySubdir) {
+      await this.searchMemories();
+    }
+
+    // Start polling for live updates as soon as dashboard is open
+    this.startPolling();
   },
 
-  async loadMemories() {
-    this.loading = true;
+  async getCurrentMemorySubdir() {
+    try {
+      // Try to get current memory subdirectory from the backend
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "get_current_memory_subdir"
+      });
+
+      if (response.success && response.memory_subdir) {
+        this.selectedMemorySubdir = response.memory_subdir;
+      } else {
+        // Fallback to default
+        this.selectedMemorySubdir = "default";
+      }
+    } catch (error) {
+      console.error("Failed to get current memory subdirectory:", error);
+      this.selectedMemorySubdir = "default";
+    }
+  },
+
+  async loadMemorySubdirs() {
+    this.loadingSubdirs = true;
     this.error = null;
-    this.message = null;
 
     try {
       const response = await API.callJsonApi("memory_dashboard", {
-        context: getContext(),
-        area: this.areaFilter,
-        search: this.searchQuery,
-        limit: 500 // Get more for client-side pagination
+        action: "get_memory_subdirs"
       });
 
-      if (response.success) {
-        this.memories = response.memories || []; // Already sorted by API
+            if (response.success) {
+        let subdirs = response.subdirs || ["default"];
+
+        // Sort alphabetically but ensure "default" is always first
+        subdirs = subdirs.filter(dir => dir !== "default").sort();
+        if (response.subdirs && response.subdirs.includes("default")) {
+          subdirs.unshift("default");
+        } else {
+          subdirs.unshift("default");
+        }
+
+        this.memorySubdirs = subdirs;
+
+        // Ensure the currently selected subdirectory exists in the list
+        if (!this.memorySubdirs.includes(this.selectedMemorySubdir)) {
+          this.selectedMemorySubdir = "default";
+        }
+      } else {
+        this.error = response.error || "Failed to load memory subdirectories";
+        this.memorySubdirs = ["default"];
+        this.selectedMemorySubdir = "default";
+      }
+    } catch (error) {
+      this.error = error.message || "Failed to load memory subdirectories";
+      this.memorySubdirs = ["default"];
+      // Only fallback to default if current selection is not available
+      if (!this.memorySubdirs.includes(this.selectedMemorySubdir)) {
+        this.selectedMemorySubdir = "default";
+      }
+      console.error("Memory subdirectory loading error:", error);
+    } finally {
+      this.loadingSubdirs = false;
+    }
+  },
+
+  async searchMemories(silent = false) {
+    // Save limit to localStorage for persistence
+    localStorage.setItem('memoryDashboard_limit', this.limit.toString());
+
+    if (!silent) {
+      this.loading = true;
+      this.error = null;
+      this.message = null;
+
+      // Check if this memory subdirectory needs initialization
+      if (!this.memoryInitialized[this.selectedMemorySubdir]) {
+        this.initializingMemory = true;
+      }
+    }
+
+    try {
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "search",
+        memory_subdir: this.selectedMemorySubdir,
+        area: this.areaFilter,
+        search: this.searchQuery,
+        limit: this.limit
+      });
+
+            if (response.success) {
+        // Add selected property to each memory item for mass selection
+        this.memories = (response.memories || []).map(memory => ({
+          ...memory,
+          selected: memory.selected || false
+        }));
         this.totalCount = response.total_count || 0;
         this.knowledgeCount = response.knowledge_count || 0;
         this.conversationCount = response.conversation_count || 0;
         this.areasCount = response.areas_count || {};
-        this.message = response.message || null; // Handle initialization messages
-        this.currentPage = 1; // Reset to first page when loading new data
+
+        if (!silent) {
+          this.message = response.message || null;
+          this.currentPage = 1; // Reset to first page when loading new data
+        } else {
+          // For silent updates, adjust current page if it exceeds available pages
+          if (this.currentPage > this.totalPages && this.totalPages > 0) {
+            this.currentPage = this.totalPages;
+          }
+        }
+
+        // Mark this subdirectory as initialized
+        this.memoryInitialized[this.selectedMemorySubdir] = true;
       } else {
-        this.error = response.error || "Failed to load memories";
-        this.memories = [];
-        this.message = null;
+        if (!silent) {
+          this.error = response.error || "Failed to search memories";
+          this.memories = [];
+          this.message = null;
+        } else {
+          // For silent updates, just log the error but don't break the UI
+          console.warn("Memory dashboard polling failed:", response.error);
+        }
       }
     } catch (error) {
-      this.error = error.message || "Failed to load memories";
-      this.memories = [];
-      this.message = null;
-      console.error("Memory dashboard error:", error);
+      if (!silent) {
+        this.error = error.message || "Failed to search memories";
+        this.memories = [];
+        this.message = null;
+        console.error("Memory search error:", error);
+      } else {
+        // For silent updates, just log the error but don't break the UI
+        console.warn("Memory dashboard polling error:", error);
+      }
     } finally {
-      this.loading = false;
+      if (!silent) {
+        this.loading = false;
+        this.initializingMemory = false;
+      }
     }
   },
 
-  async applyFilters() {
-    await this.loadMemories();
-  },
-
-  clearFilters() {
+  async clearSearch() {
     this.areaFilter = "";
     this.searchQuery = "";
-    this.applyFilters();
+    this.currentPage = 1;
+
+    // Immediately trigger a new search with cleared filters
+    await this.searchMemories();
+  },
+
+  async onMemorySubdirChange() {
+    // Clear current results when subdirectory changes
+    await this.clearSearch(); // Polling continues with new subdirectory
   },
 
   // Pagination
@@ -80,9 +218,9 @@ const model = {
   },
 
   get paginatedMemories() {
-    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-    const endIndex = startIndex + this.itemsPerPage;
-    return this.memories.slice(startIndex, endIndex);
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    const end = start + this.itemsPerPage;
+    return this.memories.slice(start, end);
   },
 
   goToPage(page) {
@@ -103,152 +241,356 @@ const model = {
     }
   },
 
-  // Memory details
-  showMemoryDetails(memory) {
-    this.selectedMemory = memory;
-    this.showDetailModal = true;
+  // Mass selection
+  get selectedMemories() {
+    return this.memories.filter(memory => memory.selected);
   },
 
-  closeDetailModal() {
-    this.showDetailModal = false;
-    this.selectedMemory = null;
+  get selectedCount() {
+    return this.selectedMemories.length;
+  },
+
+  get allSelected() {
+    return this.memories.length > 0 && this.memories.every(memory => memory.selected);
+  },
+
+  get someSelected() {
+    return this.memories.some(memory => memory.selected);
+  },
+
+  toggleSelectAll() {
+    const shouldSelectAll = !this.allSelected;
+    this.memories.forEach(memory => {
+      memory.selected = shouldSelectAll;
+    });
   },
 
 
 
-  // Utility methods
-    formatTimestamp(timestamp, compact = false) {
-    if (!timestamp || timestamp === "unknown") return "Unknown";
+  clearSelection() {
+    this.memories.forEach(memory => {
+      memory.selected = false;
+    });
+  },
+
+  // Bulk operations
+  async bulkDeleteMemories() {
+    const selectedMemories = this.selectedMemories;
+    if (selectedMemories.length === 0) return;
+
+    const confirmMessage = `Are you sure you want to delete ${selectedMemories.length} selected memories? This cannot be undone.`;
+    if (!confirm(confirmMessage)) return;
+
     try {
-      // Parse timestamp - assume UTC if no timezone specified
-      let date;
-      if (timestamp.includes('T') || timestamp.includes('Z') || timestamp.includes('+')) {
-        // ISO format with timezone info
-        date = new Date(timestamp);
-      } else {
-        // Assume UTC for plain format "YYYY-MM-DD HH:MM:SS"
-        date = new Date(timestamp + ' UTC');
-      }
+      this.loading = true;
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "bulk_delete",
+        memory_subdir: this.selectedMemorySubdir,
+        memory_ids: selectedMemories.map(memory => memory.id)
+      });
 
-      // Convert to local time and format
-      if (compact) {
-        // Compact format for table view
-        return date.toLocaleString(undefined, {
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        });
+      if (response.success) {
+        this.showToast(`Successfully deleted ${selectedMemories.length} memories`, "success");
+
+        // Let polling refresh the data instead of manual manipulation
+        // Trigger an immediate refresh to get updated state from backend
+        await this.searchMemories(true); // silent refresh
       } else {
-        // Full format for detail view
-        return date.toLocaleString(undefined, {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        });
+        this.showToast(response.error || "Failed to delete selected memories", "error");
       }
-    } catch {
-      return timestamp;
+    } catch (error) {
+      this.showToast(error.message || "Failed to delete selected memories", "error");
+    } finally {
+      this.loading = false;
+    }
+  },
+
+  // Helper method to format a complete memory with all metadata
+  formatMemoryForCopy(memory) {
+    let formatted = `=== Memory ID: ${memory.id} ===
+Area: ${memory.area}
+Timestamp: ${this.formatTimestamp(memory.timestamp)}
+Source: ${memory.knowledge_source ? 'Knowledge' : 'Conversation'}
+${memory.source_file ? `File: ${memory.source_file}` : ''}
+${memory.tags && memory.tags.length > 0 ? `Tags: ${memory.tags.join(', ')}` : ''}`;
+
+    // Add custom metadata if present
+    if (memory.metadata && typeof memory.metadata === 'object' && Object.keys(memory.metadata).length > 0) {
+      formatted += '\n\nMetadata:';
+      for (const [key, value] of Object.entries(memory.metadata)) {
+        const displayValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
+        formatted += `\n${key}: ${displayValue}`;
+      }
+    }
+
+    formatted += `\n\nContent:
+${memory.content_full}
+
+`;
+    return formatted;
+  },
+
+  bulkCopyMemories() {
+    const selectedMemories = this.selectedMemories;
+    if (selectedMemories.length === 0) return;
+
+    const content = selectedMemories.map(memory => this.formatMemoryForCopy(memory)).join('\n');
+
+    this.copyToClipboard(content);
+    this.showToast(`Copied ${selectedMemories.length} memories with metadata to clipboard`, "success");
+  },
+
+  bulkExportMemories() {
+    const selectedMemories = this.selectedMemories;
+    if (selectedMemories.length === 0) return;
+
+    const exportData = {
+      export_timestamp: new Date().toISOString(),
+      memory_subdir: this.selectedMemorySubdir,
+      total_memories: selectedMemories.length,
+      memories: selectedMemories.map(memory => ({
+        id: memory.id,
+        area: memory.area,
+        timestamp: memory.timestamp,
+        content: memory.content_full,
+        tags: memory.tags || [],
+        knowledge_source: memory.knowledge_source,
+        source_file: memory.source_file || null,
+        metadata: memory.metadata || {}
+      }))
+    };
+
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `memories_${this.selectedMemorySubdir}_selected_${selectedMemories.length}_${timestamp}.json`;
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    this.showToast(`Exported ${selectedMemories.length} selected memories to ${filename}`, "success");
+  },
+
+  // Memory detail modal (standard approach)
+  showMemoryDetails(memory) {
+    this.detailMemory = memory;
+    // Use global modal system
+    openModal("settings/memory/memory-detail-modal.html");
+  },
+
+  closeMemoryDetails() {
+    this.detailMemory = null;
+  },
+
+  // Utilities
+  formatTimestamp(timestamp, compact = false) {
+    if (!timestamp || timestamp === "unknown") {
+      return "Unknown";
+    }
+
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+      return "Invalid Date";
+    }
+
+    if (compact) {
+      // For table display: MM/DD HH:mm
+      return date.toLocaleDateString("en-US", {
+        month: "2-digit",
+        day: "2-digit",
+      }) + " " + date.toLocaleTimeString("en-US", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } else {
+      // For details: Full format
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }) + " at " + date.toLocaleTimeString("en-US", {
+        hour12: true,
+        hour: "numeric",
+        minute: "2-digit"
+      });
     }
   },
 
   formatTags(tags) {
-    if (!Array.isArray(tags) || tags.length === 0) return "";
+    if (!Array.isArray(tags) || tags.length === 0) return "None";
     return tags.join(", ");
   },
 
-    getAreaColor(area) {
-    if (!area) return '#757575'; // Default color for undefined/null area
-
+  getAreaColor(area) {
     const colors = {
-      'main': '#2196F3',
-      'fragments': '#4CAF50',
-      'solutions': '#FF9800',
-      'instruments': '#9C27B0'
+      "MAIN": "#3b82f6",        // blue
+      "FRAGMENTS": "#10b981",   // emerald
+      "SOLUTIONS": "#8b5cf6",   // violet
+      "INSTRUMENTS": "#f59e0b"  // amber
     };
-    return colors[area.toLowerCase()] || '#757575';
+    return colors[area] || "#6b7280"; // gray for unknown
   },
 
   copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-      // Could show a toast notification here
-      console.log("Copied to clipboard");
-    }).catch(err => {
-      console.error("Failed to copy: ", err);
-    });
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.showToast("Copied to clipboard!", "success");
+      }).catch(err => {
+        console.error("Clipboard copy failed:", err);
+        this.fallbackCopyToClipboard(text);
+      });
+    } else {
+      this.fallbackCopyToClipboard(text);
+    }
   },
 
-  async deleteMemory(memory) {
-    // Confirm deletion
-    const confirmMessage = `Are you sure you want to delete this memory?\n\nArea: ${memory.area}\nContent: ${memory.content_preview}`;
-    if (!confirm(confirmMessage)) {
+  fallbackCopyToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      this.showToast("Copied to clipboard!", "success");
+    } catch (err) {
+      console.error("Fallback clipboard copy failed:", err);
+      this.showToast("Failed to copy to clipboard", "error");
+    }
+    document.body.removeChild(textArea);
+  },
+
+    async deleteMemory(memory) {
+    if (!confirm(`Are you sure you want to delete this memory from ${memory.area}?`)) {
       return;
     }
 
     try {
-      const response = await API.callJsonApi("memory_delete", {
-        context: getContext(),
+      // Check if this is the memory currently being viewed in detail modal
+      const isViewingThisMemory = this.detailMemory && this.detailMemory.id === memory.id;
+
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "delete",
+        memory_subdir: this.selectedMemorySubdir,
         memory_id: memory.id
       });
 
       if (response.success) {
-        // Close detail modal if the deleted memory is currently shown
-        if (this.selectedMemory && this.selectedMemory.id === memory.id) {
-          this.closeDetailModal();
+        this.showToast("Memory deleted successfully", "success");
+
+        // If we were viewing this memory in detail modal, close it
+        if (isViewingThisMemory) {
+          this.detailMemory = null;
+          closeModal(); // Close the detail modal
         }
 
-        // Remove memory from local array
-        this.memories = this.memories.filter(m => m.id !== memory.id);
-        this.totalCount = this.memories.length;
-
-        // Update statistics
-        if (memory.knowledge_source) {
-          this.knowledgeCount = Math.max(0, this.knowledgeCount - 1);
-        } else {
-          this.conversationCount = Math.max(0, this.conversationCount - 1);
-        }
-
-        // Update areas count
-        if (this.areasCount[memory.area]) {
-          this.areasCount[memory.area] = Math.max(0, this.areasCount[memory.area] - 1);
-          if (this.areasCount[memory.area] === 0) {
-            delete this.areasCount[memory.area];
-          }
-        }
-
-        // Adjust current page if needed
-        if (this.paginatedMemories.length === 0 && this.currentPage > 1) {
-          this.currentPage--;
-        }
-
-        console.log("Memory deleted successfully");
+        // Let polling refresh the data instead of manual manipulation
+        // Trigger an immediate refresh to get updated state from backend
+        await this.searchMemories(true); // silent refresh
       } else {
-        alert("Failed to delete memory: " + (response.error || "Unknown error"));
+        this.showToast(`Failed to delete memory: ${response.error}`, "error");
       }
     } catch (error) {
-      console.error("Delete memory error:", error);
-      alert("Failed to delete memory: " + error.message);
+      console.error("Memory deletion error:", error);
+      this.showToast("Failed to delete memory", "error");
     }
   },
 
-  // Export functionality (optional)
   exportMemories() {
-    const dataStr = JSON.stringify(this.memories, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `memory-export-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    if (this.memories.length === 0) {
+      this.showToast("No memories to export", "warning");
+      return;
+    }
+
+    try {
+      const exportData = {
+        memory_subdir: this.selectedMemorySubdir,
+        export_timestamp: new Date().toISOString(),
+        total_memories: this.memories.length,
+        search_query: this.searchQuery,
+        area_filter: this.areaFilter,
+        memories: this.memories.map(memory => ({
+          id: memory.id,
+          area: memory.area,
+          timestamp: memory.timestamp,
+          content: memory.content_full,
+          metadata: memory.metadata
+        }))
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: 'application/json'
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `memory-export-${this.selectedMemorySubdir}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      this.showToast("Memory export completed", "success");
+    } catch (error) {
+      console.error("Memory export error:", error);
+      this.showToast("Failed to export memories", "error");
+    }
+  },
+
+    startPolling() {
+    if (!this.pollingEnabled || this.pollingInterval) {
+      return; // Already polling or disabled
+    }
+
+    this.pollingInterval = setInterval(async () => {
+      // Silently refresh using existing search logic
+      await this.searchMemories(true); // silent = true
+    }, 2000); // Poll every 3 seconds - reasonable for active user interactions
+  },
+
+  stopPolling() {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
+    }
+  },
+
+  // Call this when the dialog/component is closed or destroyed
+  cleanup() {
+    this.stopPolling();
+    // Clear data without triggering a new search (component is being destroyed)
+    this.areaFilter = "";
+    this.searchQuery = "";
+    this.memories = [];
+    this.totalCount = 0;
+    this.knowledgeCount = 0;
+    this.conversationCount = 0;
+    this.areasCount = {};
+    this.message = null;
+    this.currentPage = 1;
+  },
+
+  showToast(message, type = "info") {
+    // Use global toast function if available
+    if (typeof toast === 'function') {
+      toast(message, type);
+    } else {
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
   }
 };
 
-const store = createStore("memoryDashboardStore", model);
+const store = createStore("memoryDashboardStore", memoryDashboardStore);
 
 export { store };

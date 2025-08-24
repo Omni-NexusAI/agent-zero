@@ -1,16 +1,10 @@
-<html>
+<script type="module">
+    import { store } from "/components/settings/memory/memory-dashboard-store.js";
+</script>
 
-<head>
-    <title>Memory Dashboard</title>
-    <script type="module">
-        import { store } from "/components/settings/memory/memory-dashboard-store.js";
-    </script>
-</head>
-
-<body>
-    <div x-data>
-        <template x-if="$store.memoryDashboardStore">
-            <div x-init="$store.memoryDashboardStore.initialize()" class="memory-dashboard">
+<div x-data>
+    <template x-if="$store.memoryDashboardStore">
+        <div x-init="$store.memoryDashboardStore.initialize()" class="memory-dashboard">
 
                 <!-- Header with title and statistics -->
                 <div class="dashboard-header">
@@ -31,32 +25,54 @@
                     </div>
                 </div>
 
-                <!-- Filters -->
+                <!-- Search and Filters -->
                 <div class="filters-section">
                     <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="memory-subdir-select">Memory Directory:</label>
+                            <select id="memory-subdir-select"
+                                    x-model="$store.memoryDashboardStore.selectedMemorySubdir"
+                                    @change="$store.memoryDashboardStore.onMemorySubdirChange()"
+                                    :disabled="$store.memoryDashboardStore.loadingSubdirs">
+                                <template x-for="subdir in $store.memoryDashboardStore.memorySubdirs" :key="subdir">
+                                    <option :value="subdir" x-text="subdir"></option>
+                                </template>
+                            </select>
+                            <span x-show="$store.memoryDashboardStore.loadingSubdirs" class="loading-text">Loading...</span>
+                        </div>
+
                         <div class="filter-group">
                             <label for="area-filter">Area:</label>
                             <select id="area-filter" x-model="$store.memoryDashboardStore.areaFilter">
                                 <option value="">All Areas</option>
-                                <option value="main">Main</option>
-                                <option value="fragments">Fragments</option>
-                                <option value="solutions">Solutions</option>
-                                <option value="instruments">Instruments</option>
+                                <option value="MAIN">Main</option>
+                                <option value="FRAGMENTS">Fragments</option>
+                                <option value="SOLUTIONS">Solutions</option>
+                                <option value="INSTRUMENTS">Instruments</option>
                             </select>
                         </div>
 
                         <div class="filter-group">
                             <label for="search-input">Search:</label>
                             <input type="text" id="search-input" x-model="$store.memoryDashboardStore.searchQuery"
-                                   placeholder="Search memory content..." />
+                                   placeholder="Search memory content..."
+                                   @keyup.enter="$store.memoryDashboardStore.searchMemories()" />
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="limit-input">Limit:</label>
+                            <input type="number" id="limit-input" x-model.number="$store.memoryDashboardStore.limit"
+                                   min="10" max="1000" step="10"
+                                   style="min-width: 100px;" />
                         </div>
 
                         <div class="filter-actions">
-                            <button class="btn primary slim" @click="$store.memoryDashboardStore.applyFilters()"
-                                    :disabled="$store.memoryDashboardStore.loading">
-                                Apply Filters
+                            <button class="btn primary slim" @click="$store.memoryDashboardStore.searchMemories()"
+                                    :disabled="$store.memoryDashboardStore.loading || $store.memoryDashboardStore.loadingSubdirs">
+                                <span x-show="!$store.memoryDashboardStore.initializingMemory">Search</span>
+                                <span x-show="$store.memoryDashboardStore.initializingMemory">Initializing Memory...</span>
                             </button>
-                            <button class="btn slim" @click="$store.memoryDashboardStore.clearFilters()">
+                            <button class="btn slim" @click="$store.memoryDashboardStore.clearSearch()">
                                 Clear
                             </button>
                         </div>
@@ -66,7 +82,8 @@
                 <!-- Loading state -->
                 <div x-show="$store.memoryDashboardStore.loading" class="loading-state">
                     <div class="loading-spinner"></div>
-                    <span>Loading memories...</span>
+                    <span x-show="!$store.memoryDashboardStore.initializingMemory">Searching memories...</span>
+                    <span x-show="$store.memoryDashboardStore.initializingMemory">Initializing memory database...</span>
                 </div>
 
                 <!-- Error state -->
@@ -93,15 +110,13 @@
                                     Previous
                                 </button>
 
-                                <span class="page-numbers">
+                                <select class="page-select"
+                                        x-model.number="$store.memoryDashboardStore.currentPage"
+                                        @change="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)">
                                     <template x-for="page in Array.from({length: $store.memoryDashboardStore.totalPages}, (_, i) => i + 1)" :key="page">
-                                        <button class="page-btn"
-                                                @click="$store.memoryDashboardStore.goToPage(page)"
-                                                :class="{'active': page === $store.memoryDashboardStore.currentPage}"
-                                                x-text="page">
-                                        </button>
+                                        <option :value="page" x-text="'Page ' + page"></option>
                                     </template>
-                                </span>
+                                </select>
 
                                 <button class="btn slim" @click="$store.memoryDashboardStore.nextPage()"
                                         :disabled="$store.memoryDashboardStore.currentPage === $store.memoryDashboardStore.totalPages">
@@ -110,44 +125,102 @@
                             </div>
                         </div>
 
+                        <!-- Mass action toolbar -->
+                        <div x-show="$store.memoryDashboardStore.selectedCount > 0" class="mass-action-toolbar">
+                            <div class="selection-info">
+                                <span x-text="$store.memoryDashboardStore.selectedCount"></span> memories selected
+                            </div>
+
+                            <div class="mass-actions">
+                                <button class="btn-mass copy" @click="$store.memoryDashboardStore.bulkCopyMemories()"
+                                        title="Copy Selected Content">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                    Copy
+                                </button>
+
+                                <button class="btn-mass export" @click="$store.memoryDashboardStore.bulkExportMemories()"
+                                        title="Export Selected Memories">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7,10 12,15 17,10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    Export
+                                </button>
+
+                                <button class="btn-mass delete" @click="$store.memoryDashboardStore.bulkDeleteMemories()"
+                                        title="Delete Selected Memories">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3,6 5,6 21,6"></polyline>
+                                        <path d="M19,6V20a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
+                                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
+                                    Delete
+                                </button>
+
+                                <button class="btn-mass clear" @click="$store.memoryDashboardStore.clearSelection()"
+                                        title="Clear Selection">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="table-wrapper">
                             <table class="memory-table">
                                 <thead>
                                     <tr>
-                                        <th class="col-area">Area</th>
-                                        <th class="col-timestamp">Timestamp</th>
-                                        <th class="col-source">Source</th>
+                                        <th class="col-select">
+                                            <input type="checkbox"
+                                                   :checked="$store.memoryDashboardStore.allSelected"
+                                                   :indeterminate="$store.memoryDashboardStore.someSelected && !$store.memoryDashboardStore.allSelected"
+                                                   @change="$store.memoryDashboardStore.toggleSelectAll()"
+                                                   title="Select/Deselect All" />
+                                        </th>
+                                        <th class="col-metadata">Metadata</th>
                                         <th class="col-preview">Preview</th>
                                         <th class="col-actions">Actions</th>
                                     </tr>
                                 </thead>
                         <tbody>
                             <template x-for="memory in $store.memoryDashboardStore.paginatedMemories" :key="memory.id">
-                                <tr class="memory-row">
-                                    <!-- Area with color indicator -->
-                                    <td class="area-cell">
-                                        <span class="area-badge"
-                                              :style="`background-color: ${$store.memoryDashboardStore.getAreaColor(memory.area)}`"
-                                              x-text="memory.area.toUpperCase()"></span>
+                                <tr class="memory-row" :class="{'selected': memory.selected}"
+                                    @click="$store.memoryDashboardStore.showMemoryDetails(memory)"
+                                    style="cursor: pointer;">
+                                                                        <!-- Selection checkbox -->
+                                    <td class="select-cell" @click.stop>
+                                        <input type="checkbox"
+                                               x-model="memory.selected" />
                                     </td>
 
-                                    <!-- Timestamp -->
-                                    <td class="timestamp-cell">
-                                        <span x-text="$store.memoryDashboardStore.formatTimestamp(memory.timestamp, true)"
-                                              :title="$store.memoryDashboardStore.formatTimestamp(memory.timestamp, false)"></span>
-                                    </td>
-
-                                    <!-- Source -->
-                                    <td class="source-cell">
-                                        <template x-if="memory.knowledge_source">
-                                            <div class="source-info">
-                                                <span class="source-type knowledge">Knowledge</span>
-                                                <span class="source-file" x-text="memory.source_file" x-show="memory.source_file"></span>
+                                    <!-- Metadata (merged Area, Timestamp, Source) -->
+                                    <td class="metadata-cell">
+                                        <div class="metadata-info">
+                                            <div class="metadata-row">
+                                                <span class="area-badge"
+                                                      :style="`background-color: ${$store.memoryDashboardStore.getAreaColor(memory.area)}`"
+                                                      x-text="memory.area"></span>
                                             </div>
-                                        </template>
-                                        <template x-if="!memory.knowledge_source">
-                                            <span class="source-type conversation">Conversation</span>
-                                        </template>
+                                            <div class="metadata-row metadata-timestamp">
+                                                <span x-text="$store.memoryDashboardStore.formatTimestamp(memory.timestamp, true)"
+                                                      :title="$store.memoryDashboardStore.formatTimestamp(memory.timestamp, false)"></span>
+                                            </div>
+                                            <div class="metadata-row">
+                                                <template x-if="memory.knowledge_source">
+                                                    <span class="source-type knowledge">📚 Knowledge</span>
+                                                </template>
+                                                <template x-if="!memory.knowledge_source">
+                                                    <span class="source-type conversation">💬 Conversation</span>
+                                                </template>
+                                            </div>
+                                        </div>
                                     </td>
 
                                     <!-- Content preview -->
@@ -161,21 +234,15 @@
                                     </td>
 
                                                                         <!-- Actions -->
-                                    <td class="actions-cell">
-                                        <button class="btn-action view" @click="$store.memoryDashboardStore.showMemoryDetails(memory)"
-                                                title="View Details">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                                <circle cx="12" cy="12" r="3"></circle>
-                                            </svg>
-                                        </button>
-                                        <button class="btn-action copy" @click="$store.memoryDashboardStore.copyToClipboard(memory.content_full)"
-                                                title="Copy Content">
+                                    <td class="actions-cell" @click.stop>
+                                        <button class="btn-action copy" @click="$store.memoryDashboardStore.copyToClipboard($store.memoryDashboardStore.formatMemoryForCopy(memory))"
+                                                title="Copy Memory">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                                             </svg>
                                         </button>
+
                                         <button class="btn-action delete" @click="$store.memoryDashboardStore.deleteMemory(memory)"
                                                 title="Delete Memory">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -190,6 +257,37 @@
                             </template>
                         </tbody>
                     </table>
+
+                        <!-- Pagination controls at bottom -->
+                        <div class="pagination-controls-bottom" x-show="$store.memoryDashboardStore.totalPages > 1">
+                            <div class="pagination-info-inline">
+                                <span>Page <span x-text="$store.memoryDashboardStore.currentPage"></span>
+                                      of <span x-text="$store.memoryDashboardStore.totalPages"></span>
+                                      (<span x-text="$store.memoryDashboardStore.memories.length"></span> total memories)
+                                </span>
+                            </div>
+
+                            <div class="pagination-controls">
+                                <button class="btn slim" @click="$store.memoryDashboardStore.prevPage()"
+                                        :disabled="$store.memoryDashboardStore.currentPage === 1">
+                                    Previous
+                                </button>
+
+                                <select class="page-select"
+                                        x-model.number="$store.memoryDashboardStore.currentPage"
+                                        @change="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)">
+                                    <template x-for="page in Array.from({length: $store.memoryDashboardStore.totalPages}, (_, i) => i + 1)" :key="page">
+                                        <option :value="page" x-text="'Page ' + page"></option>
+                                    </template>
+                                </select>
+
+                                <button class="btn slim" @click="$store.memoryDashboardStore.nextPage()"
+                                        :disabled="$store.memoryDashboardStore.currentPage === $store.memoryDashboardStore.totalPages">
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+
                     </div>
 
                                     <!-- No memories message -->
@@ -212,138 +310,7 @@
                     </div>
                 </div>
 
-                                <!-- Enhanced Detail Modal -->
-                <div x-show="$store.memoryDashboardStore.showDetailModal"
-                     x-transition:enter="modal-enter"
-                     x-transition:enter-start="modal-enter-start"
-                     x-transition:enter-end="modal-enter-end"
-                     x-transition:leave="modal-leave"
-                     x-transition:leave-start="modal-leave-start"
-                     x-transition:leave-end="modal-leave-end"
-                     class="modal-overlay"
-                     @click.self="$store.memoryDashboardStore.closeDetailModal()">
-                    <div class="modal-content memory-detail-modal" x-show="$store.memoryDashboardStore.selectedMemory" x-cloak>
 
-                        <!-- Modal Header with Memory Info -->
-                        <div class="modal-header-enhanced">
-                            <div class="header-left">
-                                <div class="memory-title">
-                                                                        <span class="area-badge-large"
-                                          :style="`background: linear-gradient(135deg, ${$store.memoryDashboardStore.getAreaColor($store.memoryDashboardStore.selectedMemory?.area)} 0%, ${$store.memoryDashboardStore.getAreaColor($store.memoryDashboardStore.selectedMemory?.area)}cc 100%)`"
-                                          x-text="$store.memoryDashboardStore.selectedMemory?.area?.toUpperCase() || 'UNKNOWN'"></span>
-                                    <h3>Memory Details</h3>
-                                </div>
-                                <div class="memory-meta-quick">
-                                    <span class="timestamp-badge" x-text="$store.memoryDashboardStore.formatTimestamp($store.memoryDashboardStore.selectedMemory?.timestamp, true)"></span>
-                                    <span class="source-badge"
-                                          :class="$store.memoryDashboardStore.selectedMemory?.knowledge_source ? 'knowledge' : 'conversation'"
-                                          x-text="$store.memoryDashboardStore.selectedMemory?.knowledge_source ? 'Knowledge' : 'Conversation'"></span>
-                                </div>
-                            </div>
-                                        <div class="header-actions">
-                <button class="btn-action-header copy" @click="$store.memoryDashboardStore.copyToClipboard($store.memoryDashboardStore.selectedMemory?.content_full)"
-                        title="Copy Full Content">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                </button>
-                <button class="btn-action-header delete" @click="$store.memoryDashboardStore.deleteMemory($store.memoryDashboardStore.selectedMemory)"
-                        title="Delete Memory">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3,6 5,6 21,6"></polyline>
-                        <path d="M19,6V20a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6M8,6V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
-                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                        <line x1="14" y1="11" x2="14" y2="17"></line>
-                    </svg>
-                </button>
-                <button class="btn-close-enhanced" @click="$store.memoryDashboardStore.closeDetailModal()">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-                        </div>
-
-                        <!-- Modal Body with Enhanced Layout -->
-                        <div class="modal-body-enhanced">
-
-                            <!-- Content Section -->
-                            <div class="content-section-main">
-                                <div class="section-header">
-                                    <h4>
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                            <polyline points="14,2 14,8 20,8"></polyline>
-                                        </svg>
-                                        Content
-                                    </h4>
-                                </div>
-                                <div class="content-display" x-text="$store.memoryDashboardStore.selectedMemory?.content_full"></div>
-                            </div>
-
-                            <!-- Metadata Sidebar -->
-                            <div class="metadata-sidebar">
-                                <div class="section-header">
-                                    <h4>
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
-                                        </svg>
-                                        Metadata
-                                    </h4>
-                                </div>
-
-                                <div class="metadata-grid">
-                                    <div class="metadata-item">
-                                        <label>Memory ID</label>
-                                        <value class="monospace" x-text="$store.memoryDashboardStore.selectedMemory?.id"></value>
-                                    </div>
-
-                                    <div class="metadata-item">
-                                        <label>Area</label>
-                                        <value x-text="$store.memoryDashboardStore.selectedMemory?.area"></value>
-                                    </div>
-
-                                    <div class="metadata-item">
-                                        <label>Created</label>
-                                        <value x-text="$store.memoryDashboardStore.formatTimestamp($store.memoryDashboardStore.selectedMemory?.timestamp)"></value>
-                                    </div>
-
-                                    <div class="metadata-item">
-                                        <label>Source Type</label>
-                                        <value x-text="$store.memoryDashboardStore.selectedMemory?.knowledge_source ? 'Knowledge File' : 'Conversation'"></value>
-                                    </div>
-
-                                    <div class="metadata-item" x-show="$store.memoryDashboardStore.selectedMemory?.source_file">
-                                        <label>Source File</label>
-                                        <value class="monospace" x-text="$store.memoryDashboardStore.selectedMemory?.source_file"></value>
-                                    </div>
-
-                                    <div class="metadata-item" x-show="$store.memoryDashboardStore.selectedMemory?.file_type">
-                                        <label>File Type</label>
-                                        <value x-text="$store.memoryDashboardStore.selectedMemory?.file_type"></value>
-                                    </div>
-
-                                    <div class="metadata-item" x-show="$store.memoryDashboardStore.selectedMemory?.consolidation_action">
-                                        <label>Consolidation</label>
-                                        <value class="consolidation-badge" x-text="$store.memoryDashboardStore.selectedMemory?.consolidation_action"></value>
-                                    </div>
-
-                                    <div class="metadata-item" x-show="$store.memoryDashboardStore.selectedMemory?.tags && $store.memoryDashboardStore.selectedMemory?.tags.length > 0">
-                                        <label>Tags</label>
-                                        <div class="tags-display">
-                                            <template x-for="tag in $store.memoryDashboardStore.selectedMemory?.tags" :key="tag">
-                                                <span class="tag-pill" x-text="tag"></span>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
             </div>
         </template>
@@ -433,6 +400,8 @@
             border-radius: 6px;
             font-size: 0.9rem;
             min-width: 200px;
+            height: 40px;
+            box-sizing: border-box;
         }
 
         .filter-group input:focus, .filter-group select:focus {
@@ -444,6 +413,20 @@
         .filter-actions {
             display: flex;
             gap: 0.5rem;
+            align-items: stretch;
+        }
+
+        .filter-actions .btn {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-text {
+            font-size: 0.85rem;
+            color: var(--color-secondary);
+            font-style: italic;
         }
 
         .loading-state, .error-state, .no-memories, .init-message {
@@ -502,11 +485,10 @@
         }
 
         /* Fixed column widths for proper fit */
-        .col-area { width: 15%; }
-        .col-timestamp { width: 18%; }
-        .col-source { width: 15%; }
-        .col-preview { width: 30%; }
-        .col-actions { width: 22%; }
+        .col-select { width: 5%; }
+        .col-metadata { width: 25%; }
+        .col-preview { width: 55%; }
+        .col-actions { width: 15%; }
 
         .memory-table th,
         .memory-table td {
@@ -517,11 +499,135 @@
             overflow: hidden;
         }
 
-        /* Allow source column to wrap properly */
-        .source-cell {
+        /* Metadata cell styling */
+        .metadata-cell {
             overflow: visible;
             white-space: normal;
             word-wrap: break-word;
+        }
+
+        .metadata-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .metadata-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metadata-timestamp {
+            font-size: 0.85rem;
+            color: var(--color-text);
+            font-family: monospace;
+        }
+
+        .source-type {
+            font-size: 0.8rem;
+            color: var(--color-text);
+            font-weight: 500;
+        }
+
+        /* Selection column styling */
+        .select-cell, .col-select {
+            text-align: center;
+            padding: 0.5rem !important;
+        }
+
+        .select-cell input[type="checkbox"],
+        .col-select input[type="checkbox"] {
+            cursor: pointer;
+            transform: scale(1.2);
+        }
+
+        /* Selected row styling */
+        .memory-row.selected {
+            background: rgba(115, 122, 129, 0.1);
+            border-left: 3px solid var(--color-primary);
+        }
+
+        .light-mode .memory-row.selected {
+            background: rgba(115, 122, 129, 0.05);
+        }
+
+        /* Mass action toolbar */
+        .mass-action-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(115, 122, 129, 0.1);
+            border: 1px solid var(--color-primary);
+            border-radius: 8px;
+            margin: 1rem 0;
+            animation: slideDown 0.3s ease;
+        }
+
+        .light-mode .mass-action-toolbar {
+            background: rgba(115, 122, 129, 0.05);
+        }
+
+        .selection-info {
+            font-weight: 600;
+            color: var(--color-primary);
+        }
+
+        .mass-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-mass {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--color-border);
+            background: var(--color-background);
+            color: var(--color-text);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-mass:hover {
+            border-color: var(--color-primary);
+            background: rgba(115, 122, 129, 0.1);
+        }
+
+        .btn-mass.copy:hover {
+            border-color: #4caf50;
+            color: #4caf50;
+        }
+
+        .btn-mass.export:hover {
+            border-color: #2196f3;
+            color: #2196f3;
+        }
+
+        .btn-mass.delete:hover {
+            border-color: #f44336;
+            color: #f44336;
+        }
+
+        .btn-mass.clear:hover {
+            border-color: #ff9800;
+            color: #ff9800;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .memory-table th {
@@ -557,7 +663,6 @@
             color: white;
             font-size: 0.75rem;
             font-weight: bold;
-            text-transform: uppercase;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
@@ -617,6 +722,7 @@
         .content-preview {
             line-height: 1.4;
             font-size: 0.9rem;
+            color: var(--color-text);
             word-wrap: break-word;
             overflow-wrap: break-word;
             max-width: 100%;
@@ -716,31 +822,35 @@
             border-radius: 8px;
         }
 
-        .page-numbers {
-            display: flex;
-            gap: 0.25rem;
-        }
-
-        .page-btn {
+        .page-select {
             background: var(--color-background);
             border: 1px solid var(--color-border);
             color: var(--color-text);
             padding: 0.5rem 0.75rem;
-            cursor: pointer;
             border-radius: 6px;
             font-size: 0.9rem;
-            transition: all 0.2s ease;
+            cursor: pointer;
+            min-width: 120px;
         }
 
-        .page-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
+        .page-select:focus {
+            outline: none;
             border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px rgba(115, 122, 129, 0.1);
         }
 
-        .page-btn.active {
-            background: var(--color-primary);
-            color: white;
-            border-color: var(--color-primary);
+        .pagination-controls-top, .pagination-controls-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: var(--color-panel);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .pagination-controls-bottom {
+            border-top: 1px solid var(--color-border);
+            border-bottom: none;
         }
 
         .export-section {
@@ -1164,8 +1274,258 @@
                 justify-content: center;
             }
         }
+
+        /* Memory Detail Modal Styles */
+        .modal-header-enhanced {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 1.5rem;
+            border-bottom: 2px solid var(--color-border);
+            background: linear-gradient(135deg, var(--color-panel) 0%, var(--color-background) 100%);
+        }
+
+        .memory-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .area-badge-large {
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .memory-meta-quick {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .timestamp-badge, .source-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: var(--color-panel);
+            border: 1px solid var(--color-border);
+        }
+
+        .source-badge.knowledge {
+            background: rgba(115, 122, 129, 0.1);
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+
+        .source-badge.conversation {
+            background: rgba(101, 101, 101, 0.1);
+            color: var(--color-secondary);
+            border-color: var(--color-secondary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-action-header {
+            background: var(--color-background);
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+            padding: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-action-header:hover {
+            border-color: var(--color-primary);
+            background: rgba(115, 122, 129, 0.1);
+        }
+
+        .modal-body-enhanced {
+            display: flex;
+            min-height: 60vh;
+            max-height: 70vh;
+        }
+
+        .content-section-main {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .content-block {
+            margin-bottom: 2rem;
+        }
+
+        .content-block h4 {
+            margin: 0 0 1rem 0;
+            color: var(--color-primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 0.5rem;
+        }
+
+        .memory-content-display {
+            background: var(--color-panel);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            line-height: 1.6;
+            color: var(--color-text);
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .tags-display {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tag-display {
+            background: var(--color-primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .metadata-sidebar {
+            min-width: 300px;
+            max-width: 350px;
+            background: var(--color-panel);
+            border-left: 1px solid var(--color-border);
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .metadata-sidebar h4 {
+            margin: 0 0 1rem 0;
+            color: var(--color-primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .metadata-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .metadata-group h5 {
+            margin: 0 0 0.75rem 0;
+            color: var(--color-secondary);
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metadata-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            margin-bottom: 0.75rem;
+            padding: 0.5rem;
+            background: var(--color-background);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+        }
+
+        .metadata-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--color-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .metadata-value {
+            font-size: 0.9rem;
+            color: var(--color-text);
+            word-break: break-all;
+            line-height: 1.4;
+        }
+
+        .source-file-display {
+            font-family: monospace;
+            background: var(--color-panel);
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid var(--color-border);
+        }
+
+        .metadata-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .metadata-actions .btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: flex-start;
+            font-size: 0.9rem;
+        }
+
+        /* Light mode adjustments for modal */
+        .light-mode .modal-header-enhanced {
+            background: linear-gradient(135deg, rgba(240, 240, 240, 0.8) 0%, rgba(255, 255, 255, 0.9) 100%);
+        }
+
+        .light-mode .memory-content-display {
+            background: rgba(248, 248, 248, 0.8);
+        }
+
+        .light-mode .metadata-sidebar {
+            background: rgba(248, 248, 248, 0.8);
+        }
+
+        .light-mode .metadata-item {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Responsive design for modal */
+        @media (max-width: 768px) {
+            .modal-body-enhanced {
+                flex-direction: column;
+                max-height: 80vh;
+            }
+
+            .metadata-sidebar {
+                min-width: unset;
+                max-width: unset;
+                border-left: none;
+                border-top: 1px solid var(--color-border);
+            }
+
+            .modal-header-enhanced {
+                padding: 1rem;
+            }
+
+            .memory-title {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .content-section-main,
+            .metadata-sidebar {
+                padding: 1rem;
+            }
+        }
     </style>
 
-</body>
-
-</html>
+        </template>
+    </div>
+</div>
