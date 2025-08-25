@@ -1290,13 +1290,7 @@ def convert_in(settings: dict) -> Settings:
 
                 if not should_skip:
                     # Special handling for browser_http_headers
-                    if field["id"] == "browser_http_headers":
-                        headers_dict = _env_to_dict(field["value"])
-                        # Validate headers before saving
-                        validated_headers = _validate_http_headers(headers_dict)
-                        current[field["id"]] = validated_headers
-                        PrintStyle().info(f"Set browser_http_headers: {validated_headers}")
-                    elif field["id"].endswith("_kwargs"):
+                    if field["id"] == "browser_http_headers" or field["id"].endswith("_kwargs"):
                         current[field["id"]] = _env_to_dict(field["value"])
                     elif field["id"].startswith("api_key_"):
                         current["api_keys"][field["id"]] = field["value"]
@@ -1630,45 +1624,6 @@ def _dict_to_env(data_dict):
             value = f'"{value}"'
         lines.append(f"{key}={value}")
     return "\n".join(lines)
-
-
-def _validate_http_headers(headers: dict[str, str]) -> dict[str, str]:
-    """Validate and sanitize HTTP headers for browser requests"""
-    valid_headers = {}
-    
-    # Headers that should not be set manually as they're controlled by the browser
-    dangerous_headers = {
-        'host', 'content-length', 'connection', 'upgrade', 'expect',
-        'transfer-encoding', 'te', 'trailer', 'proxy-connection'
-    }
-    
-    for key, value in headers.items():
-        # Remove any leading/trailing whitespace
-        key = key.strip()
-        value = value.strip()
-        
-        # Skip empty keys or values
-        if not key or not value:
-            continue
-            
-        # Check for dangerous headers
-        if key.lower() in dangerous_headers:
-            PrintStyle().warning(f"Skipping potentially dangerous header: {key}")
-            continue
-            
-        # Basic header name validation (RFC 7230)
-        if not re.match(r'^[!#$%&\'*+\-.0-9A-Z^_`a-z|~]+$', key):
-            PrintStyle().warning(f"Invalid header name format: {key}")
-            continue
-            
-        # Header value validation - remove control characters except tab
-        cleaned_value = re.sub(r'[\x00-\x08\x0A-\x1F\x7F]', '', value)
-        if cleaned_value != value:
-            PrintStyle().warning(f"Cleaned invalid characters from header value: {key}")
-            
-        valid_headers[key] = cleaned_value
-    
-    return valid_headers
 
 
 def set_root_password(password: str):
