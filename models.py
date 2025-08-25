@@ -18,6 +18,7 @@ from litellm import completion, acompletion, embedding
 import litellm
 
 from python.helpers import dotenv
+from python.helpers import settings
 from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
@@ -434,7 +435,18 @@ class LocalSentenceTransformerWrapper(Embeddings):
         if model.startswith("sentence-transformers/"):
             model = model[len("sentence-transformers/") :]
 
-        self.model = SentenceTransformer(model, **kwargs)
+        # Filter kwargs for SentenceTransformer only (no LiteLLM params like 'stream_timeout')
+        st_allowed_keys = {
+            "device",
+            "cache_folder",
+            "use_auth_token",
+            "revision",
+            "trust_remote_code",
+            "model_kwargs",
+        }
+        st_kwargs = {k: v for k, v in (kwargs or {}).items() if k in st_allowed_keys}
+
+        self.model = SentenceTransformer(model, **st_kwargs)
         self.model_name = model
         self.a0_model_conf = model_config
     
@@ -542,6 +554,22 @@ def _adjust_call_args(provider_name: str, model_name: str, kwargs: dict):
 def _merge_provider_defaults(
     provider_type: str, original_provider: str, kwargs: dict
 ) -> tuple[str, dict]:
+    # Normalize .env-style numeric strings (e.g., "timeout=30") into ints/floats for LiteLLM
+    def _normalize_values(values: dict) -> dict:
+        result: dict[str, Any] = {}
+        for k, v in values.items():
+            if isinstance(v, str):
+                try:
+                    result[k] = int(v)
+                except ValueError:
+                    try:
+                        result[k] = float(v)
+                    except ValueError:
+                        result[k] = v
+            else:
+                result[k] = v
+        return result
+
     provider_name = original_provider  # default: unchanged
     cfg = get_provider_config(provider_type, original_provider)
     if cfg:
@@ -558,6 +586,15 @@ def _merge_provider_defaults(
         key = get_api_key(original_provider)
         if key and key not in ("None", "NA"):
             kwargs["api_key"] = key
+
+    # Merge LiteLLM global kwargs (timeouts, stream_timeout, etc.)
+    try:
+        global_kwargs = settings.get_settings().get("litellm_global_kwargs", {})  # type: ignore[union-attr]
+    except Exception:
+        global_kwargs = {}
+    if isinstance(global_kwargs, dict):
+        for k, v in _normalize_values(global_kwargs).items():
+            kwargs.setdefault(k, v)
 
     return provider_name, kwargs
 
