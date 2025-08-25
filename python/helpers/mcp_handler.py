@@ -156,35 +156,35 @@ class MCPTool(Tool):
             raw_tool_response = "[Tool returned no textual content]"
 
         # Prepare user message context
-        user_message_text = (
-            "No specific user message context available for this exact step."
-        )
-        if (
-            self.agent
-            and self.agent.last_user_message
-            and self.agent.last_user_message.content
-        ):
-            content = self.agent.last_user_message.content
-            if isinstance(content, dict):
-                # Attempt to get a 'message' field, otherwise stringify the dict
-                user_message_text = str(content.get(
-                    "message", json.dumps(content, indent=2)
-                ))
-            elif isinstance(content, str):
-                user_message_text = content
-            else:
-                # Fallback for any other types (e.g. list, if that were possible for content)
-                user_message_text = str(content)
+        # user_message_text = (
+        #     "No specific user message context available for this exact step."
+        # )
+        # if (
+        #     self.agent
+        #     and self.agent.last_user_message
+        #     and self.agent.last_user_message.content
+        # ):
+        #     content = self.agent.last_user_message.content
+        #     if isinstance(content, dict):
+        #         # Attempt to get a 'message' field, otherwise stringify the dict
+        #         user_message_text = str(content.get(
+        #             "message", json.dumps(content, indent=2)
+        #         ))
+        #     elif isinstance(content, str):
+        #         user_message_text = content
+        #     else:
+        #         # Fallback for any other types (e.g. list, if that were possible for content)
+        #         user_message_text = str(content)
 
-        # Ensure user_message_text is a string before length check and slicing
-        user_message_text = str(user_message_text)
+        # # Ensure user_message_text is a string before length check and slicing
+        # user_message_text = str(user_message_text)
 
-        # Truncate user message context if it's too long to avoid overwhelming the prompt
-        max_user_context_len = 500  # characters
-        if len(user_message_text) > max_user_context_len:
-            user_message_text = (
-                user_message_text[:max_user_context_len] + "... (truncated)"
-            )
+        # # Truncate user message context if it's too long to avoid overwhelming the prompt
+        # max_user_context_len = 500  # characters
+        # if len(user_message_text) > max_user_context_len:
+        #     user_message_text = (
+        #         user_message_text[:max_user_context_len] + "... (truncated)"
+        #     )
 
         final_text_for_agent = raw_tool_response
 

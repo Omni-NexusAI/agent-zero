@@ -1,7 +1,7 @@
 {
   "name": "Agent Zero",
   "short_name": "Agent Zero",
-  "description": "The Resilient Autonomous Orchestrator",
+  "description": "Autonomous AI agent",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1a1a",

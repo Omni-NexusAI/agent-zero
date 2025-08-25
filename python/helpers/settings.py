@@ -103,6 +103,7 @@ class Settings(TypedDict):
 
     a2a_server_enabled: bool
 
+    variables: str
     secrets: str
 
 class PartialSettings(Settings, total=False):
@@ -1069,9 +1070,18 @@ def convert_out(settings: Settings) -> SettingsOutput:
         secrets = ""
 
     secrets_fields.append({
+        "id": "variables",
+        "title": "Variables Store",
+        "description": "Store non-sensitive variables in .env format e.g. EMAIL_IMAP_SERVER=\"imap.gmail.com\", one item per line. You can use comments starting with # to add descriptions for the agent. See <a href=\"javascript:openModal('settings/secrets/example-vars.html')\">example</a>.<br>These variables are visible to LLMs and in chat history, they are not being masked.",
+        "type": "textarea",
+        "value": settings["variables"].strip(),
+        "style": "height: 20em",
+    })
+
+    secrets_fields.append({
         "id": "secrets",
         "title": "Secrets Store",
-        "description": "Store secrets and credentials in .env format e.g. EMAIL_PASSWORD=\"s3cret-p4$$w0rd\", one item per line. You can use comments starting with # to add descriptions for the agent. See <a href=\"javascript:openModal('settings/secrets/example.html')\">example</a>.",
+        "description": "Store secrets and credentials in .env format e.g. EMAIL_PASSWORD=\"s3cret-p4$$w0rd\", one item per line. You can use comments starting with # to add descriptions for the agent. See <a href=\"javascript:openModal('settings/secrets/example-secrets.html')\">example</a>.<br>These variables are not visile to LLMs and in chat history, they are being masked. ⚠️ only values with length >= 4 are being masked to prevent false positives. ",
         "type": "textarea",
         "value": secrets,
         "style": "height: 20em",
@@ -1440,6 +1450,7 @@ def get_default_settings() -> Settings:
         mcp_server_enabled=False,
         mcp_server_token=create_auth_token(),
         a2a_server_enabled=False,
+        variables="",
         secrets="",
     )
 

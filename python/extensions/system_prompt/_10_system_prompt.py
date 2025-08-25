@@ -2,6 +2,7 @@ from typing import Any
 from python.helpers.extension import Extension
 from python.helpers.mcp_handler import MCPConfig
 from agent import Agent, LoopData
+from python.helpers.settings import get_settings
 
 
 class SystemPrompt(Extension):
@@ -49,7 +50,8 @@ def get_secrets_prompt(agent: Agent):
         from python.helpers.secrets import SecretsManager
         secrets_manager = SecretsManager.get_instance()
         secrets = secrets_manager.get_secrets_for_prompt()
-        return agent.read_prompt("agent.system.secrets.md", secrets=secrets)
+        vars = get_settings()["variables"]
+        return agent.read_prompt("agent.system.secrets.md", secrets=secrets, vars=vars)
     except Exception as e:
         # If secrets module is not available or has issues, return empty string
         return ""

@@ -1,6 +1,6 @@
 # Secret Placeholders
-- User secrets are masked and used as placeholders
-- Use placeholders in tool calls they will be automatically replaced with actual values
+- user secrets are masked and used as aliases
+- use aliases in tool calls they will be automatically replaced with actual values
 
 You have access to the following secrets:
 <secrets>
@@ -8,7 +8,12 @@ You have access to the following secrets:
 </secrets>
 
 ## Important Guidelines:
-- Use exact placeholder format §§KEY_NAME§§ double section sign markers
-- Values may contain special characters or quotes that may need escaping in code, keep in mind and sanitize in your code if errors occur
-- Comments help understand purpose
+- use exact alias format `§§secret(key_name)`
+- values may contain special characters needing escaping in code, sanitize in your code if errors occur
+- comments help understand purpose
 
+# Additional variables
+- use these non-sensitive variables as they are when needed
+<variables>
+{{vars}}
+</variables>

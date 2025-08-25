@@ -4,13 +4,19 @@ import time
 import os
 from io import StringIO
 from dataclasses import dataclass
-from typing import Dict, Optional, List, Literal, Set
+from typing import Dict, Optional, List, Literal, Set, Callable
 from dotenv.parser import parse_stream
 from python.helpers.errors import RepairableException
 from python.helpers import files
 
 
-KEY_DELIMITER = "§§"
+# New alias-based placeholder format §§secret(KEY)
+ALIAS_PATTERN = r"§§secret\(([A-Za-z_][A-Za-z0-9_]*)\)"
+
+def alias_for_key(key: str, placeholder: str = "§§secret({key})") -> str:
+    # Return alias string for given key in upper-case
+    key = key.upper()
+    return placeholder.format(key=key)
 
 @dataclass
 class EnvLine:
@@ -27,7 +33,7 @@ class EnvLine:
 class StreamingSecretsFilter:
     """Stateful streaming filter that masks secrets on the fly.
 
-    - Replaces full secret values with placeholders §§KEY§§ when detected.
+    - Replaces full secret values with placeholders §§secret(KEY) when detected.
     - Holds the longest suffix of the current buffer that matches any secret prefix
       (with minimum trigger length of 3) to avoid leaking partial secrets across chunks.
     - On finalize(), any unresolved partial is masked with '***'.
@@ -59,7 +65,7 @@ class StreamingSecretsFilter:
                 continue
             key = self.value_to_key.get(val, "")
             if key:
-                text = text.replace(val, f"{KEY_DELIMITER}{key}{KEY_DELIMITER}")
+                text = text.replace(val, alias_for_key(key))
         return text
 
     def _longest_suffix_prefix(self, text: str) -> int:
@@ -113,7 +119,7 @@ class StreamingSecretsFilter:
 
 class SecretsManager:
     SECRETS_FILE = "tmp/secrets.env"
-    PLACEHOLDER_PATTERN = rf"{KEY_DELIMITER}([A-Za-z_][A-Za-z0-9_]*){KEY_DELIMITER}"
+    PLACEHOLDER_PATTERN = ALIAS_PATTERN
     MASK_VALUE = "***"
 
     _instance: Optional["SecretsManager"] = None
@@ -224,7 +230,7 @@ class SecretsManager:
             with_comments=True,
             with_blank=True,
             with_other=True,
-            key_delimiter=KEY_DELIMITER,
+            key_formatter=alias_for_key,
         )
 
     def create_streaming_filter(self) -> "StreamingSecretsFilter":
@@ -246,7 +252,7 @@ class SecretsManager:
             else:
                 available_keys = ", ".join(secrets.keys())
                 error_msg = (
-                    f"Secret placeholder '{KEY_DELIMITER}{key}{KEY_DELIMITER}' not found in secrets store.\n"
+                    f"Secret placeholder '{alias_for_key(key)}' not found in secrets store.\n"
                 )
                 error_msg += f"Available secrets: {available_keys}"
 
@@ -254,7 +260,23 @@ class SecretsManager:
 
         return re.sub(self.PLACEHOLDER_PATTERN, replacer, text)
 
-    def mask_values(self, text: str) -> str:
+    def change_placeholders(self, text: str, new_format: str) -> str:
+        """Substitute secret placeholders with a different placeholder format"""
+        if not text:
+            return text
+
+        secrets = self.load_secrets()
+        result = text
+
+        # Sort by length (longest first) to avoid partial replacements
+        for key, _value in sorted(
+            secrets.items(), key=lambda x: len(x[1]), reverse=True
+        ):
+            result = result.replace(alias_for_key(key), new_format.format(key=key))
+
+        return result
+
+    def mask_values(self, text: str, min_length: int = 4, placeholder: str = "§§secret({key})") -> str:
         """Replace actual secret values with placeholders in text"""
         if not text:
             return text
@@ -266,8 +288,8 @@ class SecretsManager:
         for key, value in sorted(
             secrets.items(), key=lambda x: len(x[1]), reverse=True
         ):
-            if value and len(value.strip()) > 0:
-                result = result.replace(value, f"{KEY_DELIMITER}{key}{KEY_DELIMITER}")
+            if value and len(value.strip()) >= min_length:
+                result = result.replace(value, alias_for_key(key, placeholder))
 
         return result
 
@@ -377,17 +399,19 @@ class SecretsManager:
         with_blank=True,
         with_other=True,
         key_delimiter="",
+        key_formatter: Optional[Callable[[str], str]] = None,
     ) -> str:
         out: List[str] = []
         for ln in lines:
             if ln.type == "pair" and ln.key is not None:
-                left = ln.key_part if ln.key_part is not None else ln.key
-                left = left.upper()
+                left_raw = ln.key_part if ln.key_part is not None else ln.key
+                left = left_raw.upper()
                 val = ln.value if ln.value is not None else ""
                 comment = ln.inline_comment or ""
-                out.append(
-                    f"{key_delimiter}{left}{key_delimiter}{'="'+val+'"' if with_values else ""}{" " + comment if with_comments and comment else ""}"
-                )
+                formatted_key = key_formatter(left) if key_formatter else f"{key_delimiter}{left}{key_delimiter}"
+                val_part = f'="{val}"' if with_values else ""
+                comment_part = f" {comment}" if with_comments and comment else ""
+                out.append(f"{formatted_key}{val_part}{comment_part}")
             elif ln.type == "blank" and with_blank:
                 out.append(ln.raw)
             elif ln.type == "comment" and with_comments:
