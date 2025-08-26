@@ -2,6 +2,12 @@ import { createStore } from "/js/AlpineStore.js";
 import { getContext } from "/index.js";
 import * as API from "/js/api.js";
 import { openModal, closeModal } from "/js/modals.js";
+import { store as notificationStore } from "/components/notifications/notification-store.js";
+
+// Helper function for toasts
+function justToast(text, type = "info", timeout = 5000) {
+  notificationStore.addFrontendToastOnly(type, text, "", timeout / 1000);
+}
 
 // Memory Dashboard Store
 const memoryDashboardStore = {
@@ -29,6 +35,7 @@ const memoryDashboardStore = {
 
   // Stats
   totalCount: 0,
+  totalDbCount: 0,
   knowledgeCount: 0,
   conversationCount: 0,
   areasCount: {},
@@ -147,13 +154,25 @@ const memoryDashboardStore = {
         limit: this.limit
       });
 
-            if (response.success) {
+        if (response.success) {
+        // Preserve existing selections when updating memories during polling
+        const existingSelections = {};
+        if (silent && this.memories) {
+          // Build a map of existing selections by memory ID
+          this.memories.forEach(memory => {
+            if (memory.selected) {
+              existingSelections[memory.id] = true;
+            }
+          });
+        }
+
         // Add selected property to each memory item for mass selection
         this.memories = (response.memories || []).map(memory => ({
           ...memory,
-          selected: memory.selected || false
+          selected: existingSelections[memory.id] || false
         }));
         this.totalCount = response.total_count || 0;
+        this.totalDbCount = response.total_db_count || 0;
         this.knowledgeCount = response.knowledge_count || 0;
         this.conversationCount = response.conversation_count || 0;
         this.areasCount = response.areas_count || {};
@@ -290,16 +309,16 @@ const memoryDashboardStore = {
       });
 
       if (response.success) {
-        this.showToast(`Successfully deleted ${selectedMemories.length} memories`, "success");
+        justToast(`Successfully deleted ${selectedMemories.length} memories`, "success");
 
         // Let polling refresh the data instead of manual manipulation
         // Trigger an immediate refresh to get updated state from backend
         await this.searchMemories(true); // silent refresh
       } else {
-        this.showToast(response.error || "Failed to delete selected memories", "error");
+        justToast(response.error || "Failed to delete selected memories", "error");
       }
     } catch (error) {
-      this.showToast(error.message || "Failed to delete selected memories", "error");
+      justToast(error.message || "Failed to delete selected memories", "error");
     } finally {
       this.loading = false;
     }
@@ -337,7 +356,7 @@ ${memory.content_full}
     const content = selectedMemories.map(memory => this.formatMemoryForCopy(memory)).join('\n');
 
     this.copyToClipboard(content);
-    this.showToast(`Copied ${selectedMemories.length} memories with metadata to clipboard`, "success");
+    justToast(`Copied ${selectedMemories.length} memories with metadata to clipboard`, "success");
   },
 
   bulkExportMemories() {
@@ -375,7 +394,7 @@ ${memory.content_full}
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    this.showToast(`Exported ${selectedMemories.length} selected memories to ${filename}`, "success");
+    justToast(`Exported ${selectedMemories.length} selected memories to ${filename}`, "success");
   },
 
   // Memory detail modal (standard approach)
@@ -431,18 +450,18 @@ ${memory.content_full}
 
   getAreaColor(area) {
     const colors = {
-      "MAIN": "#3b82f6",        // blue
-      "FRAGMENTS": "#10b981",   // emerald
-      "SOLUTIONS": "#8b5cf6",   // violet
-      "INSTRUMENTS": "#f59e0b"  // amber
+      "main": "#3b82f6",
+      "fragments": "#10b981",
+      "solutions": "#8b5cf6",
+      "instruments": "#f59e0b"
     };
-    return colors[area] || "#6b7280"; // gray for unknown
+    return colors[area] || "#6c757d";
   },
 
   copyToClipboard(text) {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text).then(() => {
-        this.showToast("Copied to clipboard!", "success");
+        justToast("Copied to clipboard!", "success");
       }).catch(err => {
         console.error("Clipboard copy failed:", err);
         this.fallbackCopyToClipboard(text);
@@ -463,10 +482,10 @@ ${memory.content_full}
     textArea.select();
     try {
       document.execCommand('copy');
-      this.showToast("Copied to clipboard!", "success");
+      justToast("Copied to clipboard!", "success");
     } catch (err) {
       console.error("Fallback clipboard copy failed:", err);
-      this.showToast("Failed to copy to clipboard", "error");
+      justToast("Failed to copy to clipboard", "error");
     }
     document.body.removeChild(textArea);
   },
@@ -487,7 +506,7 @@ ${memory.content_full}
       });
 
       if (response.success) {
-        this.showToast("Memory deleted successfully", "success");
+        justToast("Memory deleted successfully", "success");
 
         // If we were viewing this memory in detail modal, close it
         if (isViewingThisMemory) {
@@ -499,17 +518,17 @@ ${memory.content_full}
         // Trigger an immediate refresh to get updated state from backend
         await this.searchMemories(true); // silent refresh
       } else {
-        this.showToast(`Failed to delete memory: ${response.error}`, "error");
+        justToast(`Failed to delete memory: ${response.error}`, "error");
       }
     } catch (error) {
       console.error("Memory deletion error:", error);
-      this.showToast("Failed to delete memory", "error");
+      justToast("Failed to delete memory", "error");
     }
   },
 
   exportMemories() {
     if (this.memories.length === 0) {
-      this.showToast("No memories to export", "warning");
+      justToast("No memories to export", "warning");
       return;
     }
 
@@ -541,10 +560,10 @@ ${memory.content_full}
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      this.showToast("Memory export completed", "success");
+      justToast("Memory export completed", "success");
     } catch (error) {
       console.error("Memory export error:", error);
-      this.showToast("Failed to export memories", "error");
+      justToast("Failed to export memories", "error");
     }
   },
 
@@ -574,6 +593,7 @@ ${memory.content_full}
     this.searchQuery = "";
     this.memories = [];
     this.totalCount = 0;
+    this.totalDbCount = 0;
     this.knowledgeCount = 0;
     this.conversationCount = 0;
     this.areasCount = {};
@@ -581,14 +601,7 @@ ${memory.content_full}
     this.currentPage = 1;
   },
 
-  showToast(message, type = "info") {
-    // Use global toast function if available
-    if (typeof toast === 'function') {
-      toast(message, type);
-    } else {
-      console.log(`[${type.toUpperCase()}] ${message}`);
-    }
-  }
+
 };
 
 const store = createStore("memoryDashboardStore", memoryDashboardStore);

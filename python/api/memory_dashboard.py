@@ -253,10 +253,11 @@ class MemoryDashboard(ApiHandler):
                 threshold = 0.6  # Lower threshold for broader search in dashboard
                 comparator = Memory._get_comparator(f"area == '{area_filter}'") if area_filter else None
 
+                # Get ALL matching results, don't limit in query
                 docs = await myFaiss_db.asearch(
                     search_query,
                     search_type="similarity_score_threshold",
-                    k=limit,
+                    k=10000,  # Get all matches up to reasonable max
                     score_threshold=threshold,
                     filter=comparator,
                 )
@@ -271,10 +272,6 @@ class MemoryDashboard(ApiHandler):
                         continue
 
                     memories.append(doc)
-
-                    # Apply limit
-                    if len(memories) >= limit:
-                        break
 
             # Format memories for the dashboard
             formatted_memories: list[dict] = []
@@ -298,7 +295,7 @@ class MemoryDashboard(ApiHandler):
 
                 formatted_memories.append(memory_data)
 
-            # Sort by timestamp (newest first) - handle "unknown" timestamps
+            # Sort ALL results by timestamp (newest first) - handle "unknown" timestamps
             def get_sort_key(memory):
                 timestamp = memory["timestamp"]
                 if timestamp == "unknown" or not timestamp:
@@ -307,10 +304,18 @@ class MemoryDashboard(ApiHandler):
 
             formatted_memories.sort(key=get_sort_key, reverse=True)
 
+            # Apply limit AFTER sorting to get the newest entries
+            if limit and len(formatted_memories) > limit:
+                formatted_memories = formatted_memories[:limit]
+
             # Get summary statistics
             total_memories = len(formatted_memories)
             knowledge_count = sum(1 for m in formatted_memories if m["knowledge_source"])
             conversation_count = total_memories - knowledge_count
+
+            # Get total count of all memories in database (unfiltered)
+            all_docs = myFaiss_db.get_all_docs()
+            total_db_count = len(all_docs)
 
             areas_count: dict[str, int] = {}
             for memory_dict in formatted_memories:
@@ -321,6 +326,7 @@ class MemoryDashboard(ApiHandler):
                 "success": True,
                 "memories": formatted_memories,
                 "total_count": total_memories,
+                "total_db_count": total_db_count,
                 "knowledge_count": knowledge_count,
                 "conversation_count": conversation_count,
                 "areas_count": areas_count,
