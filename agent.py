@@ -335,6 +335,7 @@ class Agent:
                         await self.call_extensions("before_main_llm_call", loop_data=self.loop_data)
 
                         async def reasoning_callback(chunk: str, full: str):
+                            await self.handle_intervention()
                             if chunk == full:
                                 printer.print("Reasoning: ")  # start of reasoning
                             # Pass chunk and full data to extensions for processing
@@ -349,6 +350,7 @@ class Agent:
                             await self.handle_reasoning_stream(stream_data["full"])
 
                         async def stream_callback(chunk: str, full: str):
+                            await self.handle_intervention()
                             # output the agent response stream
                             if chunk == full:
                                 printer.print("Response: ")  # start of response
@@ -804,6 +806,7 @@ class Agent:
             )
 
     async def handle_reasoning_stream(self, stream: str):
+        await self.handle_intervention()
         await self.call_extensions(
             "reasoning_stream",
             loop_data=self.loop_data,
@@ -811,6 +814,7 @@ class Agent:
         )
 
     async def handle_response_stream(self, stream: str):
+        await self.handle_intervention()
         try:
             if len(stream) < 25:
                 return  # no reason to try
