@@ -12,6 +12,7 @@ from . import files, dotenv
 from python.helpers.print_style import PrintStyle
 from python.helpers.providers import get_providers
 from python.helpers.secrets import SecretsManager
+from python.helpers import dirty_json
 
 
 class Settings(TypedDict):
@@ -20,7 +21,7 @@ class Settings(TypedDict):
     chat_model_provider: str
     chat_model_name: str
     chat_model_api_base: str
-    chat_model_kwargs: dict[str, str]
+    chat_model_kwargs: dict[str, Any]
     chat_model_ctx_length: int
     chat_model_ctx_history: float
     chat_model_vision: bool
@@ -31,7 +32,7 @@ class Settings(TypedDict):
     util_model_provider: str
     util_model_name: str
     util_model_api_base: str
-    util_model_kwargs: dict[str, str]
+    util_model_kwargs: dict[str, Any]
     util_model_ctx_length: int
     util_model_ctx_input: float
     util_model_rl_requests: int
@@ -41,7 +42,7 @@ class Settings(TypedDict):
     embed_model_provider: str
     embed_model_name: str
     embed_model_api_base: str
-    embed_model_kwargs: dict[str, str]
+    embed_model_kwargs: dict[str, Any]
     embed_model_rl_requests: int
     embed_model_rl_input: int
 
@@ -52,8 +53,8 @@ class Settings(TypedDict):
     browser_model_rl_requests: int
     browser_model_rl_input: int
     browser_model_rl_output: int
-    browser_model_kwargs: dict[str, str]
-    browser_http_headers: dict[str, str]
+    browser_model_kwargs: dict[str, Any]
+    browser_http_headers: dict[str, Any]
 
     agent_profile: str
     agent_memory_subdir: str
@@ -108,7 +109,7 @@ class Settings(TypedDict):
     secrets: str
 
     # LiteLLM global kwargs applied to all model calls
-    litellm_global_kwargs: dict[str, str]
+    litellm_global_kwargs: dict[str, Any]
 
 class PartialSettings(Settings, total=False):
     pass
@@ -264,7 +265,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
         {
             "id": "chat_model_kwargs",
             "title": "Chat model additional parameters",
-            "description": "Any other parameters supported by <a href='https://docs.litellm.ai/docs/set_keys' target='_blank'>LiteLLM</a>. Format is KEY=VALUE on individual lines, just like .env file.",
+            "description": "Any other parameters supported by <a href='https://docs.litellm.ai/docs/set_keys' target='_blank'>LiteLLM</a>. Format is KEY=VALUE on individual lines, like .env file. Value can also contain JSON objects - when unquoted, it is treated as object, number etc., when quoted, it is treated as string.",
             "type": "textarea",
             "value": _dict_to_env(settings["chat_model_kwargs"]),
         }
@@ -344,7 +345,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
         {
             "id": "util_model_kwargs",
             "title": "Utility model additional parameters",
-            "description": "Any other parameters supported by <a href='https://docs.litellm.ai/docs/set_keys' target='_blank'>LiteLLM</a>. Format is KEY=VALUE on individual lines, just like .env file.",
+            "description": "Any other parameters supported by <a href='https://docs.litellm.ai/docs/set_keys' target='_blank'>LiteLLM</a>. Format is KEY=VALUE on individual lines, like .env file. Value can also contain JSON objects - when unquoted, it is treated as object, number etc., when quoted, it is treated as string.",
             "type": "textarea",
             "value": _dict_to_env(settings["util_model_kwargs"]),
         }
@@ -414,7 +415,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
         {
             "id": "embed_model_kwargs",
             "title": "Embedding model additional parameters",
-            "description": "Any other parameters supported by <a href='https://docs.litellm.ai/docs/set_keys' target='_blank'>LiteLLM</a>. Format is KEY=VALUE on individual lines, just like .env file.",
+            "description": "Any other parameters supported by <a href='https://docs.litellm.ai/docs/set_keys' target='_blank'>LiteLLM</a>. Format is KEY=VALUE on individual lines, like .env file. Value can also contain JSON objects - when unquoted, it is treated as object, number etc., when quoted, it is treated as string.",
             "type": "textarea",
             "value": _dict_to_env(settings["embed_model_kwargs"]),
         }
@@ -504,7 +505,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
         {
             "id": "browser_model_kwargs",
             "title": "Web Browser model additional parameters",
-            "description": "Any other parameters supported by <a href='https://docs.litellm.ai/docs/set_keys' target='_blank'>LiteLLM</a>. Format is KEY=VALUE on individual lines, just like .env file.",
+            "description": "Any other parameters supported by <a href='https://docs.litellm.ai/docs/set_keys' target='_blank'>LiteLLM</a>. Format is KEY=VALUE on individual lines, like .env file. Value can also contain JSON objects - when unquoted, it is treated as object, number etc., when quoted, it is treated as string.",
             "type": "textarea",
             "value": _dict_to_env(settings["browser_model_kwargs"]),
         }
@@ -514,7 +515,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
         {
             "id": "browser_http_headers",
             "title": "HTTP Headers",
-            "description": "HTTP headers to include with all browser requests. Format is KEY=VALUE on individual lines, just like .env file. Example: Authorization=Bearer token123",
+            "description": "HTTP headers to include with all browser requests. Format is KEY=VALUE on individual lines, like .env file. Value can also contain JSON objects - when unquoted, it is treated as object, number etc., when quoted, it is treated as string. Example: Authorization=Bearer token123",
             "type": "textarea",
             "value": _dict_to_env(settings.get("browser_http_headers", {})),
         }
@@ -1603,26 +1604,48 @@ def _apply_settings(previous: Settings | None):
 
 
 def _env_to_dict(data: str):
-    env_dict = {}
-    line_pattern = re.compile(r"\s*([^#][^=]*)\s*=\s*(.*)")
+    result = {}
     for line in data.splitlines():
-        match = line_pattern.match(line)
-        if match:
-            key, value = match.groups()
-            # Remove optional surrounding quotes (single or double)
-            value = value.strip().strip('"').strip("'")
-            env_dict[key.strip()] = value
-    return env_dict
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        
+        if '=' not in line:
+            continue
+            
+        key, value = line.split('=', 1)
+        key = key.strip()
+        value = value.strip()
+        
+        # If quoted, treat as string
+        if value.startswith('"') and value.endswith('"'):
+            result[key] = value[1:-1].replace('\\"', '"')  # Unescape quotes
+        elif value.startswith("'") and value.endswith("'"):
+            result[key] = value[1:-1].replace("\\'", "'")  # Unescape quotes
+        else:
+            # Not quoted, try JSON parse
+            try:
+                result[key] = json.loads(value)
+            except (json.JSONDecodeError, ValueError):
+                result[key] = value
+    
+    return result
 
 
 def _dict_to_env(data_dict):
     lines = []
     for key, value in data_dict.items():
-        if "\n" in value:
-            value = f"'{value}'"
-        elif " " in value or value == "" or any(c in value for c in "\"'"):
-            value = f'"{value}"'
-        lines.append(f"{key}={value}")
+        if isinstance(value, str):
+            # Quote strings and escape internal quotes
+            escaped_value = value.replace('"', '\\"')
+            lines.append(f'{key}="{escaped_value}"')
+        elif isinstance(value, (dict, list, bool)) or value is None:
+            # Serialize as unquoted JSON
+            lines.append(f'{key}={json.dumps(value, separators=(",", ":"))}')
+        else:
+            # Numbers and other types as unquoted strings
+            lines.append(f'{key}={value}')
+    
     return "\n".join(lines)
 
 
