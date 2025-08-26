@@ -23,7 +23,7 @@ from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
-from python.helpers import dirty_json
+from python.helpers import dirty_json, browser_use_monkeypatch
 
 from langchain_core.language_models.chat_models import SimpleChatModel
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
@@ -54,6 +54,7 @@ def turn_off_logging():
 # init
 load_dotenv()
 turn_off_logging()
+browser_use_monkeypatch.apply()
 
 
 class ModelType(Enum):
@@ -450,9 +451,9 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
             model = kwargs.pop("model", None)
             kwrgs = {**self._wrapper.kwargs, **kwargs}
 
-            # hack from browser-use to fix json schema for gemini
+            # hack from browser-use to fix json schema for gemini (additionalProperties, $defs, $ref)
             if "response_format" in kwrgs and "json_schema" in kwrgs["response_format"] and model.startswith("gemini/"):
-                kwrgs["response_format"]["json_schema"] = ChatGoogle("")._fix_gemini_schema(self._wrapper.kwargs)
+                kwrgs["response_format"]["json_schema"] = ChatGoogle("")._fix_gemini_schema(kwrgs["response_format"]["json_schema"])
 
             resp = await acompletion(
                 model=self._wrapper.model_name,
@@ -460,6 +461,17 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
                 stop=stop,
                 **kwrgs,
             )
+
+            # Gemini: strip triple backticks and conform schema
+            try:
+                msg = resp.choices[0].message
+                if self.provider == "gemini" and isinstance(getattr(msg, "content", None), str):
+                    cleaned = browser_use_monkeypatch.gemini_clean_and_conform(msg.content)
+                    if cleaned:
+                        msg.content = cleaned
+            except Exception:
+                pass
+
         except Exception as e:
             raise e
 
