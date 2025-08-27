@@ -23,7 +23,6 @@ from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
-from python.helpers import dirty_json
 
 from langchain_core.language_models.chat_models import SimpleChatModel
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
@@ -91,7 +90,6 @@ class ChatChunk(TypedDict):
 rate_limiters: dict[str, RateLimiter] = {}
 api_keys_round_robin: dict[str, int] = {}
 
-
 def get_api_key(service: str) -> str:
     # get api key for the service
     key = (
@@ -118,14 +116,7 @@ def get_rate_limiter(
     limiter.limits["output"] = output or 0
     return limiter
 
-
-async def apply_rate_limiter(
-    model_config: ModelConfig | None,
-    input_text: str,
-    rate_limiter_callback: (
-        Callable[[str, str, int, int], Awaitable[bool]] | None
-    ) = None,
-):
+async def apply_rate_limiter(model_config: ModelConfig|None, input_text: str, rate_limiter_callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None):
     if not model_config:
         return
     limiter = get_rate_limiter(
@@ -140,41 +131,25 @@ async def apply_rate_limiter(
     await limiter.wait(rate_limiter_callback)
     return limiter
 
-
-def apply_rate_limiter_sync(
-    model_config: ModelConfig | None,
-    input_text: str,
-    rate_limiter_callback: (
-        Callable[[str, str, int, int], Awaitable[bool]] | None
-    ) = None,
-):
+def apply_rate_limiter_sync(model_config: ModelConfig|None, input_text: str, rate_limiter_callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None):
     if not model_config:
         return
     import asyncio, nest_asyncio
-
     nest_asyncio.apply()
-    return asyncio.run(
-        apply_rate_limiter(model_config, input_text, rate_limiter_callback)
-    )
+    return asyncio.run(apply_rate_limiter(model_config, input_text, rate_limiter_callback))
 
 
 class LiteLLMChatWrapper(SimpleChatModel):
     model_name: str
     provider: str
     kwargs: dict = {}
-
+    
     class Config:
         arbitrary_types_allowed = True
         extra = "allow"  # Allow extra attributes
         validate_assignment = False  # Don't validate on assignment
 
-    def __init__(
-        self,
-        model: str,
-        provider: str,
-        model_config: Optional[ModelConfig] = None,
-        **kwargs: Any,
-    ):
+    def __init__(self, model: str, provider: str, model_config: Optional[ModelConfig] = None, **kwargs: Any):
         model_value = f"{provider}/{model}"
         super().__init__(model_name=model_value, provider=provider, kwargs=kwargs)  # type: ignore
         # Set A0 model config as instance attribute after parent init
@@ -183,7 +158,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
     @property
     def _llm_type(self) -> str:
         return "litellm-chat"
-
+    
     def _convert_messages(self, messages: List[BaseMessage]) -> List[dict]:
         result = []
         # Map LangChain message types to LiteLLM roles
@@ -194,9 +169,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
             "tool": "tool",
         }
         for m in messages:
-            m_type = getattr(m, "type", getattr(m, "role", ""))
-            role = role_mapping.get(m_type, m_type)
-            content = getattr(m, "content", getattr(m, "text", ""))
+            role = role_mapping.get(m.type, m.type)
             message_dict = {"role": role, "content": m.content}
 
             # Handle tool calls for AI messages
@@ -242,12 +215,12 @@ class LiteLLMChatWrapper(SimpleChatModel):
         **kwargs: Any,
     ) -> str:
         import asyncio
-
+        
         msgs = self._convert_messages(messages)
-
+        
         # Apply rate limiting if configured
         apply_rate_limiter_sync(self.a0_model_conf, str(msgs))
-
+        
         # Call the model
         resp = completion(
             model=self.model_name, messages=msgs, stop=stop, **{**self.kwargs, **kwargs}
@@ -265,12 +238,12 @@ class LiteLLMChatWrapper(SimpleChatModel):
         **kwargs: Any,
     ) -> Iterator[ChatGenerationChunk]:
         import asyncio
-
+        
         msgs = self._convert_messages(messages)
-
+        
         # Apply rate limiting if configured
         apply_rate_limiter_sync(self.a0_model_conf, str(msgs))
-
+        
         for chunk in completion(
             model=self.model_name,
             messages=msgs,
@@ -293,10 +266,11 @@ class LiteLLMChatWrapper(SimpleChatModel):
         **kwargs: Any,
     ) -> AsyncIterator[ChatGenerationChunk]:
         msgs = self._convert_messages(messages)
-
+        
         # Apply rate limiting if configured
         await apply_rate_limiter(self.a0_model_conf, str(msgs))
-
+        
+        
         response = await acompletion(
             model=self.model_name,
             messages=msgs,
@@ -320,9 +294,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
         response_callback: Callable[[str, str], Awaitable[None]] | None = None,
         reasoning_callback: Callable[[str, str], Awaitable[None]] | None = None,
         tokens_callback: Callable[[str, int], Awaitable[None]] | None = None,
-        rate_limiter_callback: (
-            Callable[[str, str, int, int], Awaitable[bool]] | None
-        ) = None,
+        rate_limiter_callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
         **kwargs: Any,
     ) -> Tuple[str, str]:
 
@@ -340,9 +312,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
         msgs_conv = self._convert_messages(messages)
 
         # Apply rate limiting if configured
-        limiter = await apply_rate_limiter(
-            self.a0_model_conf, str(msgs_conv), rate_limiter_callback
-        )
+        limiter = await apply_rate_limiter(self.a0_model_conf, str(msgs_conv), rate_limiter_callback)
 
         # call model
         _completion = await acompletion(
@@ -390,27 +360,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
         return response, reasoning
 
 
-class AsyncAIChatReplacement:
-    class _Completions:
-        def __init__(self, wrapper):
-            self._wrapper = wrapper
-
-        async def create(self, *args, **kwargs):
-            # call the async _acall method on the wrapper
-            return await self._wrapper._acall(*args, **kwargs)
-
-    class _Chat:
-        def __init__(self, wrapper):
-            self.completions = AsyncAIChatReplacement._Completions(wrapper)
-
-    def __init__(self, wrapper, *args, **kwargs):
-        self._wrapper = wrapper
-        self.chat = AsyncAIChatReplacement._Chat(wrapper)
-
-
-from browser_use.llm import ChatOllama, ChatOpenRouter, ChatGoogle, ChatAnthropic, ChatGroq, ChatOpenAI
-
-class BrowserCompatibleChatWrapper(ChatOpenRouter):
+class BrowserCompatibleChatWrapper(LiteLLMChatWrapper):
     """
     A wrapper for browser agent that can filter/sanitize messages
     before sending them to the LLM.
@@ -418,118 +368,31 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
 
     def __init__(self, *args, **kwargs):
         turn_off_logging()
-        # Create the underlying LiteLLM wrapper
-        self._wrapper = LiteLLMChatWrapper(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # Browser-use may expect a 'model' attribute
-        self.model = self._wrapper.model_name
-        self.kwargs = self._wrapper.kwargs
+        self.model = self.model_name
 
-    @property
-    def model_name(self) -> str:
-        return self._wrapper.model_name
-
-    @property
-    def provider(self) -> str:
-        return self._wrapper.provider
-
-    def get_client(self, *args, **kwargs):  # type: ignore
-        return AsyncAIChatReplacement(self, *args, **kwargs)
-
-    # -- Gemini helper -----------------------------------------
-    def _gemini_clean_and_conform(self, text: str):
-        obj = None
-        try:
-            # dirty_json parser is robust enough to handle markdown fences
-            obj = dirty_json.parse(text)
-        except Exception:
-            return None  # return None if parsing fails
-
-        if not isinstance(obj, dict):
-            return None
-
-        # Conform actions to browser-use expectations
-        if isinstance(obj.get("action"), list):
-            normalized_actions = []
-            for item in obj["action"]:
-                if not isinstance(item, dict):
-                    continue  # Skip non-dict items
-
-                action_key, action_value = next(iter(item.items()), (None, None))
-                if not action_key:
-                    continue
-
-                # Create a mutable copy of the value
-                v = (action_value or {}).copy()
-
-                if action_key in ("scroll_down", "scroll_up", "scroll"):
-                    is_down = action_key != "scroll_up"
-                    v.setdefault("down", is_down)
-                    v.setdefault("num_pages", 1.0)
-                    normalized_actions.append({"scroll": v})
-                elif action_key == "go_to_url":
-                    v.setdefault("new_tab", False)
-                    normalized_actions.append({action_key: v})
-                elif action_key == "done":
-                    if "text" in v and "data" not in v:
-                        t = v.pop("text", "")
-                        v["data"] = {"title": "Task result", "response": t, "page_summary": t}
-                    v.setdefault("success", True)
-                    normalized_actions.append({action_key: v})
-                else:
-                    normalized_actions.append(item)
-            obj["action"] = normalized_actions
-
-        return dirty_json.stringify(obj)
-
-    async def _acall(
+    def _call(
         self,
         messages: List[BaseMessage],
         stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
-    ):
-        # Apply rate limiting if configured
-        apply_rate_limiter_sync(self._wrapper.a0_model_conf, str(messages))
+    ) -> str:
+        turn_off_logging()
+        result = super()._call(messages, stop, run_manager, **kwargs)
+        return result
 
-        # Call the model
-        try:
-            model = kwargs.pop("model", None)
-            kwrgs = {**self._wrapper.kwargs, **kwargs}
-
-            # hack from browser-use to fix json schema for gemini (additionalProperties, $defs, $ref)
-            if "response_format" in kwrgs and "json_schema" in kwrgs["response_format"] and model.startswith("gemini/"):
-                kwrgs["response_format"]["json_schema"] = ChatGoogle("")._fix_gemini_schema(self._wrapper.kwargs)
-
-            resp = await acompletion(
-                model=self._wrapper.model_name,
-                messages=messages,
-                stop=stop,
-                **kwrgs,
-            )
-
-            # Gemini: strip triple backticks and conform schema
-            try:
-                msg = resp.choices[0].message # type: ignore
-                if self.provider == "gemini" and isinstance(getattr(msg, "content", None), str):
-                    cleaned = self._gemini_clean_and_conform(msg.content) # type: ignore
-                    if cleaned:
-                        msg.content = cleaned
-            except Exception:
-                pass
-
-        except Exception as e:
-            raise e
-
-        # another hack for browser-use post process invalid jsons
-        try:
-            if "response_format" in kwrgs and "json_schema" in kwrgs["response_format"] or "json_object" in kwrgs["response_format"]:
-                if resp.choices[0].message.content is not None and not resp.choices[0].message.content.startswith("{"): # type: ignore
-                    js = dirty_json.parse(resp.choices[0].message.content) # type: ignore
-                    resp.choices[0].message.content = dirty_json.stringify(js) # type: ignore
-        except Exception as e:
-            pass
-
-        return resp
+    async def _astream(
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[AsyncCallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[ChatGenerationChunk]:
+        turn_off_logging()
+        async for chunk in super()._astream(messages, stop, run_manager, **kwargs):
+            yield chunk
 
 
 class LiteLLMEmbeddingWrapper(Embeddings):
@@ -537,21 +400,15 @@ class LiteLLMEmbeddingWrapper(Embeddings):
     kwargs: dict = {}
     a0_model_conf: Optional[ModelConfig] = None
 
-    def __init__(
-        self,
-        model: str,
-        provider: str,
-        model_config: Optional[ModelConfig] = None,
-        **kwargs: Any,
-    ):
+    def __init__(self, model: str, provider: str, model_config: Optional[ModelConfig] = None, **kwargs: Any):
         self.model_name = f"{provider}/{model}" if provider != "openai" else model
         self.kwargs = kwargs
         self.a0_model_conf = model_config
-
+    
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         # Apply rate limiting if configured
         apply_rate_limiter_sync(self.a0_model_conf, " ".join(texts))
-
+        
         resp = embedding(model=self.model_name, input=texts, **self.kwargs)
         return [
             item.get("embedding") if isinstance(item, dict) else item.embedding  # type: ignore
@@ -561,7 +418,7 @@ class LiteLLMEmbeddingWrapper(Embeddings):
     def embed_query(self, text: str) -> List[float]:
         # Apply rate limiting if configured
         apply_rate_limiter_sync(self.a0_model_conf, text)
-
+        
         resp = embedding(model=self.model_name, input=[text], **self.kwargs)
         item = resp.data[0]  # type: ignore
         return item.get("embedding") if isinstance(item, dict) else item.embedding  # type: ignore
@@ -570,13 +427,7 @@ class LiteLLMEmbeddingWrapper(Embeddings):
 class LocalSentenceTransformerWrapper(Embeddings):
     """Local wrapper for sentence-transformers models to avoid HuggingFace API calls"""
 
-    def __init__(
-        self,
-        provider: str,
-        model: str,
-        model_config: Optional[ModelConfig] = None,
-        **kwargs: Any,
-    ):
+    def __init__(self, provider: str, model: str, model_config: Optional[ModelConfig] = None, **kwargs: Any):
         # Clean common user-input mistakes
         model = model.strip().strip('"').strip("'")
 
@@ -598,18 +449,18 @@ class LocalSentenceTransformerWrapper(Embeddings):
         self.model = SentenceTransformer(model, **st_kwargs)
         self.model_name = model
         self.a0_model_conf = model_config
-
+    
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         # Apply rate limiting if configured
         apply_rate_limiter_sync(self.a0_model_conf, " ".join(texts))
-
+        
         embeddings = self.model.encode(texts, convert_to_tensor=False)  # type: ignore
         return embeddings.tolist() if hasattr(embeddings, "tolist") else embeddings  # type: ignore
 
     def embed_query(self, text: str) -> List[float]:
         # Apply rate limiting if configured
         apply_rate_limiter_sync(self.a0_model_conf, text)
-
+        
         embedding = self.model.encode([text], convert_to_tensor=False)  # type: ignore
         result = (
             embedding[0].tolist() if hasattr(embedding[0], "tolist") else embedding[0]
@@ -634,17 +485,10 @@ def _get_litellm_chat(
     provider_name, model_name, kwargs = _adjust_call_args(
         provider_name, model_name, kwargs
     )
-    return cls(
-        provider=provider_name, model=model_name, model_config=model_config, **kwargs
-    )
+    return cls(provider=provider_name, model=model_name, model_config=model_config, **kwargs)
 
 
-def _get_litellm_embedding(
-    model_name: str,
-    provider_name: str,
-    model_config: Optional[ModelConfig] = None,
-    **kwargs: Any,
-):
+def _get_litellm_embedding(model_name: str, provider_name: str, model_config: Optional[ModelConfig] = None, **kwargs: Any):
     # Check if this is a local sentence-transformers model
     if provider_name == "huggingface" and model_name.startswith(
         "sentence-transformers/"
@@ -654,10 +498,7 @@ def _get_litellm_embedding(
             provider_name, model_name, kwargs
         )
         return LocalSentenceTransformerWrapper(
-            provider=provider_name,
-            model=model_name,
-            model_config=model_config,
-            **kwargs,
+            provider=provider_name, model=model_name, model_config=model_config, **kwargs
         )
 
     # use api key from kwargs or env
@@ -670,9 +511,7 @@ def _get_litellm_embedding(
     provider_name, model_name, kwargs = _adjust_call_args(
         provider_name, model_name, kwargs
     )
-    return LiteLLMEmbeddingWrapper(
-        model=model_name, provider=provider_name, model_config=model_config, **kwargs
-    )
+    return LiteLLMEmbeddingWrapper(model=model_name, provider=provider_name, model_config=model_config, **kwargs)
 
 
 def _parse_chunk(chunk: Any) -> ChatChunk:
@@ -760,14 +599,10 @@ def _merge_provider_defaults(
     return provider_name, kwargs
 
 
-def get_chat_model(
-    provider: str, name: str, model_config: Optional[ModelConfig] = None, **kwargs: Any
-) -> LiteLLMChatWrapper:
+def get_chat_model(provider: str, name: str, model_config: Optional[ModelConfig] = None, **kwargs: Any) -> LiteLLMChatWrapper:
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
-    return _get_litellm_chat(
-        LiteLLMChatWrapper, name, provider_name, model_config, **kwargs
-    )
+    return _get_litellm_chat(LiteLLMChatWrapper, name, provider_name, model_config, **kwargs)
 
 
 def get_browser_model(
