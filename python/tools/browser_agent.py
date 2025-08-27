@@ -191,7 +191,7 @@ class State:
 class BrowserAgent(Tool):
 
     async def execute(self, message="", reset="", **kwargs):
-        self.guid = str(uuid.uuid4())
+        self.guid = self.agent.context.generate_id() # short random id
         reset = str(reset).lower().strip() == "true"
         await self.prepare_state(reset=reset)
         message = SecretsManager.get_instance().mask_values(message, placeholder="<secret>{key}</secret>") # mask any potential passwords passed from A0 to browser-use to browser-use format
