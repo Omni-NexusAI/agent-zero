@@ -1,69 +1,38 @@
-from typing import Callable, TypedDict
-from langchain.prompts import (
-    ChatPromptTemplate,
-    FewShotChatMessagePromptTemplate,
-)
+ZnJvbSB0eXBpbmcgaW1wb3J0IENhbGxhYmxlLCBUeXBlZERpY3QKZnJvbSBs
+YW5nY2hhaW4ucHJvbXB0cyBpbXBvcnQgKAogICAgQ2hhdFByb21wdFRlbXBs
+YXRlLAogICAgRmV3U2hvdENoYXRNZXNzYWdlUHJvbXB0VGVtcGxhdGUsCikK
+CmZyb20gbGFuZ2NoYWluX2NvcmUubWVzc2FnZXMgaW1wb3J0IEFJTWVzc2Fn
+ZSwgSHVtYW5NZXNzYWdlLCBTeXN0ZW1NZXNzYWdlCgpmcm9tIGxhbmdjaGFp
+bl9jb3JlLmxhbmd1YWdlX21vZGVscy5jaGF0X21vZGVscyBpbXBvcnQgQmFz
+ZUNoYXRNb2RlbApmcm9tIGxhbmdjaGFpbl9jb3JlLmxhbmd1YWdlX21vZGVs
+cy5sbG1zIGltcG9ydCBCYXNlTExNCgoKY2xhc3MgRXhhbXBsZShUeXBlZERp
+Y3QpOgogICAgaW5wdXQ6IHN0cgogICAgb3V0cHV0OiBzdHIKCmFzeW5jIGRl
+ZiBjYWxsX2xsbSgKICAgIHN5c3RlbTogc3RyLAogICAgbW9kZWw6IEJhc2VD
+aGF0TW9kZWwgfCBCYXNlTExNLAogICAgbWVzc2FnZTogc3RyLAogICAgZXhh
+bXBsZXM6IGxpc3RbRXhhbXBsZV0gPSBbXSwKICAgIGNhbGxiYWNrOiBDYWxs
+YWJsZVtbc3RyXSwgTm9uZV0gfCBOb25lID0gTm9uZQopOgoKICAgIGV4YW1w
+bGVfcHJvbXB0ID0gQ2hhdFByb21wdFRlbXBsYXRlLmZyb21fbWVzc2FnZXMo
+CiAgICAgICAgWwogICAgICAgICAgICBIdW1hbk1lc3NhZ2UoY29udGVudD0i
+e2lucHV0fSIpLAogICAgICAgICAgICBBSU1lc3NhZ2UoY29udGVudD0ie291
+dHB1dH0iKSwKICAgICAgICBdCiAgICApCgogICAgZmV3X3Nob3RfcHJvbXB0
+ID0gRmV3U2hvdENoYXRNZXNzYWdlUHJvbXB0VGVtcGxhdGUoCiAgICAgICAg
+ZXhhbXBsZV9wcm9tcHQ9ZXhhbXBsZV9wcm9tcHQsCiAgICAgICAgZXhhbXBs
+ZXM9ZXhhbXBsZXMsICAjIHR5cGU6IGlnbm9yZQogICAgICAgIGlucHV0X3Zh
+cmlhYmxlcz1bXSwKICAgICkKCiAgICBmZXdfc2hvdF9wcm9tcHQuZm9ybWF0
+KCkKCgogICAgZmluYWxfcHJvbXB0ID0gQ2hhdFByb21wdFRlbXBsYXRlLmZy
+b21fbWVzc2FnZXMoCiAgICAgICAgWwogICAgICAgICAgICBTeXN0ZW1NZXNz
+YWdlKGNvbnRlbnQ9c3lzdGVtKSwKICAgICAgICAgICAgZmV3X3Nob3RfcHJv
+bXB0LAogICAgICAgICAgICBIdW1hbk1lc3NhZ2UoY29udGVudD1tZXNzYWdl
+KSwKICAgICAgICBdCiAgICApCgogICAgY2hhaW4gPSBmaW5hbF9wcm9tcHQg
+fCBtb2RlbAoKICAgIHJlc3BvbnNlID0gIiIKICAgIGFzeW5jIGZvciBjaHVu
+ayBpbiBjaGFpbi5hc3RyZWFtKHt9KToKICAgICAgICAjIGF3YWl0IHNlbGYu
 
-from langchain.schema import AIMessage
-from langchain_core.messages import HumanMessage, SystemMessage
-
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.language_models.llms import BaseLLM
-
-
-class Example(TypedDict):
-    input: str
-    output: str
-
-async def call_llm(
-    system: str,
-    model: BaseChatModel | BaseLLM,
-    message: str,
-    examples: list[Example] = [],
-    callback: Callable[[str], None] | None = None
-):
-
-    example_prompt = ChatPromptTemplate.from_messages(
-        [
-            HumanMessage(content="{input}"),
-            AIMessage(content="{output}"),
-        ]
-    )
-
-    few_shot_prompt = FewShotChatMessagePromptTemplate(
-        example_prompt=example_prompt,
-        examples=examples,  # type: ignore
-        input_variables=[],
-    )
-
-    few_shot_prompt.format()
-
-
-    final_prompt = ChatPromptTemplate.from_messages(
-        [
-            SystemMessage(content=system),
-            few_shot_prompt,
-            HumanMessage(content=message),
-        ]
-    )
-
-    chain = final_prompt | model
-
-    response = ""
-    async for chunk in chain.astream({}):
-        # await self.handle_intervention()  # wait for intervention and handle it, if paused
-
-        if isinstance(chunk, str):
-            content = chunk
-        elif hasattr(chunk, "content"):
-            content = str(chunk.content)
-        else:
-            content = str(chunk)
-
-        if callback:
-            callback(content)
-
-        response += content
-
-    return response
-
+aGFuZGxlX2ludGVydmVudGlvbigpICAjIHdhaXQgZm9yIGludGVydmVudGlv
+biBhbmQgaGFuZGxlIGl0LCBpZiBwYXVzZWQKCiAgICAgICAgaWYgaXNpbnN0
+YW5jZShjaHVuaywgc3RyKToKICAgICAgICAgICAgY29udGVudCA9IGNodW5r
+CiAgICAgICAgZWxpZiBoYXNhdHRyKGNodW5rLCAiY29udGVudCIpOgogICAg
+ICAgICAgICBjb250ZW50ID0gc3RyKGNodW5rLmNvbnRlbnQpCiAgICAgICAg
+ZWxzZToKICAgICAgICAgICAgY29udGVudCA9IHN0cihjaHVuaykKCiAgICAg
+ICAgaWYgY2FsbGJhY2s6CiAgICAgICAgICAgIGNhbGxiYWNrKGNvbnRlbnQp
+CgogICAgICAgIHJlc3BvbnNlICs9IGNvbnRlbnQKCiAgICByZXR1cm4gcmVz
+cG9uc2UKCg==
