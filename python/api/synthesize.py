@@ -1,94 +1,85 @@
-# api/synthesize.py
-
-from python.helpers.api import ApiHandler, Request, Response
-
-from python.helpers import runtime, settings, kokoro_tts
-
-class Synthesize(ApiHandler):
-    async def process(self, input: dict, request: Request) -> dict | Response:
-        text = input.get("text", "")
-        # ctxid = input.get("ctxid", "")
-        
-        # context = self.get_context(ctxid)
-        # if not await kokoro_tts.is_downloaded():
-        #     context.log.log(type="info", content="Kokoro TTS model is currently being initialized, please wait...")
-
-        try:
-            # # Clean and chunk text for long responses
-            # cleaned_text = self._clean_text(text)
-            # chunks = self._chunk_text(cleaned_text)
-            
-            # if len(chunks) == 1:
-            #     # Single chunk - return as before
-            #     audio = await kokoro_tts.synthesize_sentences(chunks)
-            #     return {"audio": audio, "success": True}
-            # else:
-            #     # Multiple chunks - return as sequence
-            #     audio_parts = []
-            #     for chunk in chunks:
-            #         chunk_audio = await kokoro_tts.synthesize_sentences([chunk])
-            #         audio_parts.append(chunk_audio)
-            #     return {"audio_parts": audio_parts, "success": True}
-
-            # audio is chunked on the frontend for better flow
-            audio = await kokoro_tts.synthesize_sentences([text])
-            return {"audio": audio, "success": True}
-        except Exception as e:
-            return {"error": str(e), "success": False}
-    
-    # def _clean_text(self, text: str) -> str:
-    #     """Clean text by removing markdown, tables, code blocks, and other formatting"""
-    #     # Remove code blocks
-    #     text = re.sub(r'```[\s\S]*?```', '', text)
-    #     text = re.sub(r'`[^`]*`', '', text)
-        
-    #     # Remove markdown links
-    #     text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
-        
-    #     # Remove markdown formatting
-    #     text = re.sub(r'[*_#]+', '', text)
-        
-    #     # Remove tables (basic cleanup)
-    #     text = re.sub(r'\|[^\n]*\|', '', text)
-        
-    #     # Remove extra whitespace and newlines
-    #     text = re.sub(r'\n+', ' ', text)
-    #     text = re.sub(r'\s+', ' ', text)
-        
-    #     # Remove URLs
-    #     text = re.sub(r'https?://[^\s]+', '', text)
-        
-    #     # Remove email addresses
-    #     text = re.sub(r'\S+@\S+', '', text)
-        
-    #     return text.strip()
-    
-    # def _chunk_text(self, text: str) -> list[str]:
-    #     """Split text into manageable chunks for TTS"""
-    #     # If text is short enough, return as single chunk
-    #     if len(text) <= 300:
-    #         return [text]
-        
-    #     # Split into sentences first
-    #     sentences = re.split(r'(?<=[.!?])\s+', text)
-        
-    #     chunks = []
-    #     current_chunk = ""
-        
-    #     for sentence in sentences:
-    #         sentence = sentence.strip()
-    #         if not sentence:
-    #             continue
-                
-    #         # If adding this sentence would make chunk too long, start new chunk
-    #         if current_chunk and len(current_chunk + " " + sentence) > 300:
-    #             chunks.append(current_chunk.strip())
-    #             current_chunk = sentence
-    #         else:
-    #             current_chunk += (" " if current_chunk else "") + sentence
-        
-    #     # Add the last chunk if it has content
-    #     if current_chunk.strip():
-    #         chunks.append(current_chunk.strip())
-        
-    #     return chunks if chunks else [text]
+IyBhcGkvc3ludGhlc2l6ZS5weQoKZnJvbSBweXRob24uaGVscGVycy5hcGkg
+aW1wb3J0IEFwaUhhbmRsZXIsIFJlcXVlc3QsIFJlc3BvbnNlCgpmcm9tIHB5
+dGhvbi5oZWxwZXJzIGltcG9ydCBydW50aW1lLCBzZXR0aW5ncywga29rb3Jv
+X3R0cwoKY2xhc3MgU3ludGhlc2l6ZShBcGlIYW5kbGVyKToKICAgIGFzeW5j
+IGRlZiBwcm9jZXNzKHNlbGYsIGlucHV0OiBkaWN0LCByZXF1ZXN0OiBSZXF1
+ZXN0KSAtPiBkaWN0IHwgUmVzcG9uc2U6CiAgICAgICAgdGV4dCA9IGlucHV0
+LmdldCgidGV4dCIsICIiKQogICAgICAgIGN0eGlkID0gaW5wdXQuZ2V0KCJj
+dHhpZCIsICIiKQogICAgICAgIHZvaWNlID0gaW5wdXQuZ2V0KCJ2b2ljZSIp
+IG9yIHNldHRpbmdzLmdldF9zZXR0aW5ncygpWyJ0dHNfa29rb3JvX3ZvaWNl
+Il0KICAgICAgICB2b2ljZTIgPSBpbnB1dC5nZXQoInZvaWNlMiIpIG9yIHNl
+dHRpbmdzLmdldF9zZXR0aW5ncygpWyJ0dHNfa29rb3JvX3ZvaWNlX3NlY29u
+ZGFyeSJdIG9yIE5vbmUKICAgICAgICAKICAgICAgICBjb250ZXh0ID0gc2Vs
+Zi5nZXRfY29udGV4dChjdHhpZCkKICAgICAgICBpZiBub3QgYXdhaXQga29r
+b3JvX3R0cy5pc19kb3dubG9hZGVkKCk6CiAgICAgICAgICAgIGNvbnRleHQu
+bG9nLmxvZyh0eXBlPSJpbmZvIiwgY29udGVudD0iS29rb3JvIFRUUyBtb2Rl
+bCBpcyBjdXJyZW50bHkgYmVpbmcgaW5pdGlhbGl6ZWQsIHBsZWFzZSB3YWl0
+Li4uIikKCiAgICAgICAgdHJ5OgogICAgICAgICAgICAjICMgQ2xlYW4gYW5k
+IGNodW5rIHRleHQgZm9yIGxvbmcgcmVzcG9uc2VzCiAgICAgICAgICAgICMg
+Y2xlYW5lZF90ZXh0ID0gc2VsZi5fY2xlYW5fdGV4dCh0ZXh0KQogICAgICAg
+ICAgICAjIGNodW5rcyA9IHNlbGYuX2NodW5rX3RleHQoY2xlYW5lZF90ZXh0
+KQogICAgICAgICAgICAKICAgICAgICAgICAgIyBpZiBsZW4oY2h1bmtzKSA9
+PSAxOgogICAgICAgICAgICAjICAgICAjIFNpbmdsZSBjaHVuayAtIHJldHVy
+biBhcyBiZWZvcmUKICAgICAgICAgICAgIyAgICAgYXVkaW8gPSBhd2FpdCBr
+b2tvcm9fdHRzLnN5bnRoZXNpemVfc2VudGVuY2VzKGNodW5rcykKICAgICAg
+ICAgICAgIyAgICAgcmV0dXJuIHsiYXVkaW8iOiBhdWRpbywgInN1Y2Nlc3Mi
+OiBUcnVlfQogICAgICAgICAgICAjIGVsc2U6CiAgICAgICAgICAgICMgICAg
+ICMgTXVsdGlwbGUgY2h1bmtzIC0gcmV0dXJuIGFzIHNlcXVlbmNlCiAgICAg
+ICAgICAgICMgICAgIGF1ZGlvX3BhcnRzID0gW10KICAgICAgICAgICAgIyAg
+ICAgZm9yIGNodW5rIGluIGNodW5rczoKICAgICAgICAgICAgIyAgICAgICAg
+IGNodW5rX2F1ZGlvID0gYXdhaXQga29rb3JvX3R0cy5zeW50aGVzaXplX3Nl
+bnRlbmNlcyhbY2h1bmtdKQogICAgICAgICAgICAjICAgICAgICAgYXVkaW9f
+cGFydHMuYXBwZW5kKGNodW5rX2F1ZGlvKQogICAgICAgICAgICAjICAgICBy
+ZXR1cm4geyJhdWRpb19wYXJ0cyI6IGF1ZGlvX3BhcnRzLCAic3VjY2VzcyI6
+IFRydWV9CgogICAgICAgICAgICAjIGF1ZGlvIGlzIGNodW5rZWQgb24gdGhl
+IGZyb250ZW5kIGZvciBiZXR0ZXIgZmxvdwogICAgICAgICAgICBhdWRpbyA9
+IGF3YWl0IGtva29yb190dHMuc3ludGhlc2l6ZV9zZW50ZW5jZXMoW3RleHRd
+LCB2b2ljZSwgdm9pY2UyKQogICAgICAgICAgICByZXR1cm4geyJhdWRpbyI6
+IGF1ZGlvLCAic3VjY2VzcyI6IFRydWV9CiAgICAgICAgZXhjZXB0IEV4Y2Vw
+dGlvbiBhcyBlOgogICAgICAgICAgICByZXR1cm4geyJlcnJvciI6IHN0cihl
+KSwgInN1Y2Nlc3MiOiBGYWxzZX0KICAgIAogICAgIyBkZWYgX2NsZWFuX3Rl
+eHQoc2VsZiwgdGV4dDogc3RyKSAtPiBzdHI6CiAgICAjICAgICAiIiJDbGVh
+biB0ZXh0IGJ5IHJlbW92aW5nIG1hcmtkb3duLCB0YWJsZXMsIGNvZGUgYmxv
+Y2tzLCBhbmQgb3RoZXIgZm9ybWF0dGluZyIiIgogICAgIyAgICAgIyBSZW1v
+dmUgY29kZSBibG9ja3MKICAgICMgICAgIHRleHQgPSByZS5zdWIocidgYGBb
+XHNcU10qP2BgYCcsICcnLCB0ZXh0KQogICAgIyAgICAgdGV4dCA9IHJlLnN1
+YihyJ2BbXmBdKmAnLCAnJywgdGV4dCkKICAgICAgICAKICAgICMgICAgICMg
+UmVtb3ZlIG1hcmtkb3duIGxpbmtzCiAgICAjICAgICB0ZXh0ID0gcmUuc3Vi
+KHInXFsoW15cXV0rKVxdXChbXlwpXStcKScsIHInXDEnLCB0ZXh0KQogICAg
+ICAgIAogICAgIyAgICAgIyBSZW1vdmUgbWFya2Rvd24gZm9ybWF0dGluZwog
+ICAgIyAgICAgdGV4dCA9IHJlLnN1YihyJ1sqXyNdKycsICcnLCB0ZXh0KQog
+ICAgICAgIAogICAgIyAgICAgIyBSZW1vdmUgdGFibGVzIChiYXNpYyBjbGVh
+bnVwKQogICAgIyAgICAgdGV4dCA9IHJlLnN1YihyJ1x8W15cbl0qXHwnLCAn
+JywgdGV4dCkKICAgICAgICAKICAgICMgICAgICMgUmVtb3ZlIGV4dHJhIHdo
+aXRlc3BhY2UgYW5kIG5ld2xpbmVzCiAgICAjICAgICB0ZXh0ID0gcmUuc3Vi
+KHInXG4rJywgJyAnLCB0ZXh0KQogICAgIyAgICAgdGV4dCA9IHJlLnN1Yihy
+J1xzKycsICcgJywgdGV4dCkKICAgICAgICAKICAgICMgICAgICMgUmVtb3Zl
+IFVSTHMKICAgICMgICAgIHRleHQgPSByZS5zdWIocidodHRwcz86Ly9bXlxz
+XSsnLCAnJywgdGV4dCkKICAgICAgICAKICAgICMgICAgICMgUmVtb3ZlIGVt
+YWlsIGFkZHJlc3NlcwogICAgIyAgICAgdGV4dCA9IHJlLnN1YihyJ1xTK0Bc
+UysnLCAnJywgdGV4dCkKICAgICAgICAKICAgICMgICAgIHJldHVybiB0ZXh0
+LnN0cmlwKCkKICAgIAogICAgIyBkZWYgX2NodW5rX3RleHQoc2VsZiwgdGV4
+dDogc3RyKSAtPiBsaXN0W3N0cl06CiAgICAjICAgICAiIiJTcGxpdCB0ZXh0
+IGludG8gbWFuYWdlYWJsZSBjaHVua3MgZm9yIFRUUyIiIgogICAgIyAgICAg
+IyBJZiB0ZXh0IGlzIHNob3J0IGVub3VnaCwgcmV0dXJuIGFzIHNpbmdsZSBj
+aHVuawogICAgIyAgICAgaWYgbGVuKHRleHQpIDw9IDMwMDoKICAgICMgICAg
+ICAgICByZXR1cm4gW3RleHRdCiAgICAgICAgCiAgICAjICAgICAjIFNwbGl0
+IGludG8gc2VudGVuY2VzIGZpcnN0CiAgICAjICAgICBzZW50ZW5jZXMgPSBy
+ZS5zcGxpdChyJyg/PD1bLiE/XSlccysnLCB0ZXh0KQogICAgICAgIAogICAg
+IyAgICAgY2h1bmtzID0gW10KICAgICMgICAgIGN1cnJlbnRfY2h1bmsgPSAi
+IgogICAgICAgIAogICAgIyAgICAgZm9yIHNlbnRlbmNlIGluIHNlbnRlbmNl
+czoKICAgICMgICAgICAgICBzZW50ZW5jZSA9IHNlbnRlbmNlLnN0cmlwKCkK
+ICAgICMgICAgICAgICBpZiBub3Qgc2VudGVuY2U6CiAgICAjICAgICAgICAg
+ICAgIGNvbnRpbnVlCiAgICAgICAgICAgICAgICAKICAgICMgICAgICAgICAj
+IElmIGFkZGluZyB0aGlzIHNlbnRlbmNlIHdvdWxkIG1ha2UgY2h1bmsgdG9v
+IGxvbmcsIHN0YXJ0IG5ldyBjaHVuawogICAgIyAgICAgICAgIGlmIGN1cnJl
+bnRfY2h1bmsgYW5kIGxlbihjdXJyZW50X2NodW5rICsgIiAiICsgc2VudGVu
+Y2UpID4gMzAwOgogICAgIyAgICAgICAgICAgICBjaHVua3MuYXBwZW5kKGN1
+cnJlbnRfY2h1bmsuc3RyaXAoKSkKICAgICMgICAgICAgICAgICAgY3VycmVu
+dF9jaHVuayA9IHNlbnRlbmNlCiAgICAjICAgICAgICAgZWxzZToKICAgICMg
+ICAgICAgICAgICAgY3VycmVudF9jaHVuayArPSAoIiAiIGlmIGN1cnJlbnRf
+Y2h1bmsgZWxzZSAiIikgKyBzZW50ZW5jZQogICAgICAgIAogICAgIyAgICAg
+IyBBZGQgdGhlIGxhc3QgY2h1bmsgaWYgaXQgaGFzIGNvbnRlbnQKICAgICMg
+ICAgIGlmIGN1cnJlbnRfY2h1bmsuc3RyaXAoKToKICAgICMgICAgICAgICBj
+aHVua3MuYXBwZW5kKGN1cnJlbnRfY2h1bmsuc3RyaXAoKSkKICAgICAgICAK
+ICAgICMgICAgIHJldHVybiBjaHVua3MgaWYgY2h1bmtzIGVsc2UgW3RleHRd
