@@ -53,7 +53,7 @@ def turn_off_logging():
 # init
 load_dotenv()
 turn_off_logging()
-
+litellm.modify_params = True # helps fix anthropic tool calls by browser-use
 
 class ModelType(Enum):
     CHAT = "Chat"
