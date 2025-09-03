@@ -170,6 +170,7 @@ docker run -p 50001:80 agent0ai/agent-zero
 ## 🎯 Changelog
 
 ### v0.9.5 - Secrets
+[Release video](https://www.youtube.com/watch?v=VqxUdt7pjd8)
 - Secrets management - agent can use credentials without seeing them
 - Agent can copy paste messages and files without rewriting them
 - LiteLLM global configuration field
