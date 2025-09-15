@@ -46,13 +46,13 @@
                                 <span class="log-btn" x-show="server.has_log"
                                     @click="$store.mcpServersStore.getServerLog(server.name)">Log</span>
 
-                                <!-- Availability toggle (green when active) -->
+                                <!-- Availability toggle (green when active). Keep layout; no extra label. -->
                                 <label class="switch switch-green" style="margin-left:auto;">
                                   <input type="checkbox" :checked="!server.disabled"
-                                         @change="$store.mcpServersStore.toggleServerEnabled(server.name, $event.target.checked)">
+                                         @change="$store.mcpServersStore.toggleServerEnabled(server.name, $event.target.checked)"
+                                         title="Enable/disable this MCP for this A0 instance">
                                   <span class="slider"></span>
                                 </label>
-                                <span class="switch-label" style="margin-left:0.4em;">this A0 instance available</span>
                             </div>
 
                             <div class="server-error-row" x-show="server.error">

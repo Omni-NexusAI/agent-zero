@@ -52,6 +52,14 @@ const model = {
     this.stopStatusCheck();
   },
 
+  _resolveConfigKey(name, cfg) {
+    // Prefer exact match, otherwise try hyphenated variant
+    if (cfg && Object.prototype.hasOwnProperty.call(cfg, name)) return name;
+    const hyph = name.replace(/_/g, "-");
+    if (cfg && Object.prototype.hasOwnProperty.call(cfg, hyph)) return hyph;
+    return name; // fallback
+  },
+
   async startStatusCheck() {
     this.statusCheck = true;
     let firstLoad = true;
@@ -65,12 +73,14 @@ const model = {
   async _statusCheck() {
     const resp = await API.callJsonApi("mcp_servers_status", null);
     if (resp.success) {
+      // Merge disabled flag from backend; if missing, fall back to editor config
       let cfg = {};
       try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) {}
-      const map = (cfg && cfg.mcpServers) ? cfg.mcpServers : {};
-      this.servers = resp.status
-        .map((s) => ({ ...s, disabled: !!(map[s.name] && map[s.name].disabled) }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+      this.servers = (resp.status || []).map((s) => {
+        const key = this._resolveConfigKey(s.name, cfg);
+        const disabledFromCfg = !!(cfg && cfg[key] && cfg[key].disabled);
+        return { ...s, disabled: (typeof s.disabled === 'boolean') ? s.disabled : disabledFromCfg };
+      }).sort((a, b) => a.name.localeCompare(b.name));
     }
   },
 
@@ -78,17 +88,21 @@ const model = {
     try {
       let cfg = {};
       try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) { cfg = {}; }
-      cfg.mcpServers = cfg.mcpServers || {};
-      cfg.mcpServers[name] = cfg.mcpServers[name] || {};
-      cfg.mcpServers[name].disabled = !enabled; // inverse of enabled
+      const key = this._resolveConfigKey(name, cfg);
+      if (!cfg[key] || typeof cfg[key] !== 'object') {
+        alert("Cannot find this MCP in the configuration JSON. Please ensure it exists.");
+        return;
+      }
+      cfg[key].disabled = !enabled; // inside existing block
+
       const formatted = JSON.stringify(cfg, null, 2);
       this.editor.setValue(formatted);
       this.editor.clearSelection();
+
       const resp = await API.callJsonApi("mcp_servers_apply", { mcp_servers: formatted });
       if (resp.success) {
-        this.servers = resp.status
-          .map((s) => ({ ...s, disabled: !!(cfg.mcpServers[s.name] && cfg.mcpServers[s.name].disabled) }))
-          .sort((a, b) => a.name.localeCompare(b.name));
+        // refresh status; backend should now include updated disabled state
+        this.servers = resp.status.sort((a, b) => a.name.localeCompare(b.name));
       }
     } catch (error) {
       console.error("Failed to toggle server:", error);
