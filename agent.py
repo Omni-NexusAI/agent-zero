@@ -1,4 +1,4 @@
-import asyncio
+import asyncio, random, string
 import nest_asyncio
 
 nest_asyncio.apply()
@@ -55,7 +55,7 @@ class AgentContext:
         last_message: datetime | None = None,
     ):
         # build context
-        self.id = id or str(uuid.uuid4())
+        self.id = id or AgentContext.generate_id()
         self.name = name
         self.config = config
         self.log = log or Log.Log()
@@ -88,6 +88,15 @@ class AgentContext:
     @staticmethod
     def all():
         return list(AgentContext._contexts.values())
+
+    @staticmethod
+    def generate_id():
+        def generate_short_id():
+            return ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        while True:
+            short_id = generate_short_id()
+            if short_id not in AgentContext._contexts:
+                return short_id
 
     @classmethod
     def get_notification_manager(cls):
@@ -224,6 +233,7 @@ class AgentConfig:
     profile: str = ""
     memory_subdir: str = ""
     knowledge_subdirs: list[str] = field(default_factory=lambda: ["default", "custom"])
+    browser_http_headers: dict[str, str] = field(default_factory=dict)  # Custom HTTP headers for browser requests
     code_exec_ssh_enabled: bool = True
     code_exec_ssh_addr: str = "localhost"
     code_exec_ssh_port: int = 55022
@@ -325,6 +335,7 @@ class Agent:
                         await self.call_extensions("before_main_llm_call", loop_data=self.loop_data)
 
                         async def reasoning_callback(chunk: str, full: str):
+                            await self.handle_intervention()
                             if chunk == full:
                                 printer.print("Reasoning: ")  # start of reasoning
                             # Pass chunk and full data to extensions for processing
@@ -339,6 +350,7 @@ class Agent:
                             await self.handle_reasoning_stream(stream_data["full"])
 
                         async def stream_callback(chunk: str, full: str):
+                            await self.handle_intervention()
                             # output the agent response stream
                             if chunk == full:
                                 printer.print("Response: ")  # start of response
@@ -509,29 +521,27 @@ class Agent:
         )
         return system_prompt
 
-    def parse_prompt(self, file: str, **kwargs):
-        prompt_dir = files.get_abs_path("prompts")
-        backup_dir = []
+    def parse_prompt(self, _prompt_file: str, **kwargs):
+        dirs = [files.get_abs_path("prompts")]
         if (
             self.config.profile
         ):  # if agent has custom folder, use it and use default as backup
             prompt_dir = files.get_abs_path("agents", self.config.profile, "prompts")
-            backup_dir.append(files.get_abs_path("prompts"))
+            dirs.insert(0, prompt_dir)
         prompt = files.parse_file(
-            files.get_abs_path(prompt_dir, file), _backup_dirs=backup_dir, **kwargs
+            _prompt_file, _directories=dirs, **kwargs
         )
         return prompt
 
     def read_prompt(self, file: str, **kwargs) -> str:
-        prompt_dir = files.get_abs_path("prompts")
-        backup_dir = []
+        dirs = [files.get_abs_path("prompts")]
         if (
             self.config.profile
         ):  # if agent has custom folder, use it and use default as backup
             prompt_dir = files.get_abs_path("agents", self.config.profile, "prompts")
-            backup_dir.append(files.get_abs_path("prompts"))
+            dirs.insert(0, prompt_dir)
         prompt = files.read_prompt_file(
-            files.get_abs_path(prompt_dir, file), _backup_dirs=backup_dir, **kwargs
+            file, _directories=dirs, **kwargs
         )
         prompt = files.remove_code_fences(prompt)
         return prompt
@@ -548,11 +558,7 @@ class Agent:
         self.last_message = datetime.now(timezone.utc)
         # Allow extensions to process content before adding to history
         content_data = {"content": content}
-        try:
-            asyncio.run(self.call_extensions("hist_add_before", content_data=content_data, ai=ai))
-        except Exception as e:
-            # If extension call fails, proceed without modification
-            pass
+        asyncio.run(self.call_extensions("hist_add_before", content_data=content_data, ai=ai))
         return self.history.add_message(ai=ai, content=content_data["content"], tokens=tokens)
 
     def hist_add_user_message(self, message: UserMessage, intervention: bool = False):
@@ -592,11 +598,14 @@ class Agent:
         content = self.parse_prompt("fw.warning.md", message=message)
         return self.hist_add_message(False, content=content)
 
-    def hist_add_tool_result(self, tool_name: str, tool_result: str):
-        content = self.parse_prompt(
-            "fw.tool_result.md", tool_name=tool_name, tool_result=tool_result
-        )
-        return self.hist_add_message(False, content=content)
+    def hist_add_tool_result(self, tool_name: str, tool_result: str, **kwargs):
+        data = {
+            "tool_name": tool_name,
+            "tool_result": tool_result,
+            **kwargs,
+        }
+        asyncio.run(self.call_extensions("hist_add_tool_result", data=data))
+        return self.hist_add_message(False, content=data)
 
     def concat_messages(
         self, messages
@@ -797,6 +806,7 @@ class Agent:
             )
 
     async def handle_reasoning_stream(self, stream: str):
+        await self.handle_intervention()
         await self.call_extensions(
             "reasoning_stream",
             loop_data=self.loop_data,
@@ -804,6 +814,7 @@ class Agent:
         )
 
     async def handle_response_stream(self, stream: str):
+        await self.handle_intervention()
         try:
             if len(stream) < 25:
                 return  # no reason to try

@@ -32,6 +32,16 @@ class State:
 
     def __del__(self):
         self.kill_task()
+        files.delete_dir(self.get_user_data_dir()) # cleanup user data dir
+
+    def get_user_data_dir(self):
+        return str(
+            Path.home()
+            / ".config"
+            / "browseruse"
+            / "profiles"
+            / f"agent_{self.agent.context.id}"
+        )
 
     async def _initialize(self):
         if self.browser_session:
@@ -39,32 +49,28 @@ class State:
 
         # for some reason we need to provide exact path to headless shell, otherwise it looks for headed browser
         pw_binary = ensure_playwright_binary()
-
+                
         self.browser_session = browser_use.BrowserSession(
             browser_profile=browser_use.BrowserProfile(
                 headless=True,
                 disable_security=True,
                 chromium_sandbox=False,
                 accept_downloads=True,
-                downloads_dir=files.get_abs_path("tmp/downloads"),
                 downloads_path=files.get_abs_path("tmp/downloads"),
+                allowed_domains=["*"],
                 executable_path=pw_binary,
                 keep_alive=True,
                 minimum_wait_page_load_time=1.0,
                 wait_for_network_idle_page_load_time=2.0,
                 maximum_wait_page_load_time=10.0,
+                window_size={"width": 1024, "height": 2048},
                 screen={"width": 1024, "height": 2048},
                 viewport={"width": 1024, "height": 2048},
                 args=["--headless=new"],
                 # Use a unique user data directory to avoid conflicts
-                user_data_dir=str(
-                    Path.home()
-                    / ".config"
-                    / "browseruse"
-                    / "profiles"
-                    / f"agent_{self.agent.context.id}"
-                ),
-            )
+                user_data_dir=self.get_user_data_dir(),
+                extra_http_headers=self.agent.config.browser_http_headers or {},
+                )
         )
 
         await self.browser_session.start() if self.browser_session else None
@@ -188,9 +194,10 @@ class State:
 class BrowserAgent(Tool):
 
     async def execute(self, message="", reset="", **kwargs):
-        self.guid = str(uuid.uuid4())
+        self.guid = self.agent.context.generate_id() # short random id
         reset = str(reset).lower().strip() == "true"
         await self.prepare_state(reset=reset)
+        message = SecretsManager.get_instance().mask_values(message, placeholder="<secret>{key}</secret>") # mask any potential passwords passed from A0 to browser-use to browser-use format
         task = self.state.start_task(message) if self.state else None
 
         # wait for browser agent to finish and update progress with timeout
@@ -380,7 +387,7 @@ class BrowserAgent(Tool):
 def get_use_agent_log(use_agent: browser_use.Agent | None):
     result = ["🚦 Starting task"]
     if use_agent:
-        action_results = use_agent.state.history.action_results()
+        action_results = use_agent.state.history.action_results() or []
         short_log = []
         for item in action_results:
             # final results
