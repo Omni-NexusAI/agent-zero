@@ -71,13 +71,11 @@ const model = {
     for (const key of Object.keys(serversMap)) {
       if (normalizeName(key) === target) return key;
     }
-    // Loose compare ignoring tokens
     const loose = normalizeLoose(serverName);
-    let found = null;
     for (const key of Object.keys(serversMap)) {
-      if (normalizeLoose(key) === loose) { found = key; break; }
+      if (normalizeLoose(key) === loose) return key;
     }
-    return found;
+    return null;
   },
 
   _approxMcpServersInsertionLine(rawJson) {
@@ -88,6 +86,19 @@ const model = {
       const line = (head.match(/\n/g) || []).length + 1;
       return line;
     } catch { return null; }
+  },
+
+  _lineOfKey(rawJson, key) {
+    try {
+      const idx = rawJson.indexOf('"' + key.replace(/"/g, '\\"') + '"');
+      if (idx === -1) return null;
+      const head = rawJson.slice(0, idx);
+      return (head.match(/\n/g) || []).length + 1;
+    } catch { return null; }
+  },
+
+  _gotoLine(line) {
+    try { if (line) this.editor.gotoLine(line, 0, true); } catch (_) {}
   },
 
   async startStatusCheck() {
@@ -148,50 +159,51 @@ const model = {
   },
 
   async toggleServerEnabled(name, enabled) {
+    // Reverted: do not auto-add fields; instruct user where to add
     try {
       const parsed = this._parseEditorJsonStrict();
-      if (parsed.error) return; // do not mutate editor on invalid JSON
+      if (parsed.error) return;
       const cfg = parsed.cfg;
+      const raw = this.getEditorValue() || "";
 
-      if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") cfg.mcpServers = {};
+      if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") {
+        const line = this._approxMcpServersInsertionLine(raw);
+        alert(`Missing mcpServers object. Add it${line ? ' near line ' + line : ''} with your servers as keys.`);
+        this._gotoLine(line);
+        return;
+      }
 
-      let key = this._resolveServerKey(name, cfg.mcpServers);
+      const key = this._resolveServerKey(name, cfg.mcpServers);
       if (!key) {
-        // Suggest closest existing key
-        const keys = Object.keys(cfg.mcpServers || {});
-        const nLoose = normalizeLoose(name);
-        const close = keys.find(k => normalizeLoose(k) === nLoose);
-        const suggested = close || name.replace(/_/g, "-");
-        const line = this._approxMcpServersInsertionLine(this.getEditorValue() || "");
-        const want = !enabled;
-        const ok = confirm(
-          `Entry for "${name}" not found in mcpServers.\n\n` +
-          `Add minimal block now as "${suggested}" with { \"disabled\": ${want} }?`
-        );
-        if (ok) {
-          // Only add/merge the single suggested key; keep others intact
-          cfg.mcpServers[suggested] = Object.assign({}, cfg.mcpServers[suggested] || {}, { disabled: want });
-          key = suggested;
-        } else {
-          const hint = line ? ` near line ${line}` : " inside the mcpServers object";
-          alert(
-            `Add the following under mcpServers${hint}:\n\n` +
-            `"${suggested}": { "disabled": ${want} }`
-          );
-          return;
-        }
+        const line = this._approxMcpServersInsertionLine(raw);
+        const suggested = name.replace(/_/g, "-");
+        alert(`Entry for \"${name}\" not found. Under mcpServers${line ? ' near line ' + line : ''}, add:\n\n` +
+              `\"${suggested}\": { \"disabled\": ${!enabled} }`);
+        this._gotoLine(line);
+        return;
       }
 
       if (!cfg.mcpServers[key] || typeof cfg.mcpServers[key] !== "object") {
-        cfg.mcpServers[key] = {};
+        const line = this._lineOfKey(raw, key) || this._approxMcpServersInsertionLine(raw);
+        alert(`Block for \"${key}\" is not an object. Ensure it is an object and add:\n\n` +
+              `\"disabled\": ${!enabled}`);
+        this._gotoLine(line);
+        return;
       }
 
-      cfg.mcpServers[key].disabled = !enabled; // set inside existing server block only
+      if (!Object.prototype.hasOwnProperty.call(cfg.mcpServers[key], 'disabled')) {
+        const line = this._lineOfKey(raw, key);
+        alert(`\"disabled\" field required. Inside \"${key}\" block${line ? ' near line ' + line : ''}, add:\n\n` +
+              `\"disabled\": ${!enabled}`);
+        this._gotoLine(line);
+        return;
+      }
 
+      // Field exists: proceed to toggle and apply
+      cfg.mcpServers[key].disabled = !enabled;
       const formatted = JSON.stringify(cfg, null, 2);
       this.editor.setValue(formatted);
       this.editor.clearSelection();
-
       this.scheduleApply(350);
     } catch (error) {
       console.error("Failed to toggle server:", error);
@@ -213,7 +225,6 @@ const model = {
     if (this.applyInProgress) { this.applyQueued = true; return; }
     if (this.applyTimer) { clearTimeout(this.applyTimer); this.applyTimer = null; }
 
-    // Validate JSON before sending
     const parsed = this._parseEditorJsonStrict();
     if (parsed.error) return;
 
