@@ -73,6 +73,16 @@ const model = {
     return null;
   },
 
+  _approxMcpServersInsertionLine(rawJson) {
+    try {
+      const idx = rawJson.indexOf('"mcpServers"');
+      if (idx === -1) return null;
+      const head = rawJson.slice(0, idx);
+      const line = (head.match(/\n/g) || []).length + 1;
+      return line;
+    } catch { return null; }
+  },
+
   async startStatusCheck() {
     if (this.statusCheck) return;
     this.statusCheck = true;
@@ -82,7 +92,6 @@ const model = {
         await this._statusCheck();
         if (firstLoad) { this.loading = false; firstLoad = false; }
       } else {
-        // Apply has priority; pause polling briefly
         await sleep(200);
       }
       await sleep(3000);
@@ -94,13 +103,11 @@ const model = {
     const reqId = ++this.statusReqId;
     try {
       const resp = await API.callJsonApi("mcp_servers_status", null);
-      // Ignore out-of-order responses
       if (reqId !== this.statusReqId) return;
       if (resp.success) {
         let cfg = {};
         try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) {}
         const serversMap = (cfg && cfg.mcpServers) || {};
-
         this.servers = (resp.status || []).map((s) => {
           const key = this._resolveServerKey(s.name, serversMap);
           const disabledFromCfg = key ? !!(serversMap[key] && serversMap[key].disabled) : false;
@@ -115,7 +122,6 @@ const model = {
   },
 
   scheduleApply(delayMs = 300) {
-    // Debounce repeated toggles
     if (this.applyTimer) clearTimeout(this.applyTimer);
     this.applyTimer = setTimeout(() => {
       this.applyTimer = null;
@@ -129,23 +135,40 @@ const model = {
       try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) { cfg = {}; }
       if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") cfg.mcpServers = {};
 
-      const key = this._resolveServerKey(name, cfg.mcpServers);
+      let key = this._resolveServerKey(name, cfg.mcpServers);
       if (!key) {
-        alert("Cannot find this MCP in the configuration JSON. Please ensure it exists.");
-        return;
+        const suggested = name.replace(/_/g, "-");
+        const line = this._approxMcpServersInsertionLine(this.getEditorValue() || "");
+        const want = !enabled;
+        const ok = confirm(
+          `Entry for "${name}" not found in mcpServers.\n\n` +
+          `Do you want me to add it now as "${suggested}" with { \"disabled\": ${want} }?`
+        );
+        if (ok) {
+          cfg.mcpServers[suggested] = { disabled: want };
+          key = suggested;
+        } else {
+          const hint = line ? ` near line ${line}` : " inside the mcpServers object";
+          alert(
+            `Add the following under mcpServers${hint}:\n\n` +
+            `"${suggested}": { "disabled": ${want} }`
+          );
+          return;
+        }
       }
 
       if (!cfg.mcpServers[key] || typeof cfg.mcpServers[key] !== "object") {
         cfg.mcpServers[key] = {};
       }
 
-      cfg.mcpServers[key].disabled = !enabled; // set inside existing server block only
+      // Auto-add or update disabled
+      cfg.mcpServers[key].disabled = !enabled;
 
       const formatted = JSON.stringify(cfg, null, 2);
       this.editor.setValue(formatted);
       this.editor.clearSelection();
 
-      // Do NOT apply immediately; debounce to avoid races with polling
+      // Debounced apply to avoid races
       this.scheduleApply(350);
     } catch (error) {
       console.error("Failed to toggle server:", error);
@@ -165,11 +188,9 @@ const model = {
 
   async applyNow() {
     if (this.applyInProgress) { this.applyQueued = true; return; }
-    // Cancel pending debounce timer if present
     if (this.applyTimer) { clearTimeout(this.applyTimer); this.applyTimer = null; }
 
     this.applyInProgress = true;
-    // Show busy and pause polling
     const prevLoading = this.loading;
     this.loading = true;
     const prevStatusCheck = this.statusCheck;
@@ -181,7 +202,6 @@ const model = {
       const payload = { mcp_servers: this.getEditorValue() };
       const resp = await API.callJsonApi("mcp_servers_apply", payload);
       if (resp.success && Array.isArray(resp.status)) {
-        // Immediately refresh view with returned status
         let cfg = {};
         try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) {}
         const serversMap = (cfg && cfg.mcpServers) || {};
@@ -198,17 +218,14 @@ const model = {
       alert("Failed to apply MCP servers: " + (error?.message || error));
     } finally {
       this.applyInProgress = false;
-      // Resume polling and ensure UI unblocks
       this.loading = prevLoading && false ? prevLoading : false;
       if (prevStatusCheck) this.startStatusCheck(); else this.statusCheck = false;
     }
 
-    // If more changes queued during apply, run once more
     if (this.applyQueued) { this.applyQueued = false; await this.applyNow(); }
   },
 
   async getServerLog(serverName) {
-    // Show modal immediately with a loading state, then update content
     this.serverLog = "Loading…";
     openModal("settings/mcp/client/mcp-servers-log.html");
     try {
