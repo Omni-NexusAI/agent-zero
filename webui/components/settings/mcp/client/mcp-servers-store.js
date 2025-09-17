@@ -10,6 +10,11 @@ const model = {
   servers: [],
   loading: true,
   statusCheck: false,
+  statusInProgress: false,
+  statusReqId: 0,
+  applyInProgress: false,
+  applyQueued: false,
+  applyTimer: null,
   serverLog: "",
 
   async initialize() {
@@ -69,28 +74,53 @@ const model = {
   },
 
   async startStatusCheck() {
+    if (this.statusCheck) return;
     this.statusCheck = true;
     let firstLoad = true;
     while (this.statusCheck) {
-      await this._statusCheck();
-      if (firstLoad) { this.loading = false; firstLoad = false; }
+      if (!this.applyInProgress) {
+        await this._statusCheck();
+        if (firstLoad) { this.loading = false; firstLoad = false; }
+      } else {
+        // Apply has priority; pause polling briefly
+        await sleep(200);
+      }
       await sleep(3000);
     }
   },
 
   async _statusCheck() {
-    const resp = await API.callJsonApi("mcp_servers_status", null);
-    if (resp.success) {
-      let cfg = {};
-      try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) {}
-      const serversMap = (cfg && cfg.mcpServers) || {};
+    this.statusInProgress = true;
+    const reqId = ++this.statusReqId;
+    try {
+      const resp = await API.callJsonApi("mcp_servers_status", null);
+      // Ignore out-of-order responses
+      if (reqId !== this.statusReqId) return;
+      if (resp.success) {
+        let cfg = {};
+        try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) {}
+        const serversMap = (cfg && cfg.mcpServers) || {};
 
-      this.servers = (resp.status || []).map((s) => {
-        const key = this._resolveServerKey(s.name, serversMap);
-        const disabledFromCfg = key ? !!(serversMap[key] && serversMap[key].disabled) : false;
-        return { ...s, disabled: (typeof s.disabled === "boolean") ? s.disabled : disabledFromCfg };
-      }).sort((a, b) => a.name.localeCompare(b.name));
+        this.servers = (resp.status || []).map((s) => {
+          const key = this._resolveServerKey(s.name, serversMap);
+          const disabledFromCfg = key ? !!(serversMap[key] && serversMap[key].disabled) : false;
+          return { ...s, disabled: (typeof s.disabled === "boolean") ? s.disabled : disabledFromCfg };
+        }).sort((a, b) => a.name.localeCompare(b.name));
+      }
+    } catch (e) {
+      console.error("Status check failed:", e);
+    } finally {
+      this.statusInProgress = false;
     }
+  },
+
+  scheduleApply(delayMs = 300) {
+    // Debounce repeated toggles
+    if (this.applyTimer) clearTimeout(this.applyTimer);
+    this.applyTimer = setTimeout(() => {
+      this.applyTimer = null;
+      this.applyNow();
+    }, delayMs);
   },
 
   async toggleServerEnabled(name, enabled) {
@@ -115,16 +145,8 @@ const model = {
       this.editor.setValue(formatted);
       this.editor.clearSelection();
 
-      const resp = await API.callJsonApi("mcp_servers_apply", { mcp_servers: formatted });
-      if (resp.success && Array.isArray(resp.status)) {
-        // refresh status list; prefer backend disabled but fall back to config
-        const serversMap = cfg.mcpServers || {};
-        this.servers = resp.status.map((s) => {
-          const resolved = this._resolveServerKey(s.name, serversMap);
-          const disabledFromCfg = resolved ? !!(serversMap[resolved] && serversMap[resolved].disabled) : false;
-          return { ...s, disabled: (typeof s.disabled === "boolean") ? s.disabled : disabledFromCfg };
-        }).sort((a, b) => a.name.localeCompare(b.name));
-      }
+      // Do NOT apply immediately; debounce to avoid races with polling
+      this.scheduleApply(350);
     } catch (error) {
       console.error("Failed to toggle server:", error);
       alert("Failed to toggle server: " + (error?.message || error));
@@ -133,14 +155,35 @@ const model = {
 
   async stopStatusCheck() { this.statusCheck = false; },
 
+  async _waitForStatusIdle(timeoutMs = 4000) {
+    const start = Date.now();
+    while (this.statusInProgress) {
+      if (Date.now() - start > timeoutMs) break;
+      await sleep(50);
+    }
+  },
+
   async applyNow() {
-    if (this.loading) return;
+    if (this.applyInProgress) { this.applyQueued = true; return; }
+    // Cancel pending debounce timer if present
+    if (this.applyTimer) { clearTimeout(this.applyTimer); this.applyTimer = null; }
+
+    this.applyInProgress = true;
+    // Show busy and pause polling
+    const prevLoading = this.loading;
     this.loading = true;
+    const prevStatusCheck = this.statusCheck;
+    this.statusCheck = false;
+    await this._waitForStatusIdle();
+
     try {
       scrollModal("mcp-servers-status");
-      const resp = await API.callJsonApi("mcp_servers_apply", { mcp_servers: this.getEditorValue() });
+      const payload = { mcp_servers: this.getEditorValue() };
+      const resp = await API.callJsonApi("mcp_servers_apply", payload);
       if (resp.success && Array.isArray(resp.status)) {
-        const cfg = JSON.parse(this.getEditorValue() || "{}");
+        // Immediately refresh view with returned status
+        let cfg = {};
+        try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) {}
         const serversMap = (cfg && cfg.mcpServers) || {};
         this.servers = resp.status.map((s) => {
           const key = this._resolveServerKey(s.name, serversMap);
@@ -148,11 +191,20 @@ const model = {
           return { ...s, disabled: (typeof s.disabled === "boolean") ? s.disabled : disabledFromCfg };
         }).sort((a, b) => a.name.localeCompare(b.name));
       }
-      this.loading = false;
       await sleep(100);
       scrollModal("mcp-servers-status");
-    } catch (error) { console.error("Failed to apply MCP servers:", error); }
-    this.loading = false;
+    } catch (error) {
+      console.error("Failed to apply MCP servers:", error);
+      alert("Failed to apply MCP servers: " + (error?.message || error));
+    } finally {
+      this.applyInProgress = false;
+      // Resume polling and ensure UI unblocks
+      this.loading = prevLoading && false ? prevLoading : false;
+      if (prevStatusCheck) this.startStatusCheck(); else this.statusCheck = false;
+    }
+
+    // If more changes queued during apply, run once more
+    if (this.applyQueued) { this.applyQueued = false; await this.applyNow(); }
   },
 
   async getServerLog(serverName) {
