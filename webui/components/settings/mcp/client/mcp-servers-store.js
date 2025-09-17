@@ -4,7 +4,6 @@ import sleep from "/js/sleep.js";
 import * as API from "/js/api.js";
 
 const normalizeName = (name) => (name || "").toLowerCase().replace(/[\-_]/g, "");
-const normalizeLoose = (name) => normalizeName(name).replace(/(mcp|server)/g, "");
 
 const model = {
   editor: null,
@@ -33,9 +32,33 @@ const model = {
     this.startStatusCheck();
   },
 
+  _ensureDisabledDefaults(cfg, preferFromStatus = true) {
+    if (!cfg || typeof cfg !== "object") return cfg;
+    if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") return cfg;
+    const map = cfg.mcpServers;
+    const serverStateByKey = {};
+    if (preferFromStatus && Array.isArray(this.servers) && this.servers.length > 0) {
+      for (const s of this.servers) serverStateByKey[normalizeName(s.name)] = !!s.disabled;
+    }
+    for (const key of Object.keys(map)) {
+      const entry = map[key];
+      if (entry && typeof entry === "object" && !Object.prototype.hasOwnProperty.call(entry, "disabled")) {
+        let def = true; // conservative default: disabled when unspecified
+        const stateKey = normalizeName(key);
+        if (preferFromStatus && Object.prototype.hasOwnProperty.call(serverStateByKey, stateKey)) {
+          def = serverStateByKey[stateKey];
+        }
+        entry.disabled = !!def;
+      }
+    }
+    return cfg;
+  },
+
   formatJson() {
     try {
       const parsed = JSON.parse(this.editor.getValue());
+      // Auto-add missing disabled flags
+      this._ensureDisabledDefaults(parsed, true);
       const formatted = JSON.stringify(parsed, null, 2);
       this.editor.setValue(formatted);
       this.editor.clearSelection();
@@ -71,34 +94,7 @@ const model = {
     for (const key of Object.keys(serversMap)) {
       if (normalizeName(key) === target) return key;
     }
-    const loose = normalizeLoose(serverName);
-    for (const key of Object.keys(serversMap)) {
-      if (normalizeLoose(key) === loose) return key;
-    }
     return null;
-  },
-
-  _approxMcpServersInsertionLine(rawJson) {
-    try {
-      const idx = rawJson.indexOf('"mcpServers"');
-      if (idx === -1) return null;
-      const head = rawJson.slice(0, idx);
-      const line = (head.match(/\n/g) || []).length + 1;
-      return line;
-    } catch { return null; }
-  },
-
-  _lineOfKey(rawJson, key) {
-    try {
-      const idx = rawJson.indexOf('"' + key.replace(/"/g, '\\"') + '"');
-      if (idx === -1) return null;
-      const head = rawJson.slice(0, idx);
-      return (head.match(/\n/g) || []).length + 1;
-    } catch { return null; }
-  },
-
-  _gotoLine(line) {
-    try { if (line) this.editor.gotoLine(line, 0, true); } catch (_) {}
   },
 
   async startStatusCheck() {
@@ -121,14 +117,16 @@ const model = {
     const reqId = ++this.statusReqId;
     try {
       const resp = await API.callJsonApi("mcp_servers_status", null);
-      if (reqId !== this.statusReqId) return;
+      if (reqId !== this.statusReqId) return; // ignore stale
       if (resp.success) {
         let cfg = {};
         try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) {}
         const serversMap = (cfg && cfg.mcpServers) || {};
         this.servers = (resp.status || []).map((s) => {
           const key = this._resolveServerKey(s.name, serversMap);
-          const disabledFromCfg = key ? !!(serversMap[key] && serversMap[key].disabled) : false;
+          // If missing in config and no backend disabled info, default to disabled=true
+          const cfgHasDisabled = key && Object.prototype.hasOwnProperty.call(serversMap[key], "disabled");
+          const disabledFromCfg = key ? (cfgHasDisabled ? !!serversMap[key].disabled : true) : true;
           return { ...s, disabled: (typeof s.disabled === "boolean") ? s.disabled : disabledFromCfg };
         }).sort((a, b) => a.name.localeCompare(b.name));
       }
@@ -147,63 +145,25 @@ const model = {
     }, delayMs);
   },
 
-  _parseEditorJsonStrict() {
-    try {
-      const cfg = JSON.parse(this.getEditorValue() || "{}");
-      return { cfg };
-    } catch (e) {
-      console.error("Invalid MCP JSON, refusing to modify:", e);
-      alert("MCP JSON is invalid. Please fix or click Reformat before toggling.\n" + e.message);
-      return { error: e };
-    }
-  },
-
   async toggleServerEnabled(name, enabled) {
-    // Reverted: do not auto-add fields; instruct user where to add
     try {
-      const parsed = this._parseEditorJsonStrict();
-      if (parsed.error) return;
-      const cfg = parsed.cfg;
-      const raw = this.getEditorValue() || "";
-
-      if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") {
-        const line = this._approxMcpServersInsertionLine(raw);
-        alert(`Missing mcpServers object. Add it${line ? ' near line ' + line : ''} with your servers as keys.`);
-        this._gotoLine(line);
-        return;
-      }
+      let cfg = {};
+      try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) { cfg = {}; }
+      if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") cfg.mcpServers = {};
 
       const key = this._resolveServerKey(name, cfg.mcpServers);
       if (!key) {
-        const line = this._approxMcpServersInsertionLine(raw);
-        const suggested = name.replace(/_/g, "-");
-        alert(`Entry for \"${name}\" not found. Under mcpServers${line ? ' near line ' + line : ''}, add:\n\n` +
-              `\"${suggested}\": { \"disabled\": ${!enabled} }`);
-        this._gotoLine(line);
+        alert("Cannot find this MCP in the configuration JSON. Please ensure it exists.");
         return;
       }
 
-      if (!cfg.mcpServers[key] || typeof cfg.mcpServers[key] !== "object") {
-        const line = this._lineOfKey(raw, key) || this._approxMcpServersInsertionLine(raw);
-        alert(`Block for \"${key}\" is not an object. Ensure it is an object and add:\n\n` +
-              `\"disabled\": ${!enabled}`);
-        this._gotoLine(line);
-        return;
-      }
-
-      if (!Object.prototype.hasOwnProperty.call(cfg.mcpServers[key], 'disabled')) {
-        const line = this._lineOfKey(raw, key);
-        alert(`\"disabled\" field required. Inside \"${key}\" block${line ? ' near line ' + line : ''}, add:\n\n` +
-              `\"disabled\": ${!enabled}`);
-        this._gotoLine(line);
-        return;
-      }
-
-      // Field exists: proceed to toggle and apply
+      if (!cfg.mcpServers[key] || typeof cfg.mcpServers[key] !== "object") cfg.mcpServers[key] = {};
       cfg.mcpServers[key].disabled = !enabled;
+
       const formatted = JSON.stringify(cfg, null, 2);
       this.editor.setValue(formatted);
       this.editor.clearSelection();
+
       this.scheduleApply(350);
     } catch (error) {
       console.error("Failed to toggle server:", error);
@@ -225,9 +185,6 @@ const model = {
     if (this.applyInProgress) { this.applyQueued = true; return; }
     if (this.applyTimer) { clearTimeout(this.applyTimer); this.applyTimer = null; }
 
-    const parsed = this._parseEditorJsonStrict();
-    if (parsed.error) return;
-
     this.applyInProgress = true;
     const prevLoading = this.loading;
     this.loading = true;
@@ -236,14 +193,21 @@ const model = {
     await this._waitForStatusIdle();
 
     try {
+      // Ensure missing disabled flags are added before submitting
+      let cfgObj = {};
+      try { cfgObj = JSON.parse(this.getEditorValue() || "{}"); } catch (_) { cfgObj = {}; }
+      this._ensureDisabledDefaults(cfgObj, true);
+      const payloadJson = JSON.stringify(cfgObj, null, 2);
+      this.editor.setValue(payloadJson);
+
       scrollModal("mcp-servers-status");
-      const payload = { mcp_servers: JSON.stringify(parsed.cfg) };
-      const resp = await API.callJsonApi("mcp_servers_apply", payload);
+      const resp = await API.callJsonApi("mcp_servers_apply", { mcp_servers: payloadJson });
       if (resp.success && Array.isArray(resp.status)) {
-        const serversMap = (parsed.cfg && parsed.cfg.mcpServers) || {};
+        const serversMap = (cfgObj && cfgObj.mcpServers) || {};
         this.servers = resp.status.map((s) => {
           const key = this._resolveServerKey(s.name, serversMap);
-          const disabledFromCfg = key ? !!(serversMap[key] && serversMap[key].disabled) : false;
+          const cfgHasDisabled = key && Object.prototype.hasOwnProperty.call(serversMap[key], "disabled");
+          const disabledFromCfg = key ? (cfgHasDisabled ? !!serversMap[key].disabled : true) : true;
           return { ...s, disabled: (typeof s.disabled === "boolean") ? s.disabled : disabledFromCfg };
         }).sort((a, b) => a.name.localeCompare(b.name));
       }
