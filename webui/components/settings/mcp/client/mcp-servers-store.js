@@ -4,6 +4,7 @@ import sleep from "/js/sleep.js";
 import * as API from "/js/api.js";
 
 const normalizeName = (name) => (name || "").toLowerCase().replace(/[\-_]/g, "");
+const normalizeLoose = (name) => normalizeName(name).replace(/(mcp|server)/g, "");
 
 const model = {
   editor: null,
@@ -70,7 +71,13 @@ const model = {
     for (const key of Object.keys(serversMap)) {
       if (normalizeName(key) === target) return key;
     }
-    return null;
+    // Loose compare ignoring tokens
+    const loose = normalizeLoose(serverName);
+    let found = null;
+    for (const key of Object.keys(serversMap)) {
+      if (normalizeLoose(key) === loose) { found = key; break; }
+    }
+    return found;
   },
 
   _approxMcpServersInsertionLine(rawJson) {
@@ -129,23 +136,41 @@ const model = {
     }, delayMs);
   },
 
+  _parseEditorJsonStrict() {
+    try {
+      const cfg = JSON.parse(this.getEditorValue() || "{}");
+      return { cfg };
+    } catch (e) {
+      console.error("Invalid MCP JSON, refusing to modify:", e);
+      alert("MCP JSON is invalid. Please fix or click Reformat before toggling.\n" + e.message);
+      return { error: e };
+    }
+  },
+
   async toggleServerEnabled(name, enabled) {
     try {
-      let cfg = {};
-      try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) { cfg = {}; }
+      const parsed = this._parseEditorJsonStrict();
+      if (parsed.error) return; // do not mutate editor on invalid JSON
+      const cfg = parsed.cfg;
+
       if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") cfg.mcpServers = {};
 
       let key = this._resolveServerKey(name, cfg.mcpServers);
       if (!key) {
-        const suggested = name.replace(/_/g, "-");
+        // Suggest closest existing key
+        const keys = Object.keys(cfg.mcpServers || {});
+        const nLoose = normalizeLoose(name);
+        const close = keys.find(k => normalizeLoose(k) === nLoose);
+        const suggested = close || name.replace(/_/g, "-");
         const line = this._approxMcpServersInsertionLine(this.getEditorValue() || "");
         const want = !enabled;
         const ok = confirm(
           `Entry for "${name}" not found in mcpServers.\n\n` +
-          `Do you want me to add it now as "${suggested}" with { \"disabled\": ${want} }?`
+          `Add minimal block now as "${suggested}" with { \"disabled\": ${want} }?`
         );
         if (ok) {
-          cfg.mcpServers[suggested] = { disabled: want };
+          // Only add/merge the single suggested key; keep others intact
+          cfg.mcpServers[suggested] = Object.assign({}, cfg.mcpServers[suggested] || {}, { disabled: want });
           key = suggested;
         } else {
           const hint = line ? ` near line ${line}` : " inside the mcpServers object";
@@ -161,14 +186,12 @@ const model = {
         cfg.mcpServers[key] = {};
       }
 
-      // Auto-add or update disabled
-      cfg.mcpServers[key].disabled = !enabled;
+      cfg.mcpServers[key].disabled = !enabled; // set inside existing server block only
 
       const formatted = JSON.stringify(cfg, null, 2);
       this.editor.setValue(formatted);
       this.editor.clearSelection();
 
-      // Debounced apply to avoid races
       this.scheduleApply(350);
     } catch (error) {
       console.error("Failed to toggle server:", error);
@@ -190,6 +213,10 @@ const model = {
     if (this.applyInProgress) { this.applyQueued = true; return; }
     if (this.applyTimer) { clearTimeout(this.applyTimer); this.applyTimer = null; }
 
+    // Validate JSON before sending
+    const parsed = this._parseEditorJsonStrict();
+    if (parsed.error) return;
+
     this.applyInProgress = true;
     const prevLoading = this.loading;
     this.loading = true;
@@ -199,12 +226,10 @@ const model = {
 
     try {
       scrollModal("mcp-servers-status");
-      const payload = { mcp_servers: this.getEditorValue() };
+      const payload = { mcp_servers: JSON.stringify(parsed.cfg) };
       const resp = await API.callJsonApi("mcp_servers_apply", payload);
       if (resp.success && Array.isArray(resp.status)) {
-        let cfg = {};
-        try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) {}
-        const serversMap = (cfg && cfg.mcpServers) || {};
+        const serversMap = (parsed.cfg && parsed.cfg.mcpServers) || {};
         this.servers = resp.status.map((s) => {
           const key = this._resolveServerKey(s.name, serversMap);
           const disabledFromCfg = key ? !!(serversMap[key] && serversMap[key].disabled) : false;
