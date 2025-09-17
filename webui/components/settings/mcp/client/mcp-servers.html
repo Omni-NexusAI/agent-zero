@@ -58,8 +58,9 @@
                                 </div>
                             </div>
 
-                            <div class="server-error-row" x-show="server.error">
-                                <span class="server-error" x-text="server.error"></span>
+                            <div class="server-error-row" x-show="server.error || server.disabled">
+                                <span class="server-error server-note" x-show="server.error" x-text="server.error"></span>
+                                <span class="server-disabled server-note" x-show="!server.error && server.disabled">Disabled in config</span>
                             </div>
                         </div>
                     </template>
@@ -87,6 +88,9 @@
     .server-name { font-weight:600; min-width:12em; }
     .tool-count { color: var(--c-fg2); font-size:0.9em; user-select:none; }
     .tool-count { cursor: default; }
+
+    /* legacy small red message style */
+    .server-note { color:#e40138; font-size:0.8em; }
 
     /* Green active switch for MCP availability */
     .switch-green input:checked + .slider { background-color: #00c340; box-shadow: 0 0 0 1px #00c340; }
