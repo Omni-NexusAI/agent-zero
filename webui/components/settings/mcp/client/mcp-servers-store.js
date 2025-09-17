@@ -3,6 +3,8 @@ import { scrollModal } from "/js/modals.js";
 import sleep from "/js/sleep.js";
 import * as API from "/js/api.js";
 
+const normalizeName = (name) => (name || "").toLowerCase().replace(/[\-_]/g, "");
+
 const model = {
   editor: null,
   servers: [],
@@ -50,14 +52,20 @@ const model = {
     const val = this.getEditorValue();
     this.getSettingsFieldConfigJson().value = val;
     this.stopStatusCheck();
+    this.serverLog = ""; // avoid stale modal state on reopen
   },
 
-  _resolveConfigKey(name, cfg) {
-    // Prefer exact match, otherwise try hyphenated variant
-    if (cfg && Object.prototype.hasOwnProperty.call(cfg, name)) return name;
-    const hyph = name.replace(/_/g, "-");
-    if (cfg && Object.prototype.hasOwnProperty.call(cfg, hyph)) return hyph;
-    return name; // fallback
+  _resolveServerKey(serverName, serversMap) {
+    if (!serversMap || typeof serversMap !== "object") return null;
+    const direct = [serverName, serverName.replace(/_/g, "-"), serverName.replace(/-/g, "_")];
+    for (const cand of direct) {
+      if (Object.prototype.hasOwnProperty.call(serversMap, cand)) return cand;
+    }
+    const target = normalizeName(serverName);
+    for (const key of Object.keys(serversMap)) {
+      if (normalizeName(key) === target) return key;
+    }
+    return null;
   },
 
   async startStatusCheck() {
@@ -73,13 +81,14 @@ const model = {
   async _statusCheck() {
     const resp = await API.callJsonApi("mcp_servers_status", null);
     if (resp.success) {
-      // Merge disabled flag from backend; if missing, fall back to editor config
       let cfg = {};
       try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) {}
+      const serversMap = (cfg && cfg.mcpServers) || {};
+
       this.servers = (resp.status || []).map((s) => {
-        const key = this._resolveConfigKey(s.name, cfg);
-        const disabledFromCfg = !!(cfg && cfg[key] && cfg[key].disabled);
-        return { ...s, disabled: (typeof s.disabled === 'boolean') ? s.disabled : disabledFromCfg };
+        const key = this._resolveServerKey(s.name, serversMap);
+        const disabledFromCfg = key ? !!(serversMap[key] && serversMap[key].disabled) : false;
+        return { ...s, disabled: (typeof s.disabled === "boolean") ? s.disabled : disabledFromCfg };
       }).sort((a, b) => a.name.localeCompare(b.name));
     }
   },
@@ -88,21 +97,33 @@ const model = {
     try {
       let cfg = {};
       try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) { cfg = {}; }
-      const key = this._resolveConfigKey(name, cfg);
-      if (!cfg[key] || typeof cfg[key] !== 'object') {
+      if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") cfg.mcpServers = {};
+
+      const key = this._resolveServerKey(name, cfg.mcpServers);
+      if (!key) {
         alert("Cannot find this MCP in the configuration JSON. Please ensure it exists.");
         return;
       }
-      cfg[key].disabled = !enabled; // inside existing block
+
+      if (!cfg.mcpServers[key] || typeof cfg.mcpServers[key] !== "object") {
+        cfg.mcpServers[key] = {};
+      }
+
+      cfg.mcpServers[key].disabled = !enabled; // set inside existing server block only
 
       const formatted = JSON.stringify(cfg, null, 2);
       this.editor.setValue(formatted);
       this.editor.clearSelection();
 
       const resp = await API.callJsonApi("mcp_servers_apply", { mcp_servers: formatted });
-      if (resp.success) {
-        // refresh status; backend should now include updated disabled state
-        this.servers = resp.status.sort((a, b) => a.name.localeCompare(b.name));
+      if (resp.success && Array.isArray(resp.status)) {
+        // refresh status list; prefer backend disabled but fall back to config
+        const serversMap = cfg.mcpServers || {};
+        this.servers = resp.status.map((s) => {
+          const resolved = this._resolveServerKey(s.name, serversMap);
+          const disabledFromCfg = resolved ? !!(serversMap[resolved] && serversMap[resolved].disabled) : false;
+          return { ...s, disabled: (typeof s.disabled === "boolean") ? s.disabled : disabledFromCfg };
+        }).sort((a, b) => a.name.localeCompare(b.name));
       }
     } catch (error) {
       console.error("Failed to toggle server:", error);
@@ -118,9 +139,14 @@ const model = {
     try {
       scrollModal("mcp-servers-status");
       const resp = await API.callJsonApi("mcp_servers_apply", { mcp_servers: this.getEditorValue() });
-      if (resp.success) {
-        this.servers = resp.status;
-        this.servers.sort((a, b) => a.name.localeCompare(b.name));
+      if (resp.success && Array.isArray(resp.status)) {
+        const cfg = JSON.parse(this.getEditorValue() || "{}");
+        const serversMap = (cfg && cfg.mcpServers) || {};
+        this.servers = resp.status.map((s) => {
+          const key = this._resolveServerKey(s.name, serversMap);
+          const disabledFromCfg = key ? !!(serversMap[key] && serversMap[key].disabled) : false;
+          return { ...s, disabled: (typeof s.disabled === "boolean") ? s.disabled : disabledFromCfg };
+        }).sort((a, b) => a.name.localeCompare(b.name));
       }
       this.loading = false;
       await sleep(100);
@@ -130,9 +156,19 @@ const model = {
   },
 
   async getServerLog(serverName) {
-    this.serverLog = "";
-    const resp = await API.callJsonApi("mcp_server_get_log", { server_name: serverName });
-    if (resp.success) { this.serverLog = resp.log; openModal("settings/mcp/client/mcp-servers-log.html"); }
+    // Show modal immediately with a loading state, then update content
+    this.serverLog = "Loading…";
+    openModal("settings/mcp/client/mcp-servers-log.html");
+    try {
+      const resp = await API.callJsonApi("mcp_server_get_log", { server_name: serverName });
+      if (resp.success) {
+        this.serverLog = resp.log && resp.log.trim() ? resp.log : "Log empty";
+      } else {
+        this.serverLog = "Failed to load log.";
+      }
+    } catch (e) {
+      this.serverLog = "Failed to load log: " + (e?.message || e);
+    }
   },
 
   async onToolCountClick(serverName) {

@@ -43,16 +43,19 @@
                                 <span class="tool-count" x-show="server.tool_count > 0"
                                     @click="$store.mcpServersStore.onToolCountClick && $store.mcpServersStore.onToolCountClick(server.name)"
                                     x-text="server.tool_count + ' tools'"></span>
-                                <span class="log-btn" x-show="server.has_log"
-                                    @click="$store.mcpServersStore.getServerLog(server.name)">Log</span>
 
-                                <!-- Availability toggle (green when active). Keep layout; no extra label. -->
-                                <label class="switch switch-green" style="margin-left:auto;">
-                                  <input type="checkbox" :checked="!server.disabled"
-                                         @change="$store.mcpServersStore.toggleServerEnabled(server.name, $event.target.checked)"
-                                         title="Enable/disable this MCP for this A0 instance">
-                                  <span class="slider"></span>
-                                </label>
+                                <div style="margin-left:auto; display:flex; align-items:center; gap:0.6em;">
+                                    <!-- Availability toggle (green when active) -->
+                                    <label class="switch switch-green">
+                                      <input type="checkbox" :checked="!server.disabled"
+                                             @change="$store.mcpServersStore.toggleServerEnabled(server.name, $event.target.checked)"
+                                             title="Enable/disable this MCP for this A0 instance">
+                                      <span class="slider"></span>
+                                    </label>
+
+                                    <span class="log-btn" x-show="server.has_log"
+                                        @click="$store.mcpServersStore.getServerLog(server.name)">Log</span>
+                                </div>
                             </div>
 
                             <div class="server-error-row" x-show="server.error">
