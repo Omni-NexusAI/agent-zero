@@ -22,6 +22,8 @@ chat:
     litellm_provider: openai
     kwargs:
       api_base: https://api.agent-zero.ai/venice/v1
+      venice_parameters:
+        include_venice_system_prompt: false
   anthropic:
     name: Anthropic
     litellm_provider: anthropic
@@ -67,6 +69,8 @@ chat:
     litellm_provider: openai
     kwargs:
       api_base: https://api.venice.ai/api/v1
+      venice_parameters:
+        include_venice_system_prompt: false
   xai:
     name: xAI
     litellm_provider: xai
