@@ -150,18 +150,22 @@ export function _drawMessage(
     }
     headingH4.innerHTML = convertIcons(escapeHTML(heading));
 
-    if (resizeBtns) {
-      let minMaxBtn = headingElement.querySelector(".msg-min-max-btns");
-      if (!minMaxBtn) {
-        minMaxBtn = document.createElement("div");
-        minMaxBtn.classList.add("msg-min-max-btns");
-        minMaxBtn.innerHTML = `
+      if (resizeBtns) {
+        let minMaxBtn = headingElement.querySelector(".msg-min-max-btns");
+        if (!minMaxBtn) {
+          minMaxBtn = document.createElement("div");
+          minMaxBtn.classList.add("msg-min-max-btns");
+          minMaxBtn.innerHTML = `
           <a href="#" class="msg-min-max-btn" @click.prevent="$store.messageResize.minimizeMessageClass('${mainClass}', $event)"><span class="material-symbols-outlined" x-text="$store.messageResize.getSetting('${mainClass}').minimized ? 'expand_content' : 'minimize'"></span></a>
           <a href="#" class="msg-min-max-btn" x-show="!$store.messageResize.getSetting('${mainClass}').minimized" @click.prevent="$store.messageResize.maximizeMessageClass('${mainClass}', $event)"><span class="material-symbols-outlined" x-text="$store.messageResize.getSetting('${mainClass}').maximized ? 'expand' : 'expand_all'"></span></a>
-        `;
-        headingElement.appendChild(minMaxBtn);
+          `;
+          headingElement.appendChild(minMaxBtn);
+        }
+        // Ensure action buttons exist under the header (attach to heading)
+        if (!headingElement.querySelector('.action-buttons')) {
+          addActionButtonsToElement(headingElement);
+        }
       }
-    }
   } else {
     // Remove heading if it exists but heading is null
     const existingHeading = messageDiv.querySelector(".msg-heading");
@@ -218,8 +222,7 @@ export function _drawMessage(
         });
       }
 
-      // Ensure action buttons exist
-      addActionButtonsToElement(bodyDiv);
+      // adjust markdown tables only
       adjustMarkdownRender(contentDiv);
 
     } else {
@@ -243,8 +246,7 @@ export function _drawMessage(
 
       spanElement.innerHTML = convertHTML(content);
 
-      // Ensure action buttons exist
-      addActionButtonsToElement(bodyDiv);
+      // heading already has action buttons
 
     }
   } else {
@@ -419,7 +421,10 @@ export function drawMessageUser(
     spanElement.innerHTML = escapeHTML(content);
     textDiv.appendChild(spanElement);
 
-    addActionButtonsToElement(textDiv);
+    // Ensure action buttons exist under heading, not inside the text area
+    if (!headingElement.querySelector('.action-buttons')) {
+      addActionButtonsToElement(headingElement);
+    }
     messageDiv.appendChild(textDiv);
   }
 
