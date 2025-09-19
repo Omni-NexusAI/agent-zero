@@ -86,8 +86,12 @@
     .server-main-row { display:flex; align-items:center; gap:0.8em; width:100%; }
     .status-dot { display:flex; align-items:center; justify-content:center; }
     .server-name { font-weight:600; min-width:12em; }
-    .tool-count { color: var(--c-fg2); font-size:0.9em; user-select:none; }
-    .tool-count { cursor: default; }
+    .tool-count { color: var(--c-fg2); font-size:0.9em; user-select:none; cursor:pointer; opacity:0.85; transition: color .15s ease, opacity .15s ease; }
+    .tool-count:hover { color: var(--c-fg); opacity:1; }
+
+    /* Make the Log text look and behave like a button */
+    .log-btn { font-size:0.9em; cursor:pointer; user-select:none; color: var(--c-fg2); opacity:0.85; transition: color .15s ease, opacity .15s ease; }
+    .log-btn:hover { color: var(--c-fg); opacity:1; }
 
     /* legacy small red message style */
     .server-note { color:#e40138; font-size:0.8em; }
