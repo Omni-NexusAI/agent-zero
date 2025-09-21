@@ -1,94 +1,89 @@
-# api/synthesize.py
+IyBhcGkvc3ludGhlc2l6ZS5weQoKZnJvbSBweXRob24uaGVscGVycy5hcGkg
+aW1wb3J0IEFwaUhhbmRsZXIsIFJlcXVlc3QsIFJlc3BvbnNlCgpmcm9tIHB5
+dGhvbi5oZWxwZXJzIGltcG9ydCBydW50aW1lLCBzZXR0aW5ncywga29rb3Jv
+X3R0cwoKY2xhc3MgU3ludGhlc2l6ZShBcGlIYW5kbGVyKToKICAgIGFzeW5j
+IGRlZiBwcm9jZXNzKHNlbGYsIGlucHV0OiBkaWN0LCByZXF1ZXN0OiBSZXF1
+ZXN0KSAtPiBkaWN0IHwgUmVzcG9uc2U6CiAgICAgICAgdGV4dCA9IGlucHV0
+LmdldCgidGV4dCIsICIiKQogICAgICAgIGN0eGlkID0gaW5wdXQuZ2V0KCJj
+dHhpZCIsICIiKQogICAgICAgIHNwZWVkID0gaW5wdXQuZ2V0KCJzcGVlZCIp
+CiAgICAgICAgCiAgICAgICAgY29udGV4dCA9IHNlbGYuZ2V0X2NvbnRleHQo
+Y3R4aWQpCiAgICAgICAgaWYgbm90IGF3YWl0IGtva29yb190dHMuaXNfZG93
+bmxvYWRlZCgpOgogICAgICAgICAgICBjb250ZXh0LmxvZy5sb2codHlwZT0i
+aW5mbyIsIGNvbnRlbnQ9Iktva29ybyBUVFMgbW9kZWwgaXMgY3VycmVudGx5
+IGJlaW5nIGluaXRpYWxpemVkLCBwbGVhc2Ugd2FpdC4uLiIpCgogICAgICAg
+IHRyeToKICAgICAgICAgICAgIyAjIENsZWFuIGFuZCBjaHVuayB0ZXh0IGZv
+ciBsb25nIHJlc3BvbnNlcwogICAgICAgICAgICAjIGNsZWFuZWRfdGV4dCA9
+IHNlbGYuX2NsZWFuX3RleHQodGV4dCkKICAgICAgICAgICAgIyBjaHVua3Mg
+PSBzZWxmLl9jaHVua190ZXh0KGNsZWFuZWRfdGV4dCkKICAgICAgICAgICAg
+CiAgICAgICAgICAgICMgaWYgbGVuKGNodW5rcykgPT0gMToKICAgICAgICAg
+ICAgIyAgICAgIyBTaW5nbGUgY2h1bmsgLSByZXR1cm4gYXMgYmVmb3JlCiAg
+ICAgICAgICAgICMgICAgIGF1ZGlvID0gYXdhaXQga29rb3JvX3R0cy5zeW50
+aGVzaXplX3NlbnRlbmNlcyhjaHVua3MpCiAgICAgICAgICAgICMgICAgIHJl
 
-from python.helpers.api import ApiHandler, Request, Response
+dHVybiB7ImF1ZGlvIjogYXVkaW8sICJzdWNjZXNzIjogVHJ1ZX0KICAgICAg
+ICAgICAgIyBlbHNlOgogICAgICAgICAgICAjICAgICAjIE11bHRpcGxlIGNo
 
-from python.helpers import runtime, settings, kokoro_tts
+dW5rcyAtIHJldHVybiBhcyBzZXF1ZW5jZQogICAgICAgICAgICAjICAgICBh
 
-class Synthesize(ApiHandler):
-    async def process(self, input: dict, request: Request) -> dict | Response:
-        text = input.get("text", "")
-        # ctxid = input.get("ctxid", "")
-        
-        # context = self.get_context(ctxid)
-        # if not await kokoro_tts.is_downloaded():
-        #     context.log.log(type="info", content="Kokoro TTS model is currently being initialized, please wait...")
+dWRpb19wYXJ0cyA9IFtdCiAgICAgICAgICAgICMgICAgIGZvciBjaHVuayBp
+biBjaHVua3M6CiAgICAgICAgICAgICMgICAgICAgICBjaHVua19hdWRpbyA9
+IGF3YWl0IGtva29yb190dHMuc3ludGhlc2l6ZV9zZW50ZW5jZXMoW2NodW5r
+XSkKICAgICAgICAgICAgIyAgICAgICAgIGF1ZGlvX3BhcnRzLmFwcGVuZChj
+aHVua19hdWRpbykKICAgICAgICAgICAgIyAgICAgcmV0dXJuIHsiYXVkaW9f
+cGFydHMiOiBhdWRpb19wYXJ0cywgInN1Y2Nlc3MiOiBUcnVlfQoKICAgICAg
+ICAgICAgIyBhdWRpbyBpcyBjaHVua2VkIG9uIHRoZSBmcm9udGVuZCBmb3Ig
+YmV0dGVyIGZsb3cKICAgICAgICAgICAgYXVkaW8gPSBhd2FpdCBrb2tvcm9f
+dHRzLnN5bnRoZXNpemVfc2VudGVuY2VzKFt0ZXh0XSwgc3BlZWQ9c3BlZWQp
+CiAgICAgICAgICAgIHJldHVybiB7ImF1ZGlvIjogYXVkaW8sICJzdWNjZXNz
+IjogVHJ1ZX0KICAgICAgICBleGNlcHQgRXhjZXB0aW9uIGFzIGU6CiAgICAg
+ICAgICAgIHJldHVybiB7ImVycm9yIjogc3RyKGUpLCAic3VjY2VzcyI6IEZh
+bHNlfQogICAgCiAgICAjIGRlZiBfY2xlYW5fdGV4dChzZWxmLCB0ZXh0OiBz
+dHIpIC0+IHN0cjoKICAgICMgICAgICIiIkNsZWFuIHRleHQgYnkgcmVtb3Zp
+bmcgbWFya2Rvd24sIHRhYmxlcywgY29kZSBibG9ja3MsIGFuZCBvdGhlciBm
+b3JtYXR0aW5nIiIiCiAgICAjICAgICAjIFJlbW92ZSBjb2RlIGJsb2Nrcwog
+ICAgIyAgICAgdGV4dCA9IHJlLnN1YihyJ2BgYFtcc1xTXSo/YGBgJywgJycs
+IHRleHQpCiAgICAjICAgICB0ZXh0ID0gcmUuc3ViKHInYFteYF0qYCcsICcn
+LCB0ZXh0KQogICAgICAgIAogICAgIyAgICAgIyBSZW1vdmUgbWFya2Rvd24g
+bGlua3MKICAgICMgICAgIHRleHQgPSByZS5zdWIocidcWyhbXlxdXSspXF1c
+KFteXCldK1wpJywgcidcMScsIHRleHQpCiAgICAgICAgCiAgICAjICAgICAj
+IFJlbW92ZSBtYXJrZG93biBmb3JtYXR0aW5nCiAgICAjICAgICB0ZXh0ID0g
+cmUuc3ViKHInWypfI10rJywgJycsIHRleHQpCiAgICAgICAgCiAgICAjICAg
+ICAjIFJlbW92ZSB0YWJsZXMgKGJhc2ljIGNsZWFudXApCiAgICAjICAgICB0
+ZXh0ID0gcmUuc3ViKHInXHxbXlxuXSpcfCcsICcnLCB0ZXh0KQogICAgICAg
+IAogICAgIyAgICAgIyBSZW1vdmUgZXh0cmEgd2hpdGVzcGFjZSBhbmQgbmV3
+bGluZXMKICAgICMgICAgIHRleHQgPSByZS5zdWIocidcbisnLCAnICcsIHRl
 
-        try:
-            # # Clean and chunk text for long responses
-            # cleaned_text = self._clean_text(text)
-            # chunks = self._chunk_text(cleaned_text)
-            
-            # if len(chunks) == 1:
-            #     # Single chunk - return as before
-            #     audio = await kokoro_tts.synthesize_sentences(chunks)
-            #     return {"audio": audio, "success": True}
-            # else:
-            #     # Multiple chunks - return as sequence
-            #     audio_parts = []
-            #     for chunk in chunks:
-            #         chunk_audio = await kokoro_tts.synthesize_sentences([chunk])
-            #         audio_parts.append(chunk_audio)
-            #     return {"audio_parts": audio_parts, "success": True}
+eHQpCiAgICAjICAgICB0ZXh0ID0gcmUuc3ViKHInXHMrJywgJyAnLCB0ZXh0
+KQogICAgICAgIAogICAgIyAgICAgIyBSZW1vdmUgVVJMcwogICAgIyAgICAg
 
-            # audio is chunked on the frontend for better flow
-            audio = await kokoro_tts.synthesize_sentences([text])
-            return {"audio": audio, "success": True}
-        except Exception as e:
-            return {"error": str(e), "success": False}
-    
-    # def _clean_text(self, text: str) -> str:
-    #     """Clean text by removing markdown, tables, code blocks, and other formatting"""
-    #     # Remove code blocks
-    #     text = re.sub(r'```[\s\S]*?```', '', text)
-    #     text = re.sub(r'`[^`]*`', '', text)
-        
-    #     # Remove markdown links
-    #     text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
-        
-    #     # Remove markdown formatting
-    #     text = re.sub(r'[*_#]+', '', text)
-        
-    #     # Remove tables (basic cleanup)
-    #     text = re.sub(r'\|[^\n]*\|', '', text)
-        
-    #     # Remove extra whitespace and newlines
-    #     text = re.sub(r'\n+', ' ', text)
-    #     text = re.sub(r'\s+', ' ', text)
-        
-    #     # Remove URLs
-    #     text = re.sub(r'https?://[^\s]+', '', text)
-        
-    #     # Remove email addresses
-    #     text = re.sub(r'\S+@\S+', '', text)
-        
-    #     return text.strip()
-    
-    # def _chunk_text(self, text: str) -> list[str]:
-    #     """Split text into manageable chunks for TTS"""
-    #     # If text is short enough, return as single chunk
-    #     if len(text) <= 300:
-    #         return [text]
-        
-    #     # Split into sentences first
-    #     sentences = re.split(r'(?<=[.!?])\s+', text)
-        
-    #     chunks = []
-    #     current_chunk = ""
-        
-    #     for sentence in sentences:
-    #         sentence = sentence.strip()
-    #         if not sentence:
-    #             continue
-                
-    #         # If adding this sentence would make chunk too long, start new chunk
-    #         if current_chunk and len(current_chunk + " " + sentence) > 300:
-    #             chunks.append(current_chunk.strip())
-    #             current_chunk = sentence
-    #         else:
-    #             current_chunk += (" " if current_chunk else "") + sentence
-        
-    #     # Add the last chunk if it has content
-    #     if current_chunk.strip():
-    #         chunks.append(current_chunk.strip())
-        
-    #     return chunks if chunks else [text]
+dGV4dCA9IHJlLnN1YihyJ2h0dHBzPzovL1teXHNdKycsICcnLCB0ZXh0KQog
+ICAgICAgIAogICAgIyAgICAgIyBSZW1vdmUgZW1haWwgYWRkcmVzc2VzCiAg
+ICAjICAgICB0ZXh0ID0gcmUuc3ViKHInXFMrQFxTKycsICcnLCB0ZXh0KQog
+ICAgICAgIAogICAgIyAgICAgcmV0dXJuIHRleHQuc3RyaXAoKQogICAgCiAg
+ICAjIGRlZiBfY2h1bmtfdGV4dChzZWxmLCB0ZXh0OiBzdHIpIC0+IGxpc3Rb
+c3RyXToKICAgICMgICAgICIiIlNwbGl0IHRleHQgaW50byBtYW5hZ2VhYmxl
+IGNodW5rcyBmb3IgVFRTIiIiCiAgICAjICAgICAjIElmIHRleHQgaXMgc2hv
+cnQgZW5vdWdoLCByZXR1cm4gYXMgc2luZ2xlIGNodW5rCiAgICAjICAgICBp
+ZiBsZW4odGV4dCkgPD0gMzAwOgogICAgIyAgICAgICAgIHJldHVybiBbdGV4
+dF0KICAgICAgICAKICAgICMgICAgICMgU3BsaXQgaW50byBzZW50ZW5jZXMg
+Zmlyc3QKICAgICMgICAgIHNlbnRlbmNlcyA9IHJlLnNwbGl0KHInKD88PVsu
+IT9dKVxzKycsIHRleHQpCiAgICAgICAgCiAgICAjICAgICBjaHVua3MgPSBb
+XQogICAgIyAgICAgY3VycmVudF9jaHVuayA9ICIiCiAgICAgICAgCiAgICAj
+ICAgICBmb3Igc2VudGVuY2UgaW4gc2VudGVuY2VzOgogICAgIyAgICAgICAg
+IHNlbnRlbmNlID0gc2VudGVuY2Uuc3RyaXAoKQogICAgIyAgICAgICAgIGlm
+IG5vdCBzZW50ZW5jZToKICAgICMgICAgICAgICAgICAgY29udGludWUKICAg
+ICAgICAgICAgICAgIAogICAgIyAgICAgICAgICMgSWYgYWRkaW5nIHRoaXMg
+c2VudGVuY2Ugd291bGQgbWFrZSBjaHVuayB0b28gbG9uZywgc3RhcnQgbmV3
+IGNodW5rCiAgICAjICAgICAgICAgaWYgY3VycmVudF9jaHVuayBhbmQgbGVu
+KGN1cnJlbnRfY2h1bmsgKyAiICIgKyBzZW50ZW5jZSkgPiAzMDA6CiAgICAj
+ICAgICAgICAgICAgIGNodW5rcy5hcHBlbmQoY3VycmVudF9jaHVuay5zdHJp
+cCgpKQogICAgIyAgICAgICAgICAgICBjdXJyZW50X2NodW5rID0gc2VudGVu
+Y2UKICAgICMgICAgICAgICBlbHNlOgogICAgIyAgICAgICAgICAgICBjdXJy
+ZW50X2NodW5rICs9ICgiICIgaWYgY3VycmVudF9jaHVuayBlbHNlICIiKSAr
+IHNlbnRlbmNlCiAgICAgICAgCiAgICAjICAgICAjIEFkZCB0aGUgbGFzdCBj
+
+aHVuayBpZiBpdCBoYXMgY29udGVudAogICAgIyAgICAgaWYgY3VycmVudF9j
+
+aHVuay5zdHJpcCgpOgogICAgIyAgICAgICAgIGNodW5rcy5hcHBlbmQoY3Vy
+cmVudF9jaHVuay5zdHJpcCgpKQogICAgICAgIAogICAgIyAgICAgcmV0dXJu
+IGNodW5rcyBpZiBjaHVua3MgZWxzZSBbdGV4dF0=

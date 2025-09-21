@@ -31,6 +31,10 @@ When you input and save your MCP server details in the UI, these settings are wr
 
 *   `tmp/settings.json`
 
+### Enabling or Disabling Servers
+
+Each server listed in the settings UI has a toggle next to its name. Use this control to enable or disable a server without editing the JSON manually. Toggling updates the underlying configuration and immediately refreshes the server status.
+
 ### The `mcp_servers` Setting in `tmp/settings.json`
 
 Within `tmp/settings.json`, the MCP servers are defined under the `"mcp_servers"` key.

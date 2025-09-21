@@ -1,127 +1,170 @@
-# kokoro_tts.py
+IyBrb2tvcm9fdHRzLnB5CgppbXBvcnQgYmFzZTY0CmltcG9ydCBpbwppbXBv
+cnQgd2FybmluZ3MKaW1wb3J0IGFzeW5jaW8KaW1wb3J0IG9zCmltcG9ydCBz
+b3VuZGZpbGUgYXMgc2YKZnJvbSBweXRob24uaGVscGVycyBpbXBvcnQgcnVu
+dGltZQpmcm9tIHB5dGhvbi5oZWxwZXJzLnByaW50X3N0eWxlIGltcG9ydCBQ
+cmludFN0eWxlCgp3YXJuaW5ncy5maWx0ZXJ3YXJuaW5ncygiaWdub3JlIiwg
+Y2F0ZWdvcnk9RnV0dXJlV2FybmluZykKd2FybmluZ3MuZmlsdGVyd2Fybmlu
+Z3MoImlnbm9yZSIsIGNhdGVnb3J5PVVzZXJXYXJuaW5nKQoKX3BpcGVsaW5l
+ID0gTm9uZQpfdm9pY2UgPSAiYW1fcHVjayxhbV9vbnl4IgoKCmRlZiBfdmFs
+aWRhdGVfc3BlZWQodmFsdWU6IGZsb2F0IHwgc3RyKSAtPiBmbG9hdDoKICAg
+ICIiIlZhbGlkYXRlIGFuZCBjb252ZXJ0IGEgc3BlZWQgdmFsdWUgdG8gYGBm
+bG9hdGBgLgoKICAgIFBhcmFtZXRlcnMKICAgIC0tLS0tLS0tLS0KICAgIHZh
+bHVlOgogICAgICAgIFRoZSBzcGVlZCBhcyBhIGBgZmxvYXRgYCBvciBzdHJp
+bmcgcmVwcmVzZW50YXRpb24uCgogICAgUmV0dXJucwogICAgLS0tLS0tLQog
+ICAgZmxvYXQKICAgICAgICBUaGUgdmFsaWRhdGVkIHNwZWVkIHZhbHVlLgoK
+ICAgIFJhaXNlcwogICAgLS0tLS0tCiAgICBWYWx1ZUVycm9yCiAgICAgICAg
+SWYgdGhlIHZhbHVlIGNhbm5vdCBiZSBjb252ZXJ0ZWQgdG8gYGBmbG9hdGBg
+IG9yIGlzIG5vdCBwb3NpdGl2ZS4KICAgICIiIgoKICAgIHRyeToKICAgICAg
+ICBzcGVlZCA9IGZsb2F0KHZhbHVlKQogICAgZXhjZXB0IChUeXBlRXJyb3Is
+IFZhbHVlRXJyb3IpIGFzIGV4YzoKICAgICAgICByYWlzZSBWYWx1ZUVycm9y
+KGYiSW52YWxpZCBLb2tvcm8gVFRTIHNwZWVkICd7dmFsdWV9JyIpIGZyb20g
+ZXhjCiAgICBpZiBzcGVlZCA8PSAwOgogICAgICAgIHJhaXNlIFZhbHVlRXJy
+b3IoIktva29ybyBUVFMgc3BlZWQgbXVzdCBiZSBwb3NpdGl2ZSIpCiAgICBy
+ZXR1cm4gc3BlZWQKCgp0cnk6CiAgICBfc3BlZWQgPSBfdmFsaWRhdGVfc3Bl
+ZWQob3MuZ2V0ZW52KCJLT0tPUk9fVFRTX1NQRUVEIiwgIjEuMSIpKQpleGNl
+cHQgVmFsdWVFcnJvcjoKICAgIF9zcGVlZCA9IDEuMQoKaXNfdXBkYXRpbmdf
+bW9kZWwgPSBGYWxzZQoKCmRlZiBzZXRfc3BlZWQoc3BlZWQ6IGZsb2F0IHwg
+c3RyKSAtPiBOb25lOgogICAgIiIiU2V0IHRoZSBkZWZhdWx0IHN5bnRoZXNp
+cyBzcGVlZCBmb3IgS29rb3JvIFRUUy4iIiIKCiAgICBnbG9iYWwgX3NwZWVk
+CiAgICBfc3BlZWQgPSBfdmFsaWRhdGVfc3BlZWQoc3BlZWQpCgoKZGVmIF9y
+ZXNvbHZlX2RldmljZShkZXZpY2U6IHN0ciB8IE5vbmUpIC0+IHN0ciB8IE5v
+bmU6CiAgICAiIiJSZXR1cm4gYSBub3JtYWxpc2VkIGRldmljZSBzdHJpbmcg
+b3IgYGBOb25lYGAgZm9yIGF1dG8tc2VsZWN0aW9uLgoKICAgIE9yZGVyIG9m
+IHByZWNlZGVuY2U6IGV4cGxpY2l0IGBgZGV2aWNlYGAgYXJndW1lbnQsIGVu
+dmlyb25tZW50IHZhcmlhYmxlCiAgICBgYEtPS09ST19UVFNfREVWSUNFYGAs
+IHRoZW4gYXV0b21hdGljIGRldmljZSBzZWxlY3Rpb24gaW5zaWRlIGBgS1Bp
+cGVsaW5lYGAuCiAgICBTdXBwb3J0ZWQgdmFsdWVzIGFyZSBgYCJjcHUiYGAg
+YW5kIGBgImN1ZGEiYGAgKG9yIGBgImdwdSJgYCkuCiAgICAiIiIKCiAgICBp
+ZiBkZXZpY2UgaXMgTm9uZToKICAgICAgICBkZXZpY2UgPSBvcy5nZXRlbnYo
+IktPS09ST19UVFNfREVWSUNFIikKCiAgICBpZiBub3QgZGV2aWNlOgogICAg
+ICAgIHJldHVybiBOb25lCgogICAgZGV2aWNlID0gZGV2aWNlLnN0cmlwKCku
+bG93ZXIoKQogICAgaWYgZGV2aWNlIGluIHsiY3VkYSIsICJncHUifToKICAg
+ICAgICByZXR1cm4gImN1ZGEiCiAgICBpZiBkZXZpY2UgPT0gImNwdSI6CiAg
+ICAgICAgcmV0dXJuICJjcHUiCiAgICByYWlzZSBWYWx1ZUVycm9yKGYiSW52
+YWxpZCBLb2tvcm8gZGV2aWNlICd7ZGV2aWNlfSciKQoKCmRlZiBfYmxlbmRf
 
-import base64
-import io
-import warnings
-import asyncio
-import soundfile as sf
-from python.helpers import runtime
-from python.helpers.print_style import PrintStyle
-from python.helpers.notification import NotificationManager, NotificationType, NotificationPriority
+dm9pY2Vfc3R5bGUoc3BlYzogc3RyKSAtPiBsaXN0W3R1cGxlW3N0ciwgZmxv
+YXRdXToKICAgICIiIlBhcnNlIGEgdm9pY2UgYmxlbmQgc3BlY2lmaWNhdGlv
+biBhbmQgdmFsaWRhdGUgd2VpZ2h0cy4KCiAgICBUaGUgc3BlY2lmaWNhdGlv
+biBpcyBhIGNvbW1hIHNlcGFyYXRlZCBsaXN0IHdoZXJlIGVhY2ggZW50cnkg
+aXMgYSB2b2ljZQogICAgbmFtZSBvcHRpb25hbGx5IGZvbGxvd2VkIGJ5IGBg
+OndlaWdodGBgLiAgTWlzc2luZyB3ZWlnaHRzIGRlZmF1bHQgdG8KICAgIGBg
+MS4wYGAuICBUaGUgcmVzdWx0aW5nIHdlaWdodHMgYXJlIG5vcm1hbGlzZWQg
+c28gdGhhdCB0aGV5IHN1bSB0byBgYDFgYC4KCiAgICBQYXJhbWV0ZXJzCiAg
+ICAtLS0tLS0tLS0tCiAgICBzcGVjOgogICAgICAgIEJsZW5kIHNwZWNpZmlj
+YXRpb24sIGUuZy4gYGAiYW1fcHVjazowLjcsYW1fb255eDowLjMiYGAuCgog
+ICAgUmV0dXJucwogICAgLS0tLS0tLQogICAgbGlzdFt0dXBsZVtzdHIsIGZs
+b2F0XV0KICAgICAgICBBIGxpc3Qgb2YgYGAodm9pY2UsIG5vcm1hbGlzZWRf
 
-warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=UserWarning)
+d2VpZ2h0KWBgIHBhaXJzLgoKICAgIFJhaXNlcwogICAgLS0tLS0tCiAgICBW
+YWx1ZUVycm9yCiAgICAgICAgSWYgYW55IHdlaWdodCBpcyBuZWdhdGl2ZSwg
+dGhlIHN1bSBvZiB3ZWlnaHRzIGlzIHplcm8sIG9yIHRoZQogICAgICAgIHNw
 
-_pipeline = None
-_voice = "am_puck,am_onyx"
-_speed = 1.1
-is_updating_model = False
+eWNpZmljYXRpb24gY2Fubm90IGJlIHBhcnNlZC4KICAgICIiIgoKICAgIHZv
+aWNlczogbGlzdFtzdHJdID0gW10KICAgIHdlaWdodHM6IGxpc3RbZmxvYXRd
+ID0gW10KCiAgICBmb3IgcGFydCBpbiBzcGVjLnNwbGl0KCcsJyk6CiAgICAg
+ICAgcGFydCA9IHBhcnQuc3RyaXAoKQogICAgICAgIGlmIG5vdCBwYXJ0Ogog
+ICAgICAgICAgICBjb250aW51ZQogICAgICAgIGlmICc6JyBpbiBwYXJ0Ogog
+ICAgICAgICAgICBuYW1lLCB3ZWlnaHRfc3RyID0gcGFydC5zcGxpdCgnOics
+IDEpCiAgICAgICAgICAgIHRyeToKICAgICAgICAgICAgICAgIHdlaWdodCA9
+IGZsb2F0KHdlaWdodF9zdHIpCiAgICAgICAgICAgIGV4Y2VwdCBWYWx1ZUVy
+cm9yIGFzIGV4YzoKICAgICAgICAgICAgICAgIHJhaXNlIFZhbHVlRXJyb3Io
+CiAgICAgICAgICAgICAgICAgICAgZiJJbnZhbGlkIHdlaWdodCAne3dlaWdo
 
+dF9zdHJ9JyBpbiBibGVuZCBzcGVjaWZpY2F0aW9uOiAne3NwZWN9JyIKICAg
+ICAgICAgICAgICAgICkgZnJvbSBleGMKICAgICAgICBlbHNlOgogICAgICAg
+ICAgICBuYW1lID0gcGFydAogICAgICAgICAgICB3ZWlnaHQgPSAxLjAKICAg
+ICAgICB2b2ljZXMuYXBwZW5kKG5hbWUuc3RyaXAoKSkKICAgICAgICB3ZWln
+aHRzLmFwcGVuZCh3ZWlnaHQpCgogICAgaWYgbm90IHZvaWNlczoKICAgICAg
+ICByYWlzZSBWYWx1ZUVycm9yKCJObyB2b2ljZXMgc3BlY2lmaWVkIGZvciBi
+bGVuZCIpCiAgICBpZiBhbnkodyA8IDAgZm9yIHcgaW4gd2VpZ2h0cyk6CiAg
+ICAgICAgcmFpc2UgVmFsdWVFcnJvcigiVm9pY2UgYmxlbmQgd2VpZ2h0cyBt
+dXN0IGJlIG5vbi1uZWdhdGl2ZSIpCiAgICB0b3RhbCA9IHN1bSh3ZWlnaHRz
+KQogICAgaWYgdG90YWwgPT0gMDoKICAgICAgICByYWlzZSBWYWx1ZUVycm9y
+KCJWb2ljZSBibGVuZCB3ZWlnaHRzIG11c3Qgc3VtIHRvIGEgcG9zaXRpdmUg
+bnVtYmVyIikKCiAgICBub3JtYWxpc2VkID0gW3cgLyB0b3RhbCBmb3IgdyBp
+biB3ZWlnaHRzXQogICAgcmV0dXJuIGxpc3QoemlwKHZvaWNlcywgbm9ybWFs
+aXNlZCkpCgoKYXN5bmMgZGVmIHByZWxvYWQoZGV2aWNlOiBzdHIgfCBOb25l
+ID0gTm9uZSk6CiAgICAiIiJQcmVsb2FkIHRoZSBLb2tvcm8gVFRTIG1vZGVs
+IG9uIHRoZSByZXF1ZXN0ZWQgZGV2aWNlLgoKICAgIGBgZGV2aWNlYGAgbWF5
+IGJlIGBgImNwdSJgYCBvciBgYCJjdWRhImBgOyBpZiBvbWl0dGVkIGl0IGZh
+bGxzIGJhY2sgdG8gdGhlCiAgICBgYEtPS09ST19UVFNfREVWSUNFYGAgZW52
+aXJvbm1lbnQgdmFyaWFibGUgb3IgYXV0by1zZWxlY3Rpb24uCiAgICAiIiIK
+ICAgIHRyeToKICAgICAgICAjIHJldHVybiBhd2FpdCBydW50aW1lLmNhbGxf
+ZGV2ZWxvcG1lbnRfZnVuY3Rpb24oX3ByZWxvYWQsIGRldmljZSkKICAgICAg
+ICByZXR1cm4gYXdhaXQgX3ByZWxvYWQoZGV2aWNlKQogICAgZXhjZXB0IEV4
+Y2VwdGlvbiBhcyBlOgogICAgICAgICMgaWYgbm90IHJ1bnRpbWUuaXNfZGV2
+ZWxvcG1lbnQoKToKICAgICAgICByYWlzZSBlCiAgICAgICAgIyBGYWxsYmFj
+ayB0byBkaXJlY3QgZXhlY3V0aW9uIGlmIFJGQyBmYWlscyBpbiBkZXZlbG9w
+bWVudAogICAgICAgICMgUHJpbnRTdHlsZS5zdGFuZGFyZCgiUkZDIGZhaWxl
+ZCwgZmFsbGluZyBiYWNrIHRvIGRpcmVjdCBleGVjdXRpb24uLi4iKQogICAg
+ICAgICMgcmV0dXJuIGF3YWl0IF9wcmVsb2FkKGRldmljZSkKCgphc3luYyBk
+ZWYgX3ByZWxvYWQoZGV2aWNlOiBzdHIgfCBOb25lID0gTm9uZSk6CiAgICBn
+bG9iYWwgX3BpcGVsaW5lLCBpc191cGRhdGluZ19tb2RlbAoKICAgIHdoaWxl
+IGlzX3VwZGF0aW5nX21vZGVsOgogICAgICAgIGF3YWl0IGFzeW5jaW8uc2xl
+ZXAoMC4xKQoKICAgIHRyeToKICAgICAgICBpc191cGRhdGluZ19tb2RlbCA9
+IFRydWUKICAgICAgICBpZiBub3QgX3BpcGVsaW5lOgogICAgICAgICAgICBQ
+cmludFN0eWxlLnN0YW5kYXJkKCJMb2FkaW5nIEtva29ybyBUVFMgbW9kZWwu
+Li4iKQogICAgICAgICAgICBmcm9tIGtva29ybyBpbXBvcnQgS1BpcGVsaW5l
+CiAgICAgICAgICAgIHJlc29sdmVkX2RldmljZSA9IF9yZXNvbHZlX2Rldmlj
+ZShkZXZpY2UpCiAgICAgICAgICAgIF9waXBlbGluZSA9IEtQaXBlbGluZSgK
+ICAgICAgICAgICAgICAgIGxhbmdfY29kZT0iYSIsIHJlcG9faWQ9ImhleGdy
+YWQvS29rb3JvLTgyTSIsIGRldmljZT1yZXNvbHZlZF9kZXZpY2UKICAgICAg
+ICAgICAgKQogICAgZmluYWxseToKICAgICAgICBpc191cGRhdGluZ19tb2Rl
+bCA9IEZhbHNlCgoKYXN5bmMgZGVmIGlzX2Rvd25sb2FkaW5nKCk6CiAgICB0
+cnk6CiAgICAgICAgIyByZXR1cm4gYXdhaXQgcnVudGltZS5jYWxsX2RldmVs
+b3BtZW50X2Z1bmN0aW9uKF9pc19kb3dubG9hZGluZykKICAgICAgICByZXR1
+cm4gX2lzX2Rvd25sb2FkaW5nKCkKICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMg
+ZToKICAgICAgICAjIGlmIG5vdCBydW50aW1lLmlzX2RldmVsb3BtZW50KCk6
+CiAgICAgICAgcmFpc2UgZQogICAgICAgICMgRmFsbGJhY2sgdG8gZGlyZWN0
+IGV4ZWN1dGlvbiBpZiBSRkMgZmFpbHMgaW4gZGV2ZWxvcG1lbnQKICAgICAg
+ICAjIHJldHVybiBfaXNfZG93bmxvYWRpbmcoKQoKCmRlZiBfaXNfZG93bmxv
+YWRpbmcoKToKICAgIHJldHVybiBpc191cGRhdGluZ19tb2RlbAoKYXN5bmMg
+ZGVmIGlzX2Rvd25sb2FkZWQoKToKICAgIHRyeToKICAgICAgICAjIHJldHVy
+biBhd2FpdCBydW50aW1lLmNhbGxfZGV2ZWxvcG1lbnRfZnVuY3Rpb24oX2lz
+X2Rvd25sb2FkZWQpCiAgICAgICAgcmV0dXJuIF9pc19kb3dubG9hZGVkKCkK
+ICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICAjIGlmIG5vdCBy
+dW50aW1lLmlzX2RldmVsb3BtZW50KCk6CiAgICAgICAgcmFpc2UgZQogICAg
+ICAgICMgRmFsbGJhY2sgdG8gZGlyZWN0IGV4ZWN1dGlvbiBpZiBSRkMgZmFp
+bHMgaW4gZGV2ZWxvcG1lbnQKICAgICAgICAjIHJldHVybiBfaXNfZG93bmxv
+YWRlZCgpCgpkZWYgX2lzX2Rvd25sb2FkZWQoKToKICAgIHJldHVybiBfcGlw
+ZWxpbmUgaXMgbm90IE5vbmUKCgphc3luYyBkZWYgc3ludGhlc2l6ZV9zZW50
+ZW5jZXMoCiAgICBzZW50ZW5jZXM6IGxpc3Rbc3RyXSwgc3BlZWQ6IGZsb2F0
+IHwgc3RyIHwgTm9uZSA9IE5vbmUKKToKICAgICIiIkdlbmVyYXRlIGF1ZGlv
+IGZvciBtdWx0aXBsZSBzZW50ZW5jZXMgYW5kIHJldHVybiBjb25jYXRlbmF0
+ZWQgYmFzZTY0IGF1ZGlvIiIiCiAgICB0cnk6CiAgICAgICAgIyByZXR1cm4g
+YXdhaXQgcnVudGltZS5jYWxsX2RldmVsb3BtZW50X2Z1bmN0aW9uKF9zeW50
 
-async def preload():
-    try:
-        # return await runtime.call_development_function(_preload)
-        return await _preload()
-    except Exception as e:
-        # if not runtime.is_development():
-        raise e
-        # Fallback to direct execution if RFC fails in development
-        # PrintStyle.standard("RFC failed, falling back to direct execution...")
-        # return await _preload()
+aGVzaXplX3NlbnRlbmNlcywgc2VudGVuY2VzKQogICAgICAgIHJldHVybiBh
+d2FpdCBfc3ludGhlc2l6ZV9zZW50ZW5jZXMoc2VudGVuY2VzLCBzcGVlZCkK
+ICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICAjIGlmIG5vdCBy
+dW50aW1lLmlzX2RldmVsb3BtZW50KCk6CiAgICAgICAgcmFpc2UgZQogICAg
+ICAgICMgRmFsbGJhY2sgdG8gZGlyZWN0IGV4ZWN1dGlvbiBpZiBSRkMgZmFp
+bHMgaW4gZGV2ZWxvcG1lbnQKICAgICAgICAjIHJldHVybiBhd2FpdCBfc3lu
 
-
-async def _preload():
-    global _pipeline, is_updating_model
-
-    while is_updating_model:
-        await asyncio.sleep(0.1)
-
-    try:
-        is_updating_model = True
-        if not _pipeline:
-            NotificationManager.send_notification(
-                NotificationType.INFO,
-                NotificationPriority.NORMAL,
-                "Loading Kokoro TTS model...",
-                display_time=99,
-                group="kokoro-preload")
-            PrintStyle.standard("Loading Kokoro TTS model...")
-            from kokoro import KPipeline
-            _pipeline = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
-            NotificationManager.send_notification(
-                NotificationType.INFO,
-                NotificationPriority.NORMAL,
-                "Kokoro TTS model loaded.",
-                display_time=2,
-                group="kokoro-preload")
-    finally:
-        is_updating_model = False
-
-
-async def is_downloading():
-    try:
-        # return await runtime.call_development_function(_is_downloading)
-        return _is_downloading()
-    except Exception as e:
-        # if not runtime.is_development():
-        raise e
-        # Fallback to direct execution if RFC fails in development
-        # return _is_downloading()
-
-
-def _is_downloading():
-    return is_updating_model
-
-async def is_downloaded():
-    try:
-        # return await runtime.call_development_function(_is_downloaded)
-        return _is_downloaded()
-    except Exception as e:
-        # if not runtime.is_development():
-        raise e
-        # Fallback to direct execution if RFC fails in development
-        # return _is_downloaded()
-
-def _is_downloaded():
-    return _pipeline is not None
-
-
-async def synthesize_sentences(sentences: list[str]):
-    """Generate audio for multiple sentences and return concatenated base64 audio"""
-    try:
-        # return await runtime.call_development_function(_synthesize_sentences, sentences)
-        return await _synthesize_sentences(sentences)
-    except Exception as e:
-        # if not runtime.is_development():
-        raise e
-        # Fallback to direct execution if RFC fails in development
-        # return await _synthesize_sentences(sentences)
-
-
-async def _synthesize_sentences(sentences: list[str]):
-    await _preload()
-
-    combined_audio = []
-
-    try:
-        for sentence in sentences:
-            if sentence.strip():
-                segments = _pipeline(sentence.strip(), voice=_voice, speed=_speed) # type: ignore
-                segment_list = list(segments)
-
-                for segment in segment_list:
-                    audio_tensor = segment.audio
-                    audio_numpy = audio_tensor.detach().cpu().numpy() # type: ignore
-                    combined_audio.extend(audio_numpy)
-
-        # Convert combined audio to bytes
-        buffer = io.BytesIO()
-        sf.write(buffer, combined_audio, 24000, format="WAV")
-        audio_bytes = buffer.getvalue()
-
-        # Return base64 encoded audio
-        return base64.b64encode(audio_bytes).decode("utf-8")
-
-    except Exception as e:
-        PrintStyle.error(f"Error in Kokoro TTS synthesis: {e}")
-        raise    
+dGhlc2l6ZV9zZW50ZW5jZXMoc2VudGVuY2VzKQoKCmFzeW5jIGRlZiBfc3lu
+dGhlc2l6ZV9zZW50ZW5jZXMoCiAgICBzZW50ZW5jZXM6IGxpc3Rbc3RyXSwg
+c3BlZWQ6IGZsb2F0IHwgc3RyIHwgTm9uZSA9IE5vbmUKKToKICAgIGF3YWl0
+IF9wcmVsb2FkKCkKCiAgICBsb2NhbF9zcGVlZCA9IF9zcGVlZCBpZiBzcGVl
+ZCBpcyBOb25lIGVsc2UgX3ZhbGlkYXRlX3NwZWVkKHNwZWVkKQogICAgY29t
+YmluZWRfYXVkaW8gPSBbXQoKICAgIHRyeToKICAgICAgICBmb3Igc2VudGVu
+Y2UgaW4gc2VudGVuY2VzOgogICAgICAgICAgICBpZiBzZW50ZW5jZS5zdHJp
+cCgpOgogICAgICAgICAgICAgICAgc2VnbWVudHMgPSBfcGlwZWxpbmUoCiAg
+ICAgICAgICAgICAgICAgICAgc2VudGVuY2Uuc3RyaXAoKSwgdm9pY2U9X3Zv
+aWNlLCBzcGVlZD1sb2NhbF9zcGVlZAogICAgICAgICAgICAgICAgKSAgIyB0
+eXBlOiBpZ25vcmUKICAgICAgICAgICAgICAgIHNlZ21lbnRfbGlzdCA9IGxp
+c3Qoc2VnbWVudHMpCgogICAgICAgICAgICAgICAgZm9yIHNlZ21lbnQgaW4g
+c2VnbWVudF9saXN0OgogICAgICAgICAgICAgICAgICAgIGF1ZGlvX3RlbnNv
+ciA9IHNlZ21lbnQuYXVkaW8KICAgICAgICAgICAgICAgICAgICBhdWRpb19u
+dW1weSA9IGF1ZGlvX3RlbnNvci5kZXRhY2goKS5jcHUoKS5udW1weSgpICMg
+dHlwZTogaWdub3JlCiAgICAgICAgICAgICAgICAgICAgY29tYmluZWRfYXVk
+aW8uZXh0ZW5kKGF1ZGlvX251bXB5KQoKICAgICAgICAjIENvbnZlcnQgY29t
+YmluZWQgYXVkaW8gdG8gYnl0ZXMKICAgICAgICBidWZmZXIgPSBpby5CeXRl
+c0lPKCkKICAgICAgICBzZi53cml0ZShidWZmZXIsIGNvbWJpbmVkX2F1ZGlv
+LCAyNDAwMCwgZm9ybWF0PSJXQVYiKQogICAgICAgIGF1ZGlvX2J5dGVzID0g
+YnVmZmVyLmdldHZhbHVlKCkKCiAgICAgICAgIyBSZXR1cm4gYmFzZTY0IGVu
+Y29kZWQgYXVkaW8KICAgICAgICByZXR1cm4gYmFzZTY0LmI2NGVuY29kZShh
+dWRpb19ieXRlcykuZGVjb2RlKCJ1dGYtOCIpCgogICAgZXhjZXB0IEV4Y2Vw
+dGlvbiBhcyBlOgogICAgICAgIFByaW50U3R5bGUuZXJyb3IoZiJFcnJvciBp
+biBLb2tvcm8gVFRTIHN5bnRoZXNpczoge2V9IikKICAgICAgICByYWlzZSAg
+ICAK
