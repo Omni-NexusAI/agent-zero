@@ -1,9 +1,11 @@
+
 const settingsModalProxy = {
     isOpen: false,
     settings: {},
     resolvePromise: null,
     activeTab: 'agent', // Default tab
     provider: 'cloudflared',
+    modelNameCache: JSON.parse(localStorage.getItem('modelNameCache') || '{}'),
 
     // Computed property for filtered sections
     get filteredSections() {
@@ -67,7 +69,134 @@ const settingsModalProxy = {
                     }
                 }
             }
+
+            // When switching to the tunnel tab, initialize tunnelSettings
+            if (tabName === 'tunnel') {
+                console.log('Switching to tunnel tab, initializing tunnelSettings');
+                const tunnelElement = document.querySelector('[x-data="tunnelSettings"]');
+                if (tunnelElement) {
+                    const tunnelData = Alpine.$data(tunnelElement);
+                    if (tunnelData && typeof tunnelData.checkTunnelStatus === 'function') {
+                        // Check tunnel status
+                        tunnelData.checkTunnelStatus();
+                    }
+                }
+            }
         }, 10);
+    },
+
+    saveModelCache() {
+        localStorage.setItem('modelNameCache', JSON.stringify(this.modelNameCache));
+    },
+
+    findField(id) {
+        if (!this.settings || !this.settings.sections) return null;
+        for (const section of this.settings.sections) {
+            for (const field of section.fields) {
+                if (field.id === id) return field;
+            }
+        }
+        return null;
+    },
+
+    initModelCache() {
+        const types = ['chat', 'util', 'embed', 'browser'];
+        for (const type of types) {
+            const providerField = this.findField(`${type}_model_provider`);
+            const nameField = this.findField(`${type}_model_name`);
+            if (providerField && nameField) {
+                if (!this.modelNameCache[type]) this.modelNameCache[type] = {};
+                if (!Array.isArray(this.modelNameCache[type][providerField.value])) {
+                    this.modelNameCache[type][providerField.value] = [];
+                }
+                const arr = this.modelNameCache[type][providerField.value];
+                if (nameField.value && !arr.includes(nameField.value)) {
+                    arr.unshift(nameField.value);
+                }
+            }
+        }
+        this.saveModelCache();
+    },
+
+    handleFieldChange(field) {
+        if (field.id && field.id.endsWith('_model_provider')) {
+            const type = field.id.replace('_model_provider', '');
+            const nameField = this.findField(`${type}_model_name`);
+            if (nameField) {
+                const cached = this.modelNameCache[type] && this.modelNameCache[type][field.value];
+                if (Array.isArray(cached) && cached.length > 0) {
+                    nameField.value = cached[0];
+                } else {
+                    nameField.value = '';
+                }
+                // Reset any selected history dropdown
+                const historyEl = document.querySelector(`.model-name-history[data-type='${type}_model_name']`);
+                if (historyEl) {
+                    const data = Alpine.$data(historyEl);
+                    if (data && typeof data.selected !== 'undefined') {
+                        data.selected = '';
+                    }
+                }
+            }
+        }
+    },
+
+    handleFieldInput(field, value) {
+        field.value = value;
+    },
+
+    cacheModelName(field) {
+        if (field.id && field.id.endsWith('_model_name')) {
+            const type = field.id.replace('_model_name', '');
+            const providerField = this.findField(`${type}_model_provider`);
+            if (providerField) {
+                if (!this.modelNameCache[type]) this.modelNameCache[type] = {};
+                if (!Array.isArray(this.modelNameCache[type][providerField.value])) {
+                    this.modelNameCache[type][providerField.value] = [];
+                }
+                const arr = this.modelNameCache[type][providerField.value];
+                const name = field.value.trim();
+                if (name && !arr.includes(name)) {
+                    arr.unshift(name);
+                    this.saveModelCache();
+                }
+            }
+        }
+    },
+
+    getCachedModelNames(field) {
+        if (field.id && field.id.endsWith('_model_name')) {
+            const type = field.id.replace('_model_name', '');
+            const providerField = this.findField(`${type}_model_provider`);
+            if (providerField) {
+                const arr = this.modelNameCache[type] && this.modelNameCache[type][providerField.value];
+                return Array.isArray(arr) ? arr : [];
+            }
+        }
+        return [];
+    },
+
+    removeModelName(field, name) {
+        if (!name) return;
+        const type = field.id.replace('_model_name', '');
+        const providerField = this.findField(`${type}_model_provider`);
+        if (providerField && this.modelNameCache[type]) {
+            const arr = this.modelNameCache[type][providerField.value];
+            if (Array.isArray(arr)) {
+                this.modelNameCache[type][providerField.value] = arr.filter(n => n !== name);
+                this.saveModelCache();
+            }
+        }
+    },
+
+    updateModelCacheFromFields() {
+        const types = ['chat', 'util', 'embed', 'browser'];
+        for (const type of types) {
+            const nameField = this.findField(`${type}_model_name`);
+            if (nameField) {
+                this.cacheModelName(nameField);
+            }
+        }
     },
 
     async openModal() {
@@ -108,6 +237,7 @@ const settingsModalProxy = {
             // Update modal data
             modalAD.isOpen = true;
             modalAD.settings = settings;
+            modalAD.initModelCache();
 
             // Now set the active tab after the modal is open
             // This ensures Alpine reactivity works as expected
@@ -200,6 +330,9 @@ const settingsModalProxy = {
     async handleButton(buttonId) {
         if (buttonId === 'save') {
 
+            // Update model name cache with any new entries
+            this.updateModelCacheFromFields();
+
             const modalEl = document.getElementById('settingsModal');
             const modalAD = Alpine.$data(modalEl);
             try {
@@ -277,10 +410,6 @@ const settingsModalProxy = {
             openModal("settings/backup/backup.html");
         } else if (field.id === "backup_restore") {
             openModal("settings/backup/restore.html");
-        } else if (field.id === "show_a2a_connection") {
-            openModal("settings/external/a2a-connection.html");
-        } else if (field.id === "external_api_examples") {
-            openModal("settings/external/api-examples.html");
         }
     }
 };
@@ -565,25 +694,24 @@ document.addEventListener('alpine:init', function () {
     });
 });
 
-// Show toast notification - now uses new notification system
+// Show toast notification
 function showToast(message, type = 'info') {
-    // Use new frontend notification system based on type
-    if (window.Alpine && window.Alpine.store && window.Alpine.store('notificationStore')) {
-        const store = window.Alpine.store('notificationStore');
-        switch (type.toLowerCase()) {
-            case 'error':
-                return store.frontendError(message, "Settings", 5);
-            case 'success':
-                return store.frontendInfo(message, "Settings", 3);
-            case 'warning':
-                return store.frontendWarning(message, "Settings", 4);
-            case 'info':
-            default:
-                return store.frontendInfo(message, "Settings", 3);
-        }
-    } else {
-        // Fallback if Alpine/store not ready
-        console.log(`SETTINGS ${type.toUpperCase()}: ${message}`);
-        return null;
-    }
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    document.body.appendChild(toast);
+
+    // Trigger animation
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+
+    // Remove after delay
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
 }
