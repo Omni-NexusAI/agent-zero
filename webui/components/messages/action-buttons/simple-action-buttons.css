@@ -2,13 +2,13 @@
 
 /* Main action buttons container - precise positioning */
 .action-buttons {
-  position: sticky;
-  height:0;
-  width:fit-content;
+  position: absolute; /* anchor to heading */
+  top: calc(100% + 4px); /* just below header */
+  right: 0.6em;
+  height: auto;
+  width: fit-content;
   overflow: visible;
-  top: 0.3em;
-  margin-right:0.1em;
-  margin-left: auto;
+  margin: 0;
   display: none;
   flex-direction: row;
   gap: 0;
@@ -96,18 +96,18 @@
   100% { opacity: 1; }
 }
 
-/* Show action buttons on hover - simplified, no device detection needed */
-.msg-content:hover .action-buttons,
-/* .kvps-row:hover .action-buttons, */
-.message-text:hover .action-buttons,
-.kvps-val:hover .action-buttons,
-.message-body:hover > .action-buttons {
+/* Reveal only when hovering message header or the message */
+.msg-heading:hover .action-buttons,
+.message:hover .msg-heading .action-buttons {
   display: flex;
-  animation: fadeInAfterDelay 0.3s ease-in-out;
-  animation-delay: 0.3s;
-  animation-fill-mode: forwards;
-  opacity: 0;
+  animation: fadeInAfterDelay 0.2s ease-in-out;
 }
+
+/* Ensure action buttons are hidden by default */
+.action-buttons { display: none; }
+
+/* Heading placement and hover behavior */
+.msg-heading { position: relative; }
 
 /* Animation to fade in action buttons after delay */
 @keyframes fadeInAfterDelay {
