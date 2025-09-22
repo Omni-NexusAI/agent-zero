@@ -310,6 +310,7 @@ Default models set to gpt-4.1
 - **Agent Behavior Change and Management**
 - **Text-to-Speech (TTS) and Speech-to-Text (STT)**
 - **Settings Page in Web UI**
+- **Per-provider model history for model selection**
 - **SearXNG Integration Replacing Perplexity + DuckDuckGo**
 - **File Browser Functionality**
 - **KaTeX Math Visualization Support**
