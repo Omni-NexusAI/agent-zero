@@ -31,7 +31,8 @@ const memoryDashboardStore = {
   // Search and filters
   searchQuery: "",
   areaFilter: "",
-  limit: parseInt(localStorage.getItem('memoryDashboard_limit') || '100'),
+  threshold: parseFloat(localStorage.getItem('memoryDashboard_threshold') || '0.6'),
+  limit: parseInt(localStorage.getItem('memoryDashboard_limit') || '1000'),
 
   // Stats
   totalCount: 0,
@@ -137,6 +138,7 @@ const memoryDashboardStore = {
   async searchMemories(silent = false) {
     // Save limit to localStorage for persistence
     localStorage.setItem('memoryDashboard_limit', this.limit.toString());
+    localStorage.setItem('memoryDashboard_threshold', this.threshold.toString());
 
     if (!silent) {
       this.loading = true;
@@ -155,7 +157,8 @@ const memoryDashboardStore = {
         memory_subdir: this.selectedMemorySubdir,
         area: this.areaFilter,
         search: this.searchQuery,
-        limit: this.limit
+        limit: this.limit,
+        threshold: this.threshold
       });
 
         if (response.success) {
