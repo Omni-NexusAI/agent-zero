@@ -24,9 +24,6 @@ RUN bash /ins/install_base_packages2.sh
 RUN bash /ins/install_base_packages3.sh
 RUN bash /ins/install_base_packages4.sh
 
-# install pyenv
-RUN bash /ins/install_pyenv.sh
-
 # install python after packages to ensure version overriding
 RUN bash /ins/install_python.sh
 
