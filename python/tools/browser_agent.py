@@ -56,6 +56,7 @@ class State:
                 maximum_wait_page_load_time=10.0,
                 screen={"width": 1024, "height": 2048},
                 viewport={"width": 1024, "height": 2048},
+                no_viewport=False,
                 args=["--headless=new"],
                 # Use a unique user data directory to avoid conflicts
                 user_data_dir=str(
@@ -72,6 +73,23 @@ class State:
         await self.browser_session.start() if self.browser_session else None
         # self.override_hooks()
 
+        # --------------------------------------------------------------------------
+        # Patch to enforce vertical viewport size
+        # --------------------------------------------------------------------------
+        # Browser-use auto-configuration overrides viewport settings, causing wrong
+        # aspect ratio. We fix this by directly setting viewport size after startup.
+        # --------------------------------------------------------------------------
+
+        if self.browser_session:
+            try:
+                page = await self.browser_session.get_current_page()
+                if page:
+                    await page.set_viewport_size({"width": 1024, "height": 2048})
+            except Exception as e:
+                PrintStyle().warning(f"Could not force set viewport size: {e}")
+
+        # --------------------------------------------------------------------------    
+        
         # Add init script to the browser session
         if self.browser_session and self.browser_session.browser_context:
             js_override = files.get_abs_path("lib/browser/init_override.js")
@@ -191,7 +209,7 @@ class State:
 class BrowserAgent(Tool):
 
     async def execute(self, message="", reset="", **kwargs):
-        self.guid = str(uuid.uuid4())
+        self.guid = self.agent.context.generate_id() # short random id
         reset = str(reset).lower().strip() == "true"
         await self.prepare_state(reset=reset)
         message = SecretsManager.get_instance().mask_values(message, placeholder="<secret>{key}</secret>") # mask any potential passwords passed from A0 to browser-use to browser-use format
