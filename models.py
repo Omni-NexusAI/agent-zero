@@ -17,6 +17,7 @@ from typing import (
 from litellm import completion, acompletion, embedding
 import litellm
 import openai
+from litellm.types.utils import ModelResponse
 
 from python.helpers import dotenv
 from python.helpers import settings, dirty_json
@@ -620,9 +621,9 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
 
             # Gemini: strip triple backticks and conform schema
             try:
-                msg = resp.choices[0].message
+                msg = resp.choices[0].message # type: ignore
                 if self.provider == "gemini" and isinstance(getattr(msg, "content", None), str):
-                    cleaned = browser_use_monkeypatch.gemini_clean_and_conform(msg.content)
+                    cleaned = browser_use_monkeypatch.gemini_clean_and_conform(msg.content) # type: ignore
                     if cleaned:
                         msg.content = cleaned
             except Exception:

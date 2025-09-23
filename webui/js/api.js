@@ -55,6 +55,7 @@ export async function fetchApi(url, request) {
     }else if(response.redirected && response.url.endsWith("/login")){
       // redirect to login
       window.location.href = response.url;
+      return;
     }
 
     // return the response
@@ -80,8 +81,14 @@ async function getCsrfToken() {
   if (csrfToken) return csrfToken;
   const response = await fetch("/csrf_token", {
     credentials: "same-origin",
-  }).then((r) => r.json());
-  csrfToken = response.token;
-  document.cookie = `csrf_token_${response.runtime_id}=${csrfToken}; SameSite=Strict; Path=/`;
+  });
+  if (response.redirected && response.url.endsWith("/login")) {
+    // redirect to login
+    window.location.href = response.url;
+    return;
+  }
+  const json = await response.json();
+  csrfToken = json.token;
+  document.cookie = `csrf_token_${json.runtime_id}=${csrfToken}; SameSite=Strict; Path=/`;
   return csrfToken;
 }
