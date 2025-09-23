@@ -1,6 +1,7 @@
 from datetime import timedelta
 import os
 import secrets
+import hashlib
 import time
 import socket
 import struct
@@ -37,7 +38,6 @@ webapp.config.update(
     SESSION_PERMANENT=True,
     PERMANENT_SESSION_LIFETIME=timedelta(days=1)
 )
-
 
 lock = threading.Lock()
 
@@ -114,16 +114,23 @@ def requires_loopback(f):
     return decorated
 
 
+def _get_credentials_hash():
+    user = dotenv.get_dotenv_value("AUTH_LOGIN")
+    password = dotenv.get_dotenv_value("AUTH_PASSWORD")
+    if not user:
+        return None
+    return hashlib.sha256(f"{user}:{password}".encode()).hexdigest()
+
 # require authentication for handlers
 def requires_auth(f):
     @wraps(f)
     async def decorated(*args, **kwargs):
-        user = dotenv.get_dotenv_value("AUTH_LOGIN")
+        user_pass_hash = _get_credentials_hash()
         # If no auth is configured, just proceed
-        if not user:
+        if not user_pass_hash:
             return await f(*args, **kwargs)
-        
-        if not session.get('authenticated'):
+
+        if session.get('authentication') != user_pass_hash:
             return redirect(url_for('login'))
         
         return await f(*args, **kwargs)
@@ -151,7 +158,7 @@ async def login():
         password = dotenv.get_dotenv_value("AUTH_PASSWORD")
         
         if request.form['username'] == user and request.form['password'] == password:
-            session['authenticated'] = True
+            session['authentication'] = _get_credentials_hash()
             return redirect(url_for('serve_index'))
         else:
             error = 'Invalid Credentials. Please try again.'
@@ -161,7 +168,7 @@ async def login():
 
 @webapp.route("/logout")
 async def logout():
-    session.pop('authenticated', None)
+    session.pop('authentication', None)
     return redirect(url_for('login'))
 
 # handle default address, load index

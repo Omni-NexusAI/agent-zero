@@ -52,6 +52,9 @@ export async function fetchApi(url, request) {
       // retry the request with new token
       csrfToken = null;
       return await _wrap(false);
+    }else if(response.redirected && response.url.endsWith("/login")){
+      // redirect to login
+      window.location.href = response.url;
     }
 
     // return the response
