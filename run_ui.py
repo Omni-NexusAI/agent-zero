@@ -1,3 +1,4 @@
+import asyncio
 from datetime import timedelta
 import os
 import secrets
@@ -8,6 +9,7 @@ import struct
 from functools import wraps
 import threading
 from flask import Flask, request, Response, session, redirect, url_for, render_template_string
+from werkzeug.wrappers.response import Response as BaseResponse
 import initialize
 from python.helpers import files, git, mcp_server, fasta2a_server
 from python.helpers.files import get_abs_path
@@ -217,7 +219,7 @@ def run():
         name = handler.__module__.split(".")[-1]
         instance = handler(app, lock)
 
-        async def handler_wrap():
+        async def handler_wrap() -> BaseResponse:
             return await instance.handle_request(request=request)
 
         if handler.requires_loopback():

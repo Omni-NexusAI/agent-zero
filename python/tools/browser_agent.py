@@ -148,6 +148,7 @@ class State:
                 ),
                 controller=controller,
                 enable_memory=False,  # Disable memory to avoid state conflicts
+                llm_timeout=3000, # TODO rem
                 sensitive_data=cast(dict[str, str | dict[str, str]] | None, secrets_dict or {}),  # Pass secrets
             )
         except Exception as e:
@@ -387,7 +388,7 @@ class BrowserAgent(Tool):
 def get_use_agent_log(use_agent: browser_use.Agent | None):
     result = ["🚦 Starting task"]
     if use_agent:
-        action_results = use_agent.state.history.action_results() or []
+        action_results = use_agent.history.action_results() or []
         short_log = []
         for item in action_results:
             # final results

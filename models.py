@@ -19,7 +19,7 @@ import litellm
 import openai
 
 from python.helpers import dotenv
-from python.helpers import settings
+from python.helpers import settings, dirty_json
 from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
@@ -545,7 +545,27 @@ class LiteLLMChatWrapper(SimpleChatModel):
                 await asyncio.sleep(retry_delay_s)
 
 
-class BrowserCompatibleChatWrapper(LiteLLMChatWrapper):
+class AsyncAIChatReplacement:
+    class _Completions:
+        def __init__(self, wrapper):
+            self._wrapper = wrapper
+
+        async def create(self, *args, **kwargs):
+            # call the async _acall method on the wrapper
+            return await self._wrapper._acall(*args, **kwargs)
+
+    class _Chat:
+        def __init__(self, wrapper):
+            self.completions = AsyncAIChatReplacement._Completions(wrapper)
+
+    def __init__(self, wrapper, *args, **kwargs):
+        self._wrapper = wrapper
+        self.chat = AsyncAIChatReplacement._Chat(wrapper)
+
+
+from browser_use.llm import ChatOllama, ChatOpenRouter, ChatGoogle, ChatAnthropic, ChatGroq, ChatOpenAI
+
+class BrowserCompatibleChatWrapper(ChatOpenRouter):
     """
     A wrapper for browser agent that can filter/sanitize messages
     before sending them to the LLM.
@@ -553,32 +573,61 @@ class BrowserCompatibleChatWrapper(LiteLLMChatWrapper):
 
     def __init__(self, *args, **kwargs):
         turn_off_logging()
-        super().__init__(*args, **kwargs)
+        # Create the underlying LiteLLM wrapper
+        self._wrapper = LiteLLMChatWrapper(*args, **kwargs)
         # Browser-use may expect a 'model' attribute
-        self.model = self.model_name
+        self.model = self._wrapper.model_name
+        self.kwargs = self._wrapper.kwargs
 
-    def _call(
+    @property
+    def model_name(self) -> str:
+        return self._wrapper.model_name
+
+    @property
+    def provider(self) -> str:
+        return self._wrapper.provider
+
+    def get_client(self, *args, **kwargs):  # type: ignore
+        return AsyncAIChatReplacement(self, *args, **kwargs)
+
+    async def _acall(
         self,
         messages: List[BaseMessage],
         stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
-    ) -> str:
-        turn_off_logging()
-        result = super()._call(messages, stop, run_manager, **kwargs)
-        return result
+    ):
+        # Apply rate limiting if configured
+        apply_rate_limiter_sync(self._wrapper.a0_model_conf, str(messages))
 
-    async def _astream(
-        self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[AsyncCallbackManagerForLLMRun] = None,
-        **kwargs: Any,
-    ) -> AsyncIterator[ChatGenerationChunk]:
-        turn_off_logging()
-        async for chunk in super()._astream(messages, stop, run_manager, **kwargs):
-            yield chunk
+        # Call the model
+        try:
+            model = kwargs.pop("model", None)
+            kwrgs = {**self._wrapper.kwargs, **kwargs}
 
+            # hack from browser-use to fix json schema for gemini
+            if "response_format" in kwrgs and "json_schema" in kwrgs["response_format"] and model.startswith("gemini/"):
+                kwrgs["response_format"]["json_schema"] = ChatGoogle("")._fix_gemini_schema(self._wrapper.kwargs)
+
+            resp = await acompletion(
+                model=self._wrapper.model_name,
+                messages=messages,
+                stop=stop,
+                **kwrgs,
+            )
+        except Exception as e:
+            raise e
+
+        # another hack for browser-use post process invalid jsons
+        try:
+            if "response_format" in kwrgs and "json_schema" in kwrgs["response_format"] or "json_object" in kwrgs["response_format"]:
+                if resp.choices[0].message.content is not None and not resp.choices[0].message.content.startswith("{"): # type: ignore
+                    js = dirty_json.parse(resp.choices[0].message.content) # type: ignore
+                    resp.choices[0].message.content = dirty_json.stringify(js) # type: ignore
+        except Exception as e:
+            pass
+
+        return resp
 
 class LiteLLMEmbeddingWrapper(Embeddings):
     model_name: str
