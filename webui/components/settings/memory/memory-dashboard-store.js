@@ -45,7 +45,11 @@ const memoryDashboardStore = {
 
   // Polling
   pollingInterval: null,
-  pollingEnabled: true,
+  pollingEnabled: false,
+
+  init(){
+    this.initialize();
+  },
 
   async initialize() {
     // Reset state when opening (but keep directory from context)
@@ -175,7 +179,6 @@ const memoryDashboardStore = {
         this.totalDbCount = response.total_db_count || 0;
         this.knowledgeCount = response.knowledge_count || 0;
         this.conversationCount = response.conversation_count || 0;
-        this.areasCount = response.areas_count || {};
 
         if (!silent) {
           this.message = response.message || null;

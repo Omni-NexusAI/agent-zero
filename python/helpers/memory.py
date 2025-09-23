@@ -76,7 +76,7 @@ class Memory:
                 False,
             )
             Memory.index[memory_subdir] = db
-            wrap = Memory(agent, db, memory_subdir=memory_subdir)
+            wrap = Memory(db, memory_subdir=memory_subdir)
             if agent.config.knowledge_subdirs:
                 await wrap.preload_knowledge(
                     log_item, agent.config.knowledge_subdirs, memory_subdir
@@ -84,10 +84,29 @@ class Memory:
             return wrap
         else:
             return Memory(
-                agent=agent,
                 db=Memory.index[memory_subdir],
                 memory_subdir=memory_subdir,
             )
+
+    @staticmethod
+    async def get_by_subdir(memory_subdir: str, log_item: LogItem | None = None, preload_knowledge: bool = True):
+        if not Memory.index.get(memory_subdir):
+            import initialize
+            agent_config = initialize.initialize_agent()
+            model_config = agent_config.embeddings_model
+            db, _created = Memory.initialize(
+                log_item=log_item,
+                model_config=model_config,
+                memory_subdir=memory_subdir,
+                in_memory=False,
+            )
+            wrap = Memory(db, memory_subdir=memory_subdir)
+            if preload_knowledge and agent_config.knowledge_subdirs:
+                await wrap.preload_knowledge(
+                    log_item, agent_config.knowledge_subdirs, memory_subdir
+                )
+            Memory.index[memory_subdir] = db
+        return Memory(db=Memory.index[memory_subdir], memory_subdir=memory_subdir)
 
     @staticmethod
     async def reload(agent: Agent):
@@ -212,11 +231,9 @@ class Memory:
 
     def __init__(
         self,
-        agent: Agent,
         db: MyFaiss,
         memory_subdir: str,
     ):
-        self.agent = agent
         self.db = db
         self.memory_subdir = memory_subdir
 
