@@ -10,12 +10,12 @@ apt-get install -y --no-install-recommends \
     libncursesw5-dev xz-utils tk-dev libxml2-dev \
     libxmlsec1-dev libffi-dev liblzma-dev
 
-# Install pyenv for root user
-git clone https://github.com/pyenv/pyenv.git /root/.pyenv
+# Install pyenv globally
+git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 
 # Setup environment variables for pyenv to be available system-wide
 cat > /etc/profile.d/pyenv.sh <<'EOF'
-export PYENV_ROOT="/root/.pyenv"
+export PYENV_ROOT="/opt/pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init --path)"
 EOF
@@ -29,6 +29,6 @@ source /etc/profile.d/pyenv.sh
 echo "====================PYENV INSTALLING PYTHON 3.12.4===================="
 pyenv install 3.12.4
 
-/root/.pyenv/versions/3.12.4/bin/python -m venv /opt/venv-a0
+/opt/pyenv/versions/3.12.4/bin/python -m venv /opt/venv-a0
 
 echo "====================PYENV END===================="
