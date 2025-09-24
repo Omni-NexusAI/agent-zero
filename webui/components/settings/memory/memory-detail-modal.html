@@ -265,13 +265,43 @@
                         </div>
                     </div>
                     <div class="header-actions">
-                        <button class="btn-action-header copy" @click="$store.memoryDashboardStore.copyToClipboard($store.memoryDashboardStore.formatMemoryForCopy($store.memoryDashboardStore.detailMemory))"
-                                title="Copy Complete Memory with Metadata">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                        </button>
+                        <!-- View Mode Buttons -->
+                        <template x-if="!$store.memoryDashboardStore.editMode">
+                            <div style="display: flex; gap: 0.5rem;">
+                                
+                                <button class="btn-action-header copy-all" @click="$store.memoryDashboardStore.copyToClipboard($store.memoryDashboardStore.formatMemoryForCopy($store.memoryDashboardStore.detailMemory))"
+                                        title="Copy Complete Memory with Metadata">
+                                    <span class="material-symbols-outlined">copy_all</span> All
+                                </button>
+                                <button class="btn-action-header copy-content" @click="$store.memoryDashboardStore.copyToClipboard($store.memoryDashboardStore.detailMemory?.content_full)"
+                                        title="Copy Content Only">
+                                    <span class="material-symbols-outlined">content_copy</span> Content
+                                </button>
+                                <div style="width:2em"></div>
+                                <button class="btn-action-header edit" @click="$store.memoryDashboardStore.enableEditMode()"
+                                        title="Edit Memory">
+                                    <span class="material-symbols-outlined">edit_document</span>
+                                </button>
+                                <button class="btn-action-header delete danger" @click="$store.memoryDashboardStore.deleteMemory($store.memoryDashboardStore.detailMemory)"
+                                        title="Delete Memory">
+                                    <span class="material-symbols-outlined">delete</span>
+                                </button>
+                            </div>
+                        </template>
+                        <!-- Edit Mode Buttons -->
+                        <template x-if="$store.memoryDashboardStore.editMode">
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn-action-header cancel" @click="$store.memoryDashboardStore.cancelEditMode()"
+                                        title="Cancel Edit">
+                                    <span class="material-symbols-outlined">close</span>
+                                </button>
+                                <button class="btn-action-header confirm" @click="$store.memoryDashboardStore.confirmEditMode()"
+                                        title="Confirm Changes">
+                                    <span class="material-symbols-outlined">check</span>
+                                </button>
+
+                            </div>
+                        </template>
                     </div>
                 </div>
 
@@ -281,7 +311,12 @@
                     <div class="content-section-main">
                         <div class="content-block">
                             <h4>Memory Content</h4>
-                            <div class="memory-content-display" x-text="$store.memoryDashboardStore.detailMemory?.content_full"></div>
+                            <template x-if="!$store.memoryDashboardStore.editMode">
+                                <div class="memory-content-display" x-text="$store.memoryDashboardStore.detailMemory?.content_full"></div>
+                            </template>
+                            <template x-if="$store.memoryDashboardStore.editMode">
+                                <textarea class="memory-content-display" style="width: 100%; height: 300px;" x-model="$store.memoryDashboardStore.detailMemory.content_full"></textarea>
+                            </template>
                         </div>
 
                         <!-- Tags Section -->
@@ -343,38 +378,6 @@
                             </template>
                         </div>
 
-                        <!-- Actions -->
-                        <div class="metadata-group">
-                            <h5>Actions</h5>
-                            <div class="metadata-actions">
-                                <button class="btn slim" @click="$store.memoryDashboardStore.copyToClipboard($store.memoryDashboardStore.formatMemoryForCopy($store.memoryDashboardStore.detailMemory))"
-                                        title="Copy Complete Memory with Metadata">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                    </svg>
-                                    Copy All
-                                </button>
-                                <button class="btn slim" @click="$store.memoryDashboardStore.copyToClipboard($store.memoryDashboardStore.detailMemory?.content_full)"
-                                        title="Copy Content Only">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                        <polyline points="14,2 14,8 20,8"></polyline>
-                                    </svg>
-                                    Copy Content
-                                </button>
-                                <button class="btn slim danger" @click="$store.memoryDashboardStore.deleteMemory($store.memoryDashboardStore.detailMemory)"
-                                        title="Delete Memory">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <polyline points="3,6 5,6 21,6"></polyline>
-                                        <path d="M19,6V20a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
-                                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                                        <line x1="14" y1="11" x2="14" y2="17"></line>
-                                    </svg>
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
