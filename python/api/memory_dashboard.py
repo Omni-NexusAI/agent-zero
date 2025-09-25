@@ -138,7 +138,7 @@ class MemoryDashboard(ApiHandler):
         """Get available memory subdirectories."""
         try:
             # Get subdirectories from memory folder
-            subdirs = files.get_subdirectories("memory")
+            subdirs = files.get_subdirectories("memory", exclude="embeddings")
 
             # Ensure 'default' is always available
             if "default" not in subdirs:
