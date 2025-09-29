@@ -727,19 +727,14 @@
 
         .memory-table tbody tr {
             border-bottom: 1px solid var(--color-border);
-            transition: background-color 0.2s ease;
-        }
-
-        .memory-table tbody tr:nth-child(even) {
-            background: var(--color-panel);
-        }
-
-        .memory-table tbody tr:hover {
-            background: var(--color-panel);
         }
 
         .memory-table tbody tr:last-child {
             border-bottom: none;
+        }
+
+        .memory-table tbody tr.memory-row {
+            background: var(--color-panel);
         }
 
         .source-type {
