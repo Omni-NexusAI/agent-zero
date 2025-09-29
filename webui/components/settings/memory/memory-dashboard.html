@@ -10,60 +10,61 @@
 <body>
     <div x-data>
         <template x-if="$store.memoryDashboardStore">
-            <div x-create="$store.memoryDashboardStore.onOpen()"
-                x-destroy="$store.memoryDashboardStore.cleanup()" class="memory-dashboard">
+            <div x-create="$store.memoryDashboardStore.onOpen()" x-destroy="$store.memoryDashboardStore.cleanup()"
+                class="memory-dashboard">
 
                 <!-- Search and Filters Section -->
                 <div class="memory-filters-header">
-                        <div class="filter-group-inline filter-memory-dir">
-                            <label for="memory-subdir-select">Memory Directory</label>
-                            <select id="memory-subdir-select" x-model="$store.memoryDashboardStore.selectedMemorySubdir"
-                                @change="$store.memoryDashboardStore.onMemorySubdirChange()"
-                                :disabled="$store.memoryDashboardStore.loadingSubdirs">
-                                <template x-for="subdir in $store.memoryDashboardStore.memorySubdirs" :key="subdir">
-                                    <option :value="subdir" x-text="subdir"
-                                        :selected="subdir === $store.memoryDashboardStore.selectedMemorySubdir">
-                                    </option>
-                                </template>
-                            </select>
-                        </div>
+                    <div class="filter-group-inline filter-memory-dir">
+                        <label for="memory-subdir-select">Memory Directory</label>
+                        <select id="memory-subdir-select" x-model="$store.memoryDashboardStore.selectedMemorySubdir"
+                            @change="$store.memoryDashboardStore.onMemorySubdirChange()"
+                            :disabled="$store.memoryDashboardStore.loadingSubdirs">
+                            <template x-for="subdir in $store.memoryDashboardStore.memorySubdirs" :key="subdir">
+                                <option :value="subdir" x-text="subdir"
+                                    :selected="subdir === $store.memoryDashboardStore.selectedMemorySubdir">
+                                </option>
+                            </template>
+                        </select>
+                    </div>
 
-                        <div class="filter-group-inline filter-area">
-                            <label for="area-filter">Area</label>
-                            <select id="area-filter" x-model="$store.memoryDashboardStore.areaFilter">
-                                <option value="">All Areas</option>
-                                <option value="main">Main</option>
-                                <option value="fragments">Fragments</option>
-                                <option value="solutions">Solutions</option>
-                                <option value="instruments">Instruments</option>
-                            </select>
-                        </div>
+                    <div class="filter-group-inline filter-area">
+                        <label for="area-filter">Area</label>
+                        <select id="area-filter" x-model="$store.memoryDashboardStore.areaFilter">
+                            <option value="">All Areas</option>
+                            <option value="main">Main</option>
+                            <option value="fragments">Fragments</option>
+                            <option value="solutions">Solutions</option>
+                            <option value="instruments">Instruments</option>
+                        </select>
+                    </div>
 
-                        <div class="filter-group-inline filter-limit">
-                            <label for="limit-input">Limit:</label>
-                            <input type="number" id="limit-input" x-model.number="$store.memoryDashboardStore.limit"
-                                min="10" max="1000" step="10" />
-                        </div>
+                    <div class="filter-group-inline filter-limit">
+                        <label for="limit-input">Limit:</label>
+                        <input type="number" id="limit-input" x-model.number="$store.memoryDashboardStore.limit"
+                            min="10" max="1000" step="10" />
+                    </div>
 
-                        <div class="filter-threshold">
-                            <label for="threshold-input">Threshold: <strong x-text="$store.memoryDashboardStore.threshold.toFixed(2)"></strong></label>
-                            <input type="range" id="threshold-input" x-model.number="$store.memoryDashboardStore.threshold"
-                                   min="0" max="1" step="0.01" />
-                        </div>
+                    <div class="filter-threshold">
+                        <label for="threshold-input">Threshold: <strong
+                                x-text="$store.memoryDashboardStore.threshold.toFixed(2)"></strong></label>
+                        <input type="range" id="threshold-input" x-model.number="$store.memoryDashboardStore.threshold"
+                            min="0" max="1" step="0.01" />
+                    </div>
 
-                        <input type="text" id="search-input" x-model="$store.memoryDashboardStore.searchQuery"
-                            placeholder="Search memory content..."
-                            @keyup.enter="$store.memoryDashboardStore.searchMemories()" />
-                        
-                        <button class="btn btn-ok btn-search" @click="$store.memoryDashboardStore.searchMemories()"
-                            :disabled="$store.memoryDashboardStore.loading || $store.memoryDashboardStore.loadingSubdirs">
-                            <span x-show="!$store.memoryDashboardStore.initializingMemory">Search</span>
-                            <span x-show="$store.memoryDashboardStore.initializingMemory">Init...</span>
-                        </button>
+                    <input type="text" id="search-input" x-model="$store.memoryDashboardStore.searchQuery"
+                        placeholder="Search memory content..."
+                        @keyup.enter="$store.memoryDashboardStore.searchMemories()" />
 
-                        <button class="btn btn-cancel btn-clear" @click="$store.memoryDashboardStore.clearSearch()">
-                            Clear
-                        </button>
+                    <button class="btn btn-ok btn-search" @click="$store.memoryDashboardStore.searchMemories()"
+                        :disabled="$store.memoryDashboardStore.loading || $store.memoryDashboardStore.loadingSubdirs">
+                        <span x-show="!$store.memoryDashboardStore.initializingMemory">Search</span>
+                        <span x-show="$store.memoryDashboardStore.initializingMemory">Init...</span>
+                    </button>
+
+                    <button class="btn btn-cancel btn-clear" @click="$store.memoryDashboardStore.clearSearch()">
+                        Clear
+                    </button>
                 </div>
 
                 <!-- Loading state -->
@@ -106,20 +107,18 @@
                         <!-- Pagination -->
                         <div class="status-pagination" x-show="$store.memoryDashboardStore.totalPages > 1">
                             <button class="btn btn-icon" @click="$store.memoryDashboardStore.prevPage()"
-                                :disabled="$store.memoryDashboardStore.currentPage === 1"
-                                title="Previous Page">
+                                :disabled="$store.memoryDashboardStore.currentPage === 1" title="Previous Page">
                                 <span class="material-symbols-outlined">chevron_left</span>
                             </button>
                             <div class="page-input-group">
                                 <label>Page</label>
-                                <input type="number" 
-                                       class="page-input"
-                                       x-model.number="$store.memoryDashboardStore.currentPage"
-                                       @change="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
-                                       @keyup.enter="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
-                                       :min="1"
-                                       :max="$store.memoryDashboardStore.totalPages" />
-                                <span class="page-total">of <strong x-text="$store.memoryDashboardStore.totalPages"></strong></span>
+                                <input type="number" class="page-input"
+                                    x-model.number="$store.memoryDashboardStore.currentPage"
+                                    @change="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
+                                    @keyup.enter="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
+                                    :min="1" :max="$store.memoryDashboardStore.totalPages" />
+                                <span class="page-total">of <strong
+                                        x-text="$store.memoryDashboardStore.totalPages"></strong></span>
                             </div>
                             <button class="btn btn-icon" @click="$store.memoryDashboardStore.nextPage()"
                                 :disabled="$store.memoryDashboardStore.currentPage === $store.memoryDashboardStore.totalPages"
@@ -142,13 +141,15 @@
                                 Copy
                             </button>
 
-                            <button class="btn btn-mass export" @click="$store.memoryDashboardStore.bulkExportMemories()"
+                            <button class="btn btn-mass export"
+                                @click="$store.memoryDashboardStore.bulkExportMemories()"
                                 title="Export Selected Memories">
                                 <span class="material-symbols-outlined">download</span>
                                 Export
                             </button>
 
-                            <button class="btn btn-mass delete" @click="$store.memoryDashboardStore.bulkDeleteMemories()"
+                            <button class="btn btn-mass delete"
+                                @click="$store.memoryDashboardStore.bulkDeleteMemories()"
                                 title="Delete Selected Memories">
                                 <span class="material-symbols-outlined">delete</span>
                                 Delete
@@ -196,11 +197,6 @@
                                                         :style="`background-color: ${$store.memoryDashboardStore.getAreaColor(memory.area)}`"
                                                         x-text="(memory.area || 'UNKNOWN').toUpperCase()"></span>
                                                 </div>
-                                                <div class="metadata-row metadata-timestamp">
-                                                    <span
-                                                        x-text="$store.memoryDashboardStore.formatTimestamp(memory.timestamp, true)"
-                                                        :title="$store.memoryDashboardStore.formatTimestamp(memory.timestamp, false)"></span>
-                                                </div>
                                                 <div class="metadata-row">
                                                     <template x-if="memory.knowledge_source">
                                                         <span class="source-type knowledge">Knowledge</span>
@@ -209,12 +205,20 @@
                                                         <span class="source-type conversation">Conversation</span>
                                                     </template>
                                                 </div>
+                                                <div class="metadata-row metadata-timestamp">
+                                                    <span
+                                                        x-text="$store.memoryDashboardStore.formatTimestamp(memory.timestamp, true)"
+                                                        :title="$store.memoryDashboardStore.formatTimestamp(memory.timestamp, false)"></span>
+                                                </div>
+
                                             </div>
                                         </td>
 
                                         <!-- Content preview -->
                                         <td class="preview-cell">
-                                            <div class="content-preview" x-text="memory.content_preview"></div>
+                                            <div class="content-preview"
+                                                x-text="memory.content_full.substring(0, 200) + (memory.content_full.length > 200 ? '...' : '')">
+                                            </div>
                                             <div class="tags" x-show="memory.tags && memory.tags.length > 0">
                                                 <template x-for="tag in memory.tags" :key="tag">
                                                     <span class="tag" x-text="tag"></span>
@@ -260,13 +264,15 @@
                                 Copy
                             </button>
 
-                            <button class="btn btn-mass export" @click="$store.memoryDashboardStore.bulkExportMemories()"
+                            <button class="btn btn-mass export"
+                                @click="$store.memoryDashboardStore.bulkExportMemories()"
                                 title="Export Selected Memories">
                                 <span class="material-symbols-outlined">download</span>
                                 Export
                             </button>
 
-                            <button class="btn btn-mass delete" @click="$store.memoryDashboardStore.bulkDeleteMemories()"
+                            <button class="btn btn-mass delete"
+                                @click="$store.memoryDashboardStore.bulkDeleteMemories()"
                                 title="Delete Selected Memories">
                                 <span class="material-symbols-outlined">delete</span>
                                 Delete
@@ -305,20 +311,18 @@
                         <!-- Pagination -->
                         <div class="status-pagination" x-show="$store.memoryDashboardStore.totalPages > 1">
                             <button class="btn btn-icon" @click="$store.memoryDashboardStore.prevPage()"
-                                :disabled="$store.memoryDashboardStore.currentPage === 1"
-                                title="Previous Page">
+                                :disabled="$store.memoryDashboardStore.currentPage === 1" title="Previous Page">
                                 <span class="material-symbols-outlined">chevron_left</span>
                             </button>
                             <div class="page-input-group">
                                 <label>Page</label>
-                                <input type="number" 
-                                       class="page-input"
-                                       x-model.number="$store.memoryDashboardStore.currentPage"
-                                       @change="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
-                                       @keyup.enter="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
-                                       :min="1"
-                                       :max="$store.memoryDashboardStore.totalPages" />
-                                <span class="page-total">of <strong x-text="$store.memoryDashboardStore.totalPages"></strong></span>
+                                <input type="number" class="page-input"
+                                    x-model.number="$store.memoryDashboardStore.currentPage"
+                                    @change="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
+                                    @keyup.enter="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
+                                    :min="1" :max="$store.memoryDashboardStore.totalPages" />
+                                <span class="page-total">of <strong
+                                        x-text="$store.memoryDashboardStore.totalPages"></strong></span>
                             </div>
                             <button class="btn btn-icon" @click="$store.memoryDashboardStore.nextPage()"
                                 :disabled="$store.memoryDashboardStore.currentPage === $store.memoryDashboardStore.totalPages"
@@ -355,12 +359,12 @@
             display: flex;
             flex-direction: column;
         }
-        
+
         .modal-inner.modal-with-footer .modal-scroll {
             flex: 1;
             min-height: 0;
         }
-        
+
         .modal-inner.modal-with-footer .modal-footer {
             flex-shrink: 0;
         }
@@ -379,15 +383,39 @@
         }
 
         /* Grid positioning for desktop - 2 rows */
-        .filter-memory-dir { grid-column: 1; grid-row: 1; }
-        .filter-area { grid-column: 2; grid-row: 1; }
-        .filter-limit { grid-column: 3; grid-row: 1; }
-        .filter-threshold { grid-column: 4; grid-row: 2; }
-        
-        #search-input { grid-column: 1 / 3; grid-row: 2; }
-        .btn-search { grid-column: 3; grid-row: 2; justify-content: center; }
-        .btn-clear { 
-            grid-column: 4; 
+        .filter-memory-dir {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .filter-area {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .filter-limit {
+            grid-column: 3;
+            grid-row: 1;
+        }
+
+        .filter-threshold {
+            grid-column: 4;
+            grid-row: 2;
+        }
+
+        #search-input {
+            grid-column: 1 / 3;
+            grid-row: 2;
+        }
+
+        .btn-search {
+            grid-column: 3;
+            grid-row: 2;
+            justify-content: center;
+        }
+
+        .btn-clear {
+            grid-column: 4;
             grid-row: 1;
             justify-self: end;
         }
@@ -424,7 +452,7 @@
         .filter-group-inline.filter-limit {
             flex: 0 0 auto;
         }
-        
+
         .filter-limit input {
             flex: 0 0 150%;
         }
@@ -641,15 +669,13 @@
         }
 
         .col-metadata {
-            width: 25%;
+            width: 10em;
         }
 
-        .col-preview {
-            width: 60%;
-        }
+        .col-preview {}
 
         .col-actions {
-            width: 10%;
+            width: 4em;
         }
 
         .memory-table th,
@@ -686,13 +712,13 @@
         }
 
         .area-badge {
-                color: white;
-                padding: 0.35rem 0.75rem;
-                border-radius: 16px;
-                font-size: 0.75rem;
-                font-weight: bold;
-                text-transform: uppercase;
-            }
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
 
         .select-cell,
         .col-select {
@@ -720,7 +746,7 @@
             /* border: 1px solid var(--color-primary); */
             /* border-radius: 8px; */
             /* margin: 1rem 0; */
-            margin:0;
+            margin: 0;
             animation: slideDown 0.3s ease;
         }
 
@@ -771,6 +797,7 @@
                 opacity: 0;
                 transform: translateY(-10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -795,8 +822,8 @@
             border-bottom: none;
         }
 
-        .memory-table tbody tr.memory-row {
-            background: var(--color-panel);
+        .memory-table tbody tr.memory-row>td {
+            height: 5em;
         }
 
         .source-type {
@@ -810,12 +837,12 @@
             flex-shrink: 0;
         }
 
-        .content-preview {
-            line-height: 1.4;
+        .content-preview,
+        .metadata-info {
+            height: 5.5em;
+            overflow: hidden;
             word-wrap: break-word;
             overflow-wrap: break-word;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
 
         .tags {
@@ -908,7 +935,7 @@
                 flex-wrap: wrap;
                 gap: 0.75rem;
             }
-            
+
             /* Reset grid positioning */
             .filter-memory-dir,
             .filter-area,
@@ -948,19 +975,22 @@
             }
 
             /* Mobile order and layout - force items to specific widths */
-            .filter-memory-dir { 
+            .filter-memory-dir {
                 order: 1;
                 flex: 1 1 100%;
             }
-            .filter-area { 
+
+            .filter-area {
                 order: 2;
                 flex: 1 1 100%;
             }
-            .filter-limit { 
+
+            .filter-limit {
                 order: 3;
                 flex: 1 1 100%;
             }
-            .btn-clear { 
+
+            .btn-clear {
                 order: 6;
                 flex: 40%;
                 min-width: 80px;
@@ -968,22 +998,23 @@
                 height: 42px;
                 justify-content: center;
             }
-            #search-input { 
+
+            #search-input {
                 order: 5;
                 flex: auto;
                 width: 100%;
                 height: 42px;
             }
-            
+
             /* Search button and threshold on same row */
-            .btn-search { 
+            .btn-search {
                 order: 7;
                 flex: 40%;
                 height: 42px;
                 padding: 0 1rem;
                 min-width: 80px;
             }
-            
+
             .filter-threshold {
                 order: 4;
                 flex: 40%;
@@ -1054,7 +1085,6 @@
                 width: 10%;
             }
         }
-
     </style>
 
     </template>
