@@ -11,28 +11,7 @@
     <div x-data>
         <template x-if="$store.memoryDashboardStore">
             <div x-create="$store.memoryDashboardStore.onOpen()"
-                x-destroy="$store.memoryDashboardStore.cleanup()" class="memory-dashboard" x-init="
-                // Inject footer into modal structure after component loads
-                $nextTick(() => {
-                    const modalInner = $el.closest('.modal-inner');
-                    if (modalInner && !modalInner.querySelector('.modal-footer')) {
-                        const footer = document.createElement('div');
-                        footer.className = 'modal-footer';
-                        footer.innerHTML = `
-                            <div id='buttons-container'>
-                                <button class='btn btn-ok' @click='$store.memoryDashboardStore.exportMemories()'>
-                                    Export Memories (JSON)
-                                </button>
-                            </div>
-                        `;
-                        modalInner.appendChild(footer);
-                        // Re-compile Alpine for the new footer
-                        Alpine.initTree(footer);
-                        
-                        // Add class to modal-inner for styling
-                        modalInner.classList.add('modal-with-footer');
-                    }
-                })">
+                x-destroy="$store.memoryDashboardStore.cleanup()" class="memory-dashboard">
 
                 <!-- Search and Filters Section -->
                 <div class="memory-filters-header">
@@ -205,7 +184,7 @@
                                         @click="$store.memoryDashboardStore.showMemoryDetails(memory)"
                                         style="cursor: pointer;">
                                         <!-- Selection checkbox -->
-                                        <td class="select-cell" @click.stop>
+                                        <td class="select-cell" @click.stop="memory.selected = !memory.selected">
                                             <input type="checkbox" x-model="memory.selected" />
                                         </td>
 
@@ -267,6 +246,88 @@
 
 
                     </div>
+
+                    <!-- Mass action toolbar -->
+                    <div x-show="$store.memoryDashboardStore.selectedCount > 0" class="mass-action-toolbar">
+                        <div class="selection-info">
+                            <span x-text="$store.memoryDashboardStore.selectedCount"></span> memories selected
+                        </div>
+
+                        <div class="mass-actions">
+                            <button class="btn btn-mass copy" @click="$store.memoryDashboardStore.bulkCopyMemories()"
+                                title="Copy Selected Content">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                Copy
+                            </button>
+
+                            <button class="btn btn-mass export" @click="$store.memoryDashboardStore.bulkExportMemories()"
+                                title="Export Selected Memories">
+                                <span class="material-symbols-outlined">download</span>
+                                Export
+                            </button>
+
+                            <button class="btn btn-mass delete" @click="$store.memoryDashboardStore.bulkDeleteMemories()"
+                                title="Delete Selected Memories">
+                                <span class="material-symbols-outlined">delete</span>
+                                Delete
+                            </button>
+
+                            <button class="btn btn-mass clear" @click="$store.memoryDashboardStore.clearSelection()"
+                                title="Clear Selection">
+                                <span class="material-symbols-outlined">close</span>
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <!-- Status Bar -->
+                    <div class="memory-status-bar" x-show="!$store.memoryDashboardStore.loading">
+                        <div class="status-info">
+                            <span class="status-item">
+                                <span class="material-symbols-outlined">database</span>
+                                Total: <strong x-text="$store.memoryDashboardStore.totalDbCount"></strong>
+                            </span>
+                            <span class="status-separator">•</span>
+                            <span class="status-item">
+                                Filtered: <strong x-text="$store.memoryDashboardStore.totalCount"></strong>
+                            </span>
+                            <span class="status-separator">•</span>
+                            <span class="status-item">
+                                Knowledge: <strong x-text="$store.memoryDashboardStore.knowledgeCount"></strong>
+                            </span>
+                            <span class="status-separator">•</span>
+                            <span class="status-item">
+                                Conversation: <strong x-text="$store.memoryDashboardStore.conversationCount"></strong>
+                            </span>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="status-pagination" x-show="$store.memoryDashboardStore.totalPages > 1">
+                            <button class="btn btn-icon" @click="$store.memoryDashboardStore.prevPage()"
+                                :disabled="$store.memoryDashboardStore.currentPage === 1"
+                                title="Previous Page">
+                                <span class="material-symbols-outlined">chevron_left</span>
+                            </button>
+                            <div class="page-input-group">
+                                <label>Page</label>
+                                <input type="number" 
+                                       class="page-input"
+                                       x-model.number="$store.memoryDashboardStore.currentPage"
+                                       @change="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
+                                       @keyup.enter="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
+                                       :min="1"
+                                       :max="$store.memoryDashboardStore.totalPages" />
+                                <span class="page-total">of <strong x-text="$store.memoryDashboardStore.totalPages"></strong></span>
+                            </div>
+                            <button class="btn btn-icon" @click="$store.memoryDashboardStore.nextPage()"
+                                :disabled="$store.memoryDashboardStore.currentPage === $store.memoryDashboardStore.totalPages"
+                                title="Next Page">
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </button>
+                        </div>
+                    </div>
+
 
                     <!-- No memories message -->
                     <div x-show="$store.memoryDashboardStore.memories.length === 0 && !$store.memoryDashboardStore.message"
@@ -395,7 +456,7 @@
             background: var(--color-panel);
             border-bottom: 1px solid var(--color-border);
             border-radius: 8px;
-            margin-bottom: 1rem;
+            /* margin-bottom: 1rem; */
             font-size: 0.9rem;
         }
 
@@ -656,9 +717,10 @@
             align-items: center;
             padding: 1rem;
             background: var(--color-panel);
-            border: 1px solid var(--color-primary);
-            border-radius: 8px;
-            margin: 1rem 0;
+            /* border: 1px solid var(--color-primary); */
+            /* border-radius: 8px; */
+            /* margin: 1rem 0; */
+            margin:0;
             animation: slideDown 0.3s ease;
         }
 

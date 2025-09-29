@@ -276,7 +276,7 @@
 }
 
 .btn:disabled {
-  background: #ccc;
+  /* background: #ccc; */
   cursor: not-allowed;
 }
 
