@@ -65,7 +65,9 @@
                         <div class="content-block">
                             <h4>Memory Content</h4>
                             <template x-if="!$store.memoryDashboardStore.editMode">
-                                <div class="memory-content-display" x-text="$store.memoryDashboardStore.detailMemory?.content_full"></div>
+                                <div class="memory-content-display">
+                                    <p x-text="$store.memoryDashboardStore.detailMemory?.content_full"></p>
+                                </div>
                             </template>
                             <template x-if="$store.memoryDashboardStore.editMode">
                                 <textarea class="memory-content-display" x-model="$store.memoryDashboardStore.detailMemory.content_full"></textarea>
@@ -209,7 +211,7 @@
             .content-section-main {
                 flex: 1;
                 padding: 1.5rem;
-                overflow-y: auto;
+                overflow-y: hidden;
                 display: flex;
                 flex-direction: column;
             }
@@ -218,12 +220,14 @@
                 margin-bottom: 3rem;
                 display: flex;
                 flex-direction: column;
+                min-height: 0;
             }
             
             /* Make the first content block (Memory Content) take all available space */
             .content-block:first-child {
                 flex: 1;
                 margin-bottom: 1.5rem;
+                min-height: 0;
             }
         
             .content-block h4 {
@@ -236,23 +240,41 @@
             }
         
             .memory-content-display {
-                background: var(--color-panel);
                 border: 1px solid var(--color-border);
                 border-radius: 8px;
-                padding: 1.5rem;
+                /* padding: 1.5rem; */
                 line-height: 1.6;
                 color: var(--color-text);
-                white-space: pre-wrap;
-                word-break: break-word;
-                overflow-y: auto;
                 /* Fixed height: parent container minus 1rem */
-                height: calc(100% - 1rem);
+                flex: 1;
+                min-height: 0;
                 /* Ensure textarea uses same styling */
                 font-family: inherit;
                 font-size: inherit;
                 resize: none;
                 width: 100%;
                 box-sizing: border-box;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .memory-content-display p {
+                background: var(--color-panel);
+                margin: 0;
+                padding: 1.5rem;
+                white-space: pre-wrap;
+                word-break: break-word;
+                overflow-y: auto;
+                overflow-x: hidden;
+                height: 0;
+                flex-grow: 1;
+            }
+            
+            textarea.memory-content-display {
+                padding: 1.5rem;
+                overflow-y: auto;
+                display: block;
             }
         
             .tags-display {
