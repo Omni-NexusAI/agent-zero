@@ -124,7 +124,7 @@
 
                         <!-- All Custom Metadata -->
                         <div class="metadata-group" x-show="$store.memoryDashboardStore.detailMemory?.metadata && Object.keys($store.memoryDashboardStore.detailMemory.metadata).length > 0">
-                            <h5>Additional Metadata</h5>
+                            <h5>Raw Metadata</h5>
                             <template x-for="[key, value] in Object.entries($store.memoryDashboardStore.detailMemory?.metadata || {})" :key="key">
                                 <div class="metadata-item">
                                     <span class="metadata-label" x-text="key + ':'"></span>
@@ -211,13 +211,14 @@
             .content-section-main {
                 flex: 1;
                 padding: 1.5rem;
+                padding-bottom: 0;
                 overflow-y: hidden;
                 display: flex;
                 flex-direction: column;
             }
         
             .content-block {
-                margin-bottom: 3rem;
+                /* margin-bottom: 3rem; */
                 display: flex;
                 flex-direction: column;
                 min-height: 0;
@@ -226,7 +227,7 @@
             /* Make the first content block (Memory Content) take all available space */
             .content-block:first-child {
                 flex: 1;
-                margin-bottom: 1.5rem;
+                /* margin-bottom: 1.5rem; */
                 min-height: 0;
             }
         
@@ -235,8 +236,8 @@
                 color: var(--color-text);
                 font-size: 1.1rem;
                 font-weight: 600;
-                border-bottom: 1px solid var(--color-border);
-                padding-bottom: 0.5rem;
+                /* border-bottom: 1px solid var(--color-border); */
+                /* padding-bottom: 0.5rem; */
             }
         
             .memory-content-display {
@@ -247,7 +248,7 @@
                 color: var(--color-text);
                 /* Fixed height: parent container minus 1rem */
                 flex: 1;
-                min-height: 0;
+                min-height: 25em;
                 /* Ensure textarea uses same styling */
                 font-family: inherit;
                 font-size: inherit;
@@ -303,6 +304,7 @@
                 border-left: 1px solid var(--color-border);
                 padding: 1.5rem;
                 overflow-y: auto;
+                max-height: 50em;
             }
         
             .metadata-sidebar h4 {
