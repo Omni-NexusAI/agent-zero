@@ -68,7 +68,7 @@
                                 <div class="memory-content-display" x-text="$store.memoryDashboardStore.detailMemory?.content_full"></div>
                             </template>
                             <template x-if="$store.memoryDashboardStore.editMode">
-                                <textarea class="memory-content-display" style="width: 100%; height: 300px;" x-model="$store.memoryDashboardStore.detailMemory.content_full"></textarea>
+                                <textarea class="memory-content-display" x-model="$store.memoryDashboardStore.detailMemory.content_full"></textarea>
                             </template>
                         </div>
 
@@ -203,17 +203,27 @@
             .modal-body {
                 display: flex;
                 min-height: 60vh;
-                max-height: 70vh;
+                max-height: 100%;
             }
         
             .content-section-main {
                 flex: 1;
                 padding: 1.5rem;
                 overflow-y: auto;
+                display: flex;
+                flex-direction: column;
             }
         
             .content-block {
                 margin-bottom: 3rem;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            /* Make the first content block (Memory Content) take all available space */
+            .content-block:first-child {
+                flex: 1;
+                margin-bottom: 1.5rem;
             }
         
             .content-block h4 {
@@ -234,8 +244,15 @@
                 color: var(--color-text);
                 white-space: pre-wrap;
                 word-break: break-word;
-                max-height: 300px;
                 overflow-y: auto;
+                /* Fixed height: parent container minus 1rem */
+                height: calc(100% - 1rem);
+                /* Ensure textarea uses same styling */
+                font-family: inherit;
+                font-size: inherit;
+                resize: none;
+                width: 100%;
+                box-sizing: border-box;
             }
         
             .tags-display {
@@ -260,7 +277,6 @@
             .metadata-sidebar {
                 min-width: 300px;
                 max-width: 350px;
-                min-height: 90vh;
                 background: var(--color-panel);
                 border-left: 1px solid var(--color-border);
                 padding: 1.5rem;
@@ -326,14 +342,13 @@
             .memory-detail-container {
                 display: flex;
                 flex-direction: column;
-                height: 90vh;
+                height: 100%;
             }
             
             /* Responsive design for modal */
             @media (max-width: 870px) {
                 .modal-body {
                     flex-direction: column;
-                    max-height: 80vh;
                 }
         
                 .metadata-sidebar {
