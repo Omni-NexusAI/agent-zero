@@ -4,7 +4,6 @@ import base64
 import io
 import warnings
 import asyncio
-import soundfile as sf
 from python.helpers import runtime
 from python.helpers.print_style import PrintStyle
 from python.helpers.notification import NotificationManager, NotificationType, NotificationPriority
@@ -104,6 +103,11 @@ async def _synthesize_sentences(sentences: list[str]):
     combined_audio = []
 
     try:
+        # Lazy import to avoid hard-failing module import at app startup
+        try:
+            import soundfile as sf  # type: ignore
+        except Exception as _e:
+            raise RuntimeError("soundfile library is not available in runtime") from _e
         for sentence in sentences:
             if sentence.strip():
                 segments = _pipeline(sentence.strip(), voice=_voice, speed=_speed) # type: ignore
