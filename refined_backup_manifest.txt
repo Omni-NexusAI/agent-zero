@@ -1,0 +1,14 @@
+/a0/.dockerignore
+/a0/.env
+/a0/conf/
+/a0/knowledge/
+/a0/memory/default/index.faiss
+/a0/memory/default/index.pkl
+/a0/memory/embeddings/
+/a0/tmp/settings.json
+/root/.config/syncthing/
+/root/.local/share/syncthing/
+/root/.local/share/knowledge_graph/
+/root/.config/knowledge_graph/
+/root/backup_scripts/
+/a0/backup_config_updated.sh

@@ -44,6 +44,13 @@
                                 <!-- Server name -->
                                 <span class="server-name" x-text="server.name"></span>
 
+                                <!-- Enable/disable toggle -->
+                                <label class="switch">
+                                    <input type="checkbox" :checked="!server.disabled"
+                                        @change="$store.mcpServersStore.toggleServer(server.name)" />
+                                    <span class="slider server-toggle-slider"></span>
+                                </label>
+
                                 <!-- Tool count (clickable if > 0, only for connected servers without errors) -->
                                 <span class="tool-count" x-show="server.tool_count > 0"
                                     @click="$store.mcpServersStore.onToolCountClick && $store.mcpServersStore.onToolCountClick(server.name)"
@@ -55,8 +62,9 @@
                             </div>
 
                             <!-- Error message (if any) -->
-                            <div class="server-error-row" x-show="server.error">
-                                <span class="server-error" x-text="server.error"></span>
+                            <div class="server-error-row" x-show="server.error || server.disabled">
+                                <span class="server-error" x-show="server.error" x-text="server.error"></span>
+                                <span class="server-disabled" x-show="!server.error && server.disabled">Disabled in config</span>
                             </div>
                         </div>
                     </template>
@@ -170,10 +178,65 @@
             line-height: 1.2;
         }
 
+        .server-disabled {
+            color: #FF9800;
+            font-style: italic;
+        }
+
         .no-servers {
             padding: 0.5em;
             color: var(--c-fg2);
             font-style: italic;
+        }
+
+        /* MCP server toggle styles */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #00c340;
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px #00c340;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
         }
     </style>
 
