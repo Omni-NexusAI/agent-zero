@@ -126,6 +126,7 @@ chat:
     name: Other OpenAI compatible
     litellm_provider: openai
 
+
 embedding:
   huggingface:
     name: HuggingFace

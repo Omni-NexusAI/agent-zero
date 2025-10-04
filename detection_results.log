@@ -1,0 +1,6 @@
+🔍 Scanning for new components...
+📢 Important components detected - sending notification
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100   589  100   413  100   176   1848    787 --:--:-- --:--:-- --:--:--  2641
+{"id":"SPxjWRoKgUh4","time":1755086082,"expires":1755129282,"event":"message","topic":"agent-zero-updates","title":"🚨 Important System Changes Detected","message":"Detected 1 important system changes that require backup inclusion:\\n\\n• /a0/detection_results.log (new type)\\n\\n\\nThese will be automatically included in the next backup run.","priority":4,"tags":["system","backup","important","warning"]}
