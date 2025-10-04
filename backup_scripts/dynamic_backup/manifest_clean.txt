@@ -1,0 +1,13 @@
+/a0/
+/root/backup_scripts/
+/root/A0_backups_accessible/
+/usr/bin/syncthing
+/root/.config/syncthing/
+!/a0/tmp/
+!/a0/node_modules/
+!__pycache__/
+!*.pyc
+!*.gcode
+!/a0/python/uv/
+!/a0/tmp/chats/*/*.json
+!/a0/tmp/scheduler/*
