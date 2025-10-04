@@ -606,10 +606,25 @@
 
                                             <div class="field-control">
                                                 <!-- Input field -->
-                                                <template x-if="field.type === 'text'">
+                                                <template x-if="field.type === 'text' && !field.id.endsWith('_model_name')">
                                                     <input type="text" :class="field.classes" :value="field.value"
                                                         :readonly="field.readonly === true"
                                                         @input="field.value = $event.target.value">
+                                                </template>
+
+                                                <!-- Model name field with history dropdown -->
+                                                <template x-if="field.type === 'text' && field.id.endsWith('_model_name')">
+                                                    <div class="model-name-wrapper" style="position:relative; display:flex; align-items:center; gap:0.25em; width:100%;">
+                                                        <input type="text" :id="field.id" :class="field.classes" :value="field.value"
+                                                               :readonly="field.readonly === true"
+                                                               @input="handleFieldInput(field, $event.target.value)"
+                                                               style="flex:1; padding-right:4.4em;">
+                                                        <button type="button" title="Remove from history"
+                                                                @click="removeModelName(field, field.value)"
+                                                                style="position:absolute; right:3.0em; width:1.6em; background:transparent; border:none; color:#222; cursor:pointer; font-weight:bold;">−</button>
+                                                        <button type="button" aria-label="Toggle"
+                                                                style="position:absolute; right:0.4em; width:1.6em; height:1.6em; background:transparent; border:none; color:var(--color-text); cursor:pointer;">▼</button>
+                                                    </div>
                                                 </template>
 
                                                 <!-- Number field -->

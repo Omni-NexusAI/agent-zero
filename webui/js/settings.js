@@ -567,6 +567,47 @@ document.addEventListener('alpine:init', function () {
     });
 });
 
+// Model name caching functions for Model Picker feature
+function getCachedModelNames(field) {
+    const key = `model_history_${field.id}`;
+    const cached = localStorage.getItem(key);
+    return cached ? JSON.parse(cached) : [];
+}
+
+function cacheModelName(field) {
+    const value = field.value?.trim();
+    if (!value) return;
+    
+    const key = `model_history_${field.id}`;
+    const cached = getCachedModelNames(field);
+    
+    // Remove if already exists to avoid duplicates
+    const filtered = cached.filter(name => name !== value);
+    
+    // Add to beginning of list
+    filtered.unshift(value);
+    
+    // Keep only last 20 models
+    const limited = filtered.slice(0, 20);
+    
+    localStorage.setItem(key, JSON.stringify(limited));
+}
+
+function removeModelName(field, modelName) {
+    const key = `model_history_${field.id}`;
+    const cached = getCachedModelNames(field);
+    const filtered = cached.filter(name => name !== modelName);
+    localStorage.setItem(key, JSON.stringify(filtered));
+}
+
+function handleFieldInput(field, value) {
+    field.value = value;
+    // Cache the model name when it's a model name field
+    if (field.id.endsWith('_model_name')) {
+        cacheModelName(field);
+    }
+}
+
 // Show toast notification - now uses new notification system
 function showToast(message, type = 'info') {
     // Use new frontend notification system based on type
