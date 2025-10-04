@@ -92,6 +92,67 @@ const model = {
     }
   },
 
+  async toggleServer(name) {
+    try {
+      // Stop status check completely to avoid conflicts
+      this.statusCheck = false;
+      
+      const current = JSON.parse(this.getEditorValue() || "{}");
+      if (!current.mcpServers || typeof current.mcpServers !== "object") {
+        console.error("No mcpServers configuration found");
+        this.startStatusCheck();
+        return;
+      }
+      
+      // Find the server by name (case-insensitive)
+      let found = false;
+      for (const [key, server] of Object.entries(current.mcpServers)) {
+        if (key.toLowerCase() === name.toLowerCase()) {
+          server.disabled = !server.disabled;
+          found = true;
+          break;
+        }
+      }
+      
+      if (!found) {
+        console.error(`Server ${name} not found in configuration`);
+        this.startStatusCheck();
+        return;
+      }
+      
+      const formatted = JSON.stringify(current, null, 2);
+      this.editor.setValue(formatted);
+      this.editor.clearSelection();
+      
+      // Set loading state
+      this.loading = true;
+      
+      // Apply changes immediately using the same logic as applyNow
+      scrollModal("mcp-servers-status");
+      const resp = await API.callJsonApi("mcp_servers_apply", {
+        mcp_servers: formatted,
+      });
+      
+      if (resp.success) {
+        this.servers = resp.status;
+        this.servers.sort((a, b) => a.name.localeCompare(b.name));
+      }
+      
+      this.loading = false;
+      await sleep(100); // wait for ui and scroll
+      scrollModal("mcp-servers-status");
+      
+      // Restart status check after a delay
+      setTimeout(() => this.startStatusCheck(), 2000);
+    } catch (error) {
+      console.error("Failed to toggle server:", error);
+      alert("Failed to toggle server: " + error.message);
+      this.loading = false;
+      // Restart status check on error
+      setTimeout(() => this.startStatusCheck(), 2000);
+    }
+  },
+
   async stopStatusCheck() {
     this.statusCheck = false;
   },
