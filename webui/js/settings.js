@@ -86,6 +86,10 @@ const settingsModalProxy = {
                     if (!field.hasOwnProperty('showDropdown')) {
                         field.showDropdown = false;
                     }
+                    // Initialize historyNonce to enable reactive updates of dropdown list
+                    if (!field.hasOwnProperty('historyNonce')) {
+                        field.historyNonce = 0;
+                    }
                 }
             });
         });
@@ -414,6 +418,10 @@ document.addEventListener('alpine:init', function () {
                              field.id === 'embed_model_name')) {
                             // Initialize showDropdown as a reactive property
                             field.showDropdown = false;
+                            // Initialize historyNonce to enable reactive updates of dropdown list
+                            if (!field.hasOwnProperty('historyNonce')) {
+                                field.historyNonce = 0;
+                            }
                         }
                     });
                 });
@@ -647,6 +655,10 @@ document.addEventListener('alpine:init', function () {
 
 // Model name caching functions for Model Picker feature
 function getCachedModelNames(field) {
+    // Read reactive nonce to make Alpine re-evaluate when it changes
+    // This creates a dependency on field.historyNonce
+    // eslint-disable-next-line no-unused-vars
+    const _nonce = field?.historyNonce;
     const key = `model_history_${field.id}`;
     const cached = localStorage.getItem(key);
     return cached ? JSON.parse(cached) : [];
@@ -692,6 +704,11 @@ function removeModelName(field, modelName) {
     const cached = JSON.parse(localStorage.getItem(key) || '[]');
     const filtered = cached.filter((name) => name !== targetValue);
     localStorage.setItem(key, JSON.stringify(filtered));
+    
+    // Bump a reactive nonce so the dropdown list re-renders immediately
+    try {
+        field.historyNonce = (field.historyNonce || 0) + 1;
+    } catch {}
     
     // IMMEDIATELY clear the field value if it matches what we're removing
     if (field && currentValue === targetValue) {
