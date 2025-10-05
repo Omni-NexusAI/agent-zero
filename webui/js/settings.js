@@ -70,6 +70,27 @@ const settingsModalProxy = {
         }, 10);
     },
 
+    initializeModelFieldDropdowns(sections) {
+        if (!sections) return;
+        sections.forEach(section => {
+            if (!section.fields) return;
+            section.fields.forEach(field => {
+                // Check if this is a model name field
+                if (field.type === 'text' && 
+                    (field.id && (field.id.endsWith('_model_name') ||
+                     field.id === 'chat_model_name' ||
+                     field.id === 'util_model_name' ||
+                     field.id === 'browser_model_name' ||
+                     field.id === 'embed_model_name'))) {
+                    // Initialize showDropdown as a reactive property
+                    if (!field.hasOwnProperty('showDropdown')) {
+                        field.showDropdown = false;
+                    }
+                }
+            });
+        });
+    },
+
     async openModal() {
         console.log('Settings modal opening');
         const modalEl = document.getElementById('settingsModal');
@@ -104,6 +125,9 @@ const settingsModalProxy = {
                 ],
                 "sections": set.settings.sections
             }
+
+            // Initialize showDropdown for model name fields
+            this.initializeModelFieldDropdowns(settings.sections);
 
             // Update modal data
             modalAD.isOpen = true;
@@ -336,9 +360,32 @@ document.addEventListener('alpine:init', function () {
                     }
                 });
 
-                // Load settings
+            // Load settings
                 await this.fetchSettings();
+                // Initialize showDropdown for all model name fields
+                this.initializeModelFields();
                 this.updateFilteredSections();
+            },
+
+            initializeModelFields() {
+                // Initialize showDropdown property for all model name fields
+                if (!this.settingsData.sections) return;
+                
+                this.settingsData.sections.forEach(section => {
+                    if (!section.fields) return;
+                    section.fields.forEach(field => {
+                        // Check if this is a model name field
+                        if (field.type === 'text' && 
+                            (field.id && field.id.endsWith('_model_name') ||
+                             field.id === 'chat_model_name' ||
+                             field.id === 'util_model_name' ||
+                             field.id === 'browser_model_name' ||
+                             field.id === 'embed_model_name')) {
+                            // Initialize showDropdown as a reactive property
+                            field.showDropdown = false;
+                        }
+                    });
+                });
             },
 
             switchTab(tab) {
@@ -594,9 +641,20 @@ function cacheModelName(field) {
 }
 
 function removeModelName(field, modelName) {
-    const key = `model_history_${field.id}`;
-    const cached = getCachedModelNames(field);
-    const filtered = cached.filter(name => name !== modelName);
+    // Prefer explicit id; if missing, try to infer from a bound input element
+    let fieldId = field?.id;
+    if (!fieldId) {
+        try {
+            const wrapper = document.activeElement?.closest?.('.model-name-wrapper');
+            const input = wrapper ? wrapper.querySelector('input') : null;
+            fieldId = input?.id || fieldId;
+        } catch {}
+    }
+    if (!fieldId) return;
+
+    const key = `model_history_${fieldId}`;
+    const cached = JSON.parse(localStorage.getItem(key) || '[]');
+    const filtered = cached.filter((name) => name !== modelName);
     localStorage.setItem(key, JSON.stringify(filtered));
 }
 
