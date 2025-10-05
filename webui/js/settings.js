@@ -250,10 +250,14 @@ const settingsModalProxy = {
             const modalEl = document.getElementById('settingsModal');
             const modalAD = Alpine.$data(modalEl);
             
-            // Cache all model names to localStorage before saving
-            this.cacheAllModelNames(modalAD.settings.sections);
-            
             try {
+                // Cache all model names to localStorage before saving, but never block save/close
+                try {
+                    this.cacheAllModelNames(modalAD.settings.sections);
+                } catch (cacheErr) {
+                    console.warn('cacheAllModelNames failed:', cacheErr);
+                }
+
                 resp = await window.sendJsonData("/settings_set", modalAD.settings);
             } catch (e) {
                 window.toastFetchError("Error saving settings", e)
