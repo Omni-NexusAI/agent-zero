@@ -221,11 +221,38 @@ const settingsModalProxy = {
         }
     },
 
+    cacheAllModelNames(sections) {
+        // Cache all model name field values to localStorage
+        if (!sections) return;
+        
+        sections.forEach(section => {
+            if (!section.fields) return;
+            section.fields.forEach(field => {
+                // Check if this is a model name field with a value
+                if (field.type === 'text' && 
+                    field.value && 
+                    field.value.trim() &&
+                    (field.id && (field.id.endsWith('_model_name') ||
+                     field.id === 'chat_model_name' ||
+                     field.id === 'util_model_name' ||
+                     field.id === 'browser_model_name' ||
+                     field.id === 'embed_model_name'))) {
+                    // Cache this model name
+                    window.cacheModelName(field);
+                }
+            });
+        });
+    },
+
     async handleButton(buttonId) {
         if (buttonId === 'save') {
 
             const modalEl = document.getElementById('settingsModal');
             const modalAD = Alpine.$data(modalEl);
+            
+            // Cache all model names to localStorage before saving
+            this.cacheAllModelNames(modalAD.settings.sections);
+            
             try {
                 resp = await window.sendJsonData("/settings_set", modalAD.settings);
             } catch (e) {
@@ -669,11 +696,9 @@ function removeModelName(field, modelName) {
 }
 
 function handleFieldInput(field, value) {
+    // Just update the field value, don't cache yet
+    // Models will be cached when user clicks Save in settings modal
     field.value = value;
-    // Cache the model name when it's a model name field
-    if (field.id.endsWith('_model_name')) {
-        cacheModelName(field);
-    }
 }
 
 function toggleModelDropdown(field) {
@@ -698,14 +723,13 @@ function toggleModelDropdown(field) {
 function selectModelName(field, modelName) {
     field.value = modelName;
     field.showDropdown = false;
-    // Cache the selected model name
-    cacheModelName(field);
+    // Don't cache here - will be cached when Save is clicked
 }
 
 function saveModelName(field) {
-    const value = field.value?.trim();
-    if (value && field.id.endsWith('_model_name')) {
-        cacheModelName(field);
+    // Just close the dropdown, don't cache yet
+    // Model will be cached when user clicks Save in settings modal
+    if (field.showDropdown) {
         field.showDropdown = false;
     }
 }
