@@ -652,10 +652,20 @@ function removeModelName(field, modelName) {
     }
     if (!fieldId) return;
 
+    // Get the current value from the field to check if it matches
+    const currentValue = field?.value?.trim();
+    const targetValue = modelName || currentValue;
+    
+    // Remove from localStorage history
     const key = `model_history_${fieldId}`;
     const cached = JSON.parse(localStorage.getItem(key) || '[]');
-    const filtered = cached.filter((name) => name !== modelName);
+    const filtered = cached.filter((name) => name !== targetValue);
     localStorage.setItem(key, JSON.stringify(filtered));
+    
+    // IMMEDIATELY clear the field value if it matches what we're removing
+    if (field && currentValue === targetValue) {
+        field.value = '';
+    }
 }
 
 function handleFieldInput(field, value) {
