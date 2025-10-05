@@ -237,8 +237,8 @@ const settingsModalProxy = {
                      field.id === 'util_model_name' ||
                      field.id === 'browser_model_name' ||
                      field.id === 'embed_model_name'))) {
-                    // Cache this model name
-                    window.cacheModelName(field);
+                    // Cache this model name (use global function)
+                    cacheModelName(field);
                 }
             });
         });
@@ -683,7 +683,7 @@ function removeModelName(field, modelName) {
     const currentValue = field?.value?.trim();
     const targetValue = modelName || currentValue;
     
-    // Remove from localStorage history
+    // Remove from localStorage history IMMEDIATELY
     const key = `model_history_${fieldId}`;
     const cached = JSON.parse(localStorage.getItem(key) || '[]');
     const filtered = cached.filter((name) => name !== targetValue);
@@ -692,6 +692,14 @@ function removeModelName(field, modelName) {
     // IMMEDIATELY clear the field value if it matches what we're removing
     if (field && currentValue === targetValue) {
         field.value = '';
+        
+        // Force the UI to update immediately by triggering an input event
+        // This ensures Alpine.js sees the change right away
+        const inputElement = document.getElementById(fieldId);
+        if (inputElement) {
+            inputElement.value = '';
+            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+        }
     }
 }
 
