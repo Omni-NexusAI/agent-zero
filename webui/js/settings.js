@@ -608,6 +608,40 @@ function handleFieldInput(field, value) {
     }
 }
 
+function toggleModelDropdown(field) {
+    // Close all other dropdowns first
+    document.querySelectorAll('.model-dropdown').forEach(dropdown => {
+        const wrapper = dropdown.closest('.model-name-wrapper');
+        if (wrapper) {
+            const input = wrapper.querySelector('input');
+            if (input && input.id !== field.id) {
+                const fieldData = Alpine.$data(input);
+                if (fieldData) {
+                    fieldData.showDropdown = false;
+                }
+            }
+        }
+    });
+    
+    // Toggle current dropdown
+    field.showDropdown = !field.showDropdown;
+}
+
+function selectModelName(field, modelName) {
+    field.value = modelName;
+    field.showDropdown = false;
+    // Cache the selected model name
+    cacheModelName(field);
+}
+
+function saveModelName(field) {
+    const value = field.value?.trim();
+    if (value && field.id.endsWith('_model_name')) {
+        cacheModelName(field);
+        field.showDropdown = false;
+    }
+}
+
 // Show toast notification - now uses new notification system
 function showToast(message, type = 'info') {
     // Use new frontend notification system based on type
