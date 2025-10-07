@@ -202,6 +202,32 @@ const settingsModalProxy = {
 
             const modalEl = document.getElementById('settingsModal');
             const modalAD = Alpine.$data(modalEl);
+
+            // Persist staged model histories (temp + current values) before saving settings
+            try {
+                for (const section of modalAD.settings.sections || []) {
+                    for (const field of section.fields || []) {
+                        const isModelField = field && field.type === 'text' && (
+                            (field.id && field.id.endsWith('_model_name')) ||
+                            ['chat_model_name','util_model_name','browser_model_name','embed_model_name'].includes(field.id)
+                        );
+                        if (!isModelField) continue;
+                        ensureReactiveFields(field);
+                        const staged = uniqueList([
+                            ...(field.value ? [String(field.value).trim()] : []),
+                            ...getTempModels(field),
+                            ...getLocalModelHistory(field)
+                        ]).slice(0, 20);
+                        setLocalModelHistory(field, staged);
+                        // Clear staged list after persisting
+                        field._tempModels = [];
+                        field.historyNonce++;
+                    }
+                }
+            } catch (persistErr) {
+                console.warn('Model history persist on Save failed:', persistErr);
+            }
+
             try {
                 resp = await window.sendJsonData("/settings_set", modalAD.settings);
             } catch (e) {
@@ -586,13 +612,41 @@ document.addEventListener('alpine:init', function () {
 });
 
 // Model name caching functions for Model Picker feature
+// Helpers for model history
+function getLocalModelHistory(field) {
+    const key = `model_history_${field.id}`;
+    const raw = localStorage.getItem(key);
+    try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+}
+
+function setLocalModelHistory(field, list) {
+    const key = `model_history_${field.id}`;
+    localStorage.setItem(key, JSON.stringify(list || []));
+}
+
+function getTempModels(field) {
+    return Array.isArray(field?._tempModels) ? field._tempModels : [];
+}
+
+function ensureReactiveFields(field) {
+    if (!Object.prototype.hasOwnProperty.call(field, 'historyNonce')) field.historyNonce = 0;
+    if (!Array.isArray(field._tempModels)) field._tempModels = [];
+}
+
+function uniqueList(arr) {
+    const seen = new Set();
+    const out = [];
+    for (const v of arr) { const t = String(v).trim(); if (t && !seen.has(t)) { seen.add(t); out.push(t); } }
+    return out;
+}
+
 function getCachedModelNames(field) {
     // Read a reactive nonce so Alpine will re-evaluate when it changes
     // eslint-disable-next-line no-unused-vars
     const _nonce = field?.historyNonce;
-    const key = `model_history_${field.id}`;
-    const cached = localStorage.getItem(key);
-    return cached ? JSON.parse(cached) : [];
+    const local = getLocalModelHistory(field);
+    const temp = getTempModels(field);
+    return uniqueList([...local, ...temp]);
 }
 
 function cacheModelName(field) {
@@ -615,13 +669,15 @@ function cacheModelName(field) {
 }
 
 function removeModelName(field, modelName) {
-    const key = `model_history_${field.id}`;
-    const cached = getCachedModelNames(field);
-    const filtered = cached.filter(name => name !== modelName);
-    localStorage.setItem(key, JSON.stringify(filtered));
+    ensureReactiveFields(field);
+    // Remove from local storage history
+    const local = getLocalModelHistory(field).filter(n => n !== modelName);
+    setLocalModelHistory(field, local);
+    // Remove from temporary queue
+    field._tempModels = getTempModels(field).filter(n => n !== modelName);
 
     // Bump a reactive nonce so dropdown updates immediately
-    try { field.historyNonce = (field.historyNonce || 0) + 1; } catch {}
+    field.historyNonce = (field.historyNonce || 0) + 1;
 
     // If the current field value matches the removed model, clear it immediately
     const currentValue = field?.value?.trim();
@@ -661,16 +717,30 @@ function toggleModelDropdown(field) {
 }
 
 function selectModelName(field, modelName) {
+    ensureReactiveFields(field);
     field.value = modelName;
     field.showDropdown = false;
-    // Do not cache here; history is persisted on Save
+    // Queue into temp list so it appears in dropdown before Save
+    field._tempModels = uniqueList([modelName, ...getTempModels(field)]).slice(0, 20);
+    field.historyNonce++;
 }
 
 function saveModelName(field) {
-    // Just close the dropdown if open; saving occurs on Settings Save
-    if (field.showDropdown) {
-        field.showDropdown = false;
+    // Enter key: stage the current value into temporary history for this field
+    ensureReactiveFields(field);
+    const value = String(field?.value || '').trim();
+    if (value) {
+        field._tempModels = uniqueList([value, ...getTempModels(field)]).slice(0, 20);
+        field.historyNonce++;
+        // Clear the input for streamlined entry of multiple models
+        field.value = '';
+        const inputElement = document.getElementById(field.id);
+        if (inputElement) {
+            inputElement.value = '';
+            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+        }
     }
+    if (field.showDropdown) field.showDropdown = false;
 }
 
 // Show toast notification - now uses new notification system
