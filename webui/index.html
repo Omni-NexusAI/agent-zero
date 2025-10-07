@@ -698,8 +698,24 @@
                                                         @click="handleFieldButton(field)" x-text="field.value"></button>
                                                 </template>
 
-                                                <!-- Select field -->
-                                                <template x-if="field.type === 'select'">
+                                                <!-- Custom Voice Select for Kokoro (styled label parts) -->
+                                                <template x-if="field.type === 'select' && (field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
+                                                    <div class="voice-select" x-data="{ open:false }" @click.outside="open=false">
+                                                        <button type="button" class="voice-select-btn" :disabled="field.readonly === true" @click="open=!open">
+                                                            <span x-html="window.renderVoiceLabel((field.options.find(o=>o.value===field.value)||{}).label || '')"></span>
+                                                        </button>
+                                                        <div class="voice-select-list" x-show="open" x-transition>
+                                                            <template x-for="option in field.options" :key="option.value">
+                                                                <div class="voice-option" @click="field.value=option.value; open=false">
+                                                                    <span x-html="window.renderVoiceLabel(option.label)"></span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </template>
+
+                                                <!-- Generic Select field -->
+                                                <template x-if="field.type === 'select' && !(field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
                                                     <select :class="field.classes" x-model="field.value"
                                                         :disabled="field.readonly === true">
                                                         <template x-for="option in field.options" :key="option.value">
@@ -1809,41 +1825,41 @@
         .model-remove-btn {
             position: absolute;
             right: 3.0em;
-            width: 1.6em;
-            height: 1.6em;
+            width: 1.4em;
+            height: 1.4em;
             background: transparent;
             border: none;
-            color: var(--color-text);
+            color: #6f6f6f; /* slightly dark gray */
             cursor: pointer;
-            font-weight: bold;
-            font-size: 0.9em;
+            font-weight: 700;
+            font-size: 0.85em;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 2px;
-            transition: background-color 0.2s ease;
+            transition: color 0.15s ease;
         }
 
         .model-remove-btn:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #ccc;
+            color: #cfcfcf; /* light gray on hover */
         }
 
         .model-dropdown-btn {
             position: absolute;
-            right: 0.4em;
-            width: 1.2em;
-            height: 1.2em;
+            right: 0.5em;
+            width: 0.9em;  /* match other dropdowns */
+            height: 0.9em;
             background: transparent;
             border: none;
             color: var(--color-text);
             cursor: pointer;
-            font-size: 0.7em;
+            font-size: 0.55em; /* subtle chevron */
+            line-height: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            opacity: 0.7;
-            transition: opacity 0.2s ease;
+            opacity: 0.75;
+            transition: opacity 0.15s ease;
         }
 
         .model-dropdown-btn:hover {
@@ -1855,7 +1871,7 @@
             top: 100%;
             left: 0;
             right: 0;
-            background: var(--color-bg);
+            background: var(--color-background);
             border: 1px solid var(--color-border);
             border-radius: 4px;
             z-index: 1000;
@@ -1866,10 +1882,11 @@
         }
 
         .model-dropdown-item {
-            padding: 8px 12px;
+            padding: 6px 10px;
             cursor: pointer;
             border-bottom: 1px solid var(--color-border);
             transition: background-color 0.2s ease;
+            font-size: var(--font-size-small);
         }
 
         .model-dropdown-item:hover {

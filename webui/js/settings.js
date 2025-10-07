@@ -304,6 +304,24 @@ const settingsModalProxy = {
 //     Alpine.store('settingsModal', initSettingsModal());
 // });
 
+// Helper to render styled voice labels: GB/US (muted), gender/lang (main), name (emphasis)
+window.renderVoiceLabel = function (label) {
+    if (!label) return '';
+    try {
+        const parts = label.split('•').map(s => s.trim());
+        const [region, gender, lang, name] = [parts[0]||'', parts[1]||'', parts[2]||'', parts[3]||''];
+        const sep = '<span class="voice-sep"> • </span>';
+        return (
+            `<span class="voice-region">${region}</span>` + sep +
+            `<span class="voice-meta">${gender}</span>` + sep +
+            `<span class="voice-meta">${lang}</span>` + sep +
+            `<span class="voice-name">${name}</span>`
+        );
+    } catch (e) {
+        return label;
+    }
+};
+
 document.addEventListener('alpine:init', function () {
     // Initialize the root store first to ensure it exists before components try to access it
     Alpine.store('root', {
@@ -569,6 +587,9 @@ document.addEventListener('alpine:init', function () {
 
 // Model name caching functions for Model Picker feature
 function getCachedModelNames(field) {
+    // Read a reactive nonce so Alpine will re-evaluate when it changes
+    // eslint-disable-next-line no-unused-vars
+    const _nonce = field?.historyNonce;
     const key = `model_history_${field.id}`;
     const cached = localStorage.getItem(key);
     return cached ? JSON.parse(cached) : [];
@@ -598,14 +619,26 @@ function removeModelName(field, modelName) {
     const cached = getCachedModelNames(field);
     const filtered = cached.filter(name => name !== modelName);
     localStorage.setItem(key, JSON.stringify(filtered));
+
+    // Bump a reactive nonce so dropdown updates immediately
+    try { field.historyNonce = (field.historyNonce || 0) + 1; } catch {}
+
+    // If the current field value matches the removed model, clear it immediately
+    const currentValue = field?.value?.trim();
+    const targetValue = modelName || currentValue;
+    if (currentValue && currentValue === targetValue) {
+        field.value = '';
+        const inputElement = document.getElementById(field.id);
+        if (inputElement) {
+            inputElement.value = '';
+            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
 }
 
 function handleFieldInput(field, value) {
+    // Update the field value only. We persist history when Save is clicked.
     field.value = value;
-    // Cache the model name when it's a model name field
-    if (field.id.endsWith('_model_name')) {
-        cacheModelName(field);
-    }
 }
 
 function toggleModelDropdown(field) {
@@ -630,14 +663,12 @@ function toggleModelDropdown(field) {
 function selectModelName(field, modelName) {
     field.value = modelName;
     field.showDropdown = false;
-    // Cache the selected model name
-    cacheModelName(field);
+    // Do not cache here; history is persisted on Save
 }
 
 function saveModelName(field) {
-    const value = field.value?.trim();
-    if (value && field.id.endsWith('_model_name')) {
-        cacheModelName(field);
+    // Just close the dropdown if open; saving occurs on Settings Save
+    if (field.showDropdown) {
         field.showDropdown = false;
     }
 }
