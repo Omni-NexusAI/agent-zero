@@ -1882,20 +1882,21 @@
         }
 
         .model-dropdown-item {
-            padding: 6px 10px;
+            padding: 8px 10px;
             cursor: pointer;
             transition: background-color 0.2s ease;
             font-size: var(--font-size-small);
-            background-color: #000; /* ensure each row is opaque black */
-            margin-bottom: 6px; /* empty space between items instead of dividers */
+            background: transparent; /* inherit list background (solid black) */
+            margin: 0; /* no divider spacing - match Kokoro selector */
+            border: 0; /* remove any line separators */
         }
 
         .model-dropdown-item:hover {
-            background-color: var(--color-bg-hover);
+            background: var(--color-panel); /* match Kokoro hover */
         }
 
         .model-dropdown-item:last-child {
-            margin-bottom: 0; /* no extra space after the last item */
+            margin: 0;
         }
     </style>
 
