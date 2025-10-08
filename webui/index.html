@@ -635,11 +635,10 @@
                                                             <template x-for="modelName in getCachedModelNames(field)" :key="modelName">
                                                                 <div class="model-dropdown-item" 
                                                                      @click="selectModelName(field, modelName)"
-                                                                     style="padding:8px 12px; cursor:pointer;"
                                                                      x-text="modelName"></div>
                                                             </template>
                                                             <div x-show="getCachedModelNames(field).length === 0" 
-                                                                 style="padding:8px 12px; color:var(--color-text-secondary); font-style:italic;"
+                                                                 style="padding:8px 12px; color:var(--color-text-secondary); font-style:italic; font-size:var(--font-size-small);"
                                                                  x-text="'No saved models'"></div>
                                                         </div>
                                                     </div>
