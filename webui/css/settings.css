@@ -180,12 +180,21 @@ select {
 .voice-option:hover { background: var(--color-panel); }
 /* Region (category) - table-style category appearance */
 .voice-region { 
-  color: var(--color-primary); /* Match section label color */
+  color: #7f8790; /* Slightly darker grey for category acronym */
   font-weight: 400; 
-  font-size: 0.75em; /* Smaller than other elements */
+  font-size: 0.70em; /* Smaller than other elements */
   font-family: var(--font-family-code); /* Monospace font like table headers */
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+/* Native select sizing for voice fields */
+.voice-select-native {
+  font-size: 0.90em;
+}
+.voice-select-native option {
+  color: var(--color-text);
+  font-weight: 600; /* Bold to increase contrast per request */
 }
 /* Gender/Lang at entry size */
 .voice-meta { color: var(--color-text); font-weight: 500; }
