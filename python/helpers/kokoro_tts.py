@@ -10,6 +10,7 @@ import threading
 from python.helpers.print_style import PrintStyle
 from python.helpers import settings as settings_helper
 from python.helpers.device_utils import resolve_device, log_device_resolution
+from python.helpers.notification import NotificationManager, NotificationType, NotificationPriority
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -48,11 +49,14 @@ async def _preload():
                 _device_policy = "auto"
             torch_device, meta = resolve_device(_device_policy)
             
-            # Notify user of initial load
-            AgentContext.log_to_all(
-                type="info",
-                content=f"Loading Kokoro TTS model on {torch_device}...",
-                temp=True
+            # Notify user of initial load (toast)
+            NotificationManager.send_notification(
+                NotificationType.INFO,
+                NotificationPriority.NORMAL,
+                message=f"Loading Kokoro TTS model on {torch_device}...",
+                title="Kokoro TTS",
+                display_time=5,
+                group="kokoro-preload",
             )
             PrintStyle.standard(f"Loading Kokoro TTS model on {torch_device}...")
             log_device_resolution(torch_device, meta)
@@ -65,11 +69,14 @@ async def _preload():
             )
             _current_device = torch_device
             
-            # Notify user of successful load
-            AgentContext.log_to_all(
-                type="info",
-                content=f"Kokoro TTS model loaded on {torch_device} successfully.",
-                temp=False
+            # Notify user of successful load (toast)
+            NotificationManager.send_notification(
+                NotificationType.SUCCESS,
+                NotificationPriority.NORMAL,
+                message=f"Kokoro TTS model loaded on {torch_device} successfully.",
+                title="Kokoro TTS",
+                display_time=3,
+                group="kokoro-preload",
             )
             PrintStyle.standard(f"Kokoro TTS model loaded on {torch_device} successfully.")
             
@@ -147,13 +154,14 @@ async def _reload_model(device_policy: str):
         if _current_device == new_device and _pipeline is not None:
             return True  # No change needed
         
-        from agent import AgentContext
-        
-        # Notify user of reload start
-        AgentContext.log_to_all(
-            type="info",
-            content=f"Loading Kokoro TTS model on {new_device}...",
-            temp=True
+        # Notify user of reload start (toast)
+        NotificationManager.send_notification(
+            NotificationType.INFO,
+            NotificationPriority.HIGH,
+            message=f"Loading Kokoro TTS model on {new_device}...",
+            title="Kokoro TTS",
+            display_time=5,
+            group="kokoro-reload",
         )
         PrintStyle.standard(f"Reloading Kokoro TTS model on {new_device}...")
         
@@ -189,11 +197,14 @@ async def _reload_model(device_policy: str):
             )
             _current_device = new_device
             
-            # Notify user of successful reload
-            AgentContext.log_to_all(
-                type="info",
-                content=f"Kokoro TTS model loaded on {new_device} successfully.",
-                temp=False
+            # Notify user of successful reload (toast)
+            NotificationManager.send_notification(
+                NotificationType.SUCCESS,
+                NotificationPriority.HIGH,
+                message=f"Kokoro TTS model loaded on {new_device} successfully.",
+                title="Kokoro TTS",
+                display_time=3,
+                group="kokoro-reload",
             )
             PrintStyle.standard(f"Kokoro TTS model loaded on {new_device} successfully.")
             
@@ -201,10 +212,13 @@ async def _reload_model(device_policy: str):
             
         except Exception as e:
             PrintStyle.error(f"Failed to reload Kokoro TTS model: {e}")
-            AgentContext.log_to_all(
-                type="error",
-                content=f"Failed to reload Kokoro TTS model: {e}",
-                temp=False
+            NotificationManager.send_notification(
+                NotificationType.ERROR,
+                NotificationPriority.HIGH,
+                message=f"Failed to reload Kokoro TTS model: {e}",
+                title="Kokoro TTS",
+                display_time=5,
+                group="kokoro-reload",
             )
             return False
         finally:

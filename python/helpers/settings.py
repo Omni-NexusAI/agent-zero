@@ -1082,44 +1082,48 @@ def convert_out(settings: Settings) -> SettingsOutput:
     )
 
     # Voice lists (US/UK only)
-    def _voice_option(voice_id: str, region: str, gender: str, lang: str) -> FieldOption:
-        label = f"{region} • {gender} • {lang} • {voice_id}"
+    def _voice_option(voice_id: str, region: str, gender: str, lang_label: str) -> FieldOption:
+        label = f"{region} • {gender} • {lang_label} • {voice_id}"
         return {"value": voice_id, "label": label}
 
+    # Use human-friendly language labels instead of codes
+    US_LANG = "American"
+    GB_LANG = "British"
+
     us_female = [
-        _voice_option("af_alloy", "US", "Female", "en-US"),
-        _voice_option("af_aoede", "US", "Female", "en-US"),
-        _voice_option("af_bella", "US", "Female", "en-US"),
-        _voice_option("af_heart", "US", "Female", "en-US"),
-        _voice_option("af_jessica", "US", "Female", "en-US"),
-        _voice_option("af_kore", "US", "Female", "en-US"),
-        _voice_option("af_nicole", "US", "Female", "en-US"),
-        _voice_option("af_nova", "US", "Female", "en-US"),
-        _voice_option("af_river", "US", "Female", "en-US"),
-        _voice_option("af_sarah", "US", "Female", "en-US"),
-        _voice_option("af_sky", "US", "Female", "en-US"),
+        _voice_option("af_alloy", "US", "Female", US_LANG),
+        _voice_option("af_aoede", "US", "Female", US_LANG),
+        _voice_option("af_bella", "US", "Female", US_LANG),
+        _voice_option("af_heart", "US", "Female", US_LANG),
+        _voice_option("af_jessica", "US", "Female", US_LANG),
+        _voice_option("af_kore", "US", "Female", US_LANG),
+        _voice_option("af_nicole", "US", "Female", US_LANG),
+        _voice_option("af_nova", "US", "Female", US_LANG),
+        _voice_option("af_river", "US", "Female", US_LANG),
+        _voice_option("af_sarah", "US", "Female", US_LANG),
+        _voice_option("af_sky", "US", "Female", US_LANG),
     ]
     us_male = [
-        _voice_option("am_adam", "US", "Male", "en-US"),
-        _voice_option("am_echo", "US", "Male", "en-US"),
-        _voice_option("am_eric", "US", "Male", "en-US"),
-        _voice_option("am_fenrir", "US", "Male", "en-US"),
-        _voice_option("am_liam", "US", "Male", "en-US"),
-        _voice_option("am_michael", "US", "Male", "en-US"),
-        _voice_option("am_onyx", "US", "Male", "en-US"),
-        _voice_option("am_puck", "US", "Male", "en-US"),
+        _voice_option("am_adam", "US", "Male", US_LANG),
+        _voice_option("am_echo", "US", "Male", US_LANG),
+        _voice_option("am_eric", "US", "Male", US_LANG),
+        _voice_option("am_fenrir", "US", "Male", US_LANG),
+        _voice_option("am_liam", "US", "Male", US_LANG),
+        _voice_option("am_michael", "US", "Male", US_LANG),
+        _voice_option("am_onyx", "US", "Male", US_LANG),
+        _voice_option("am_puck", "US", "Male", US_LANG),
     ]
     uk_female = [
-        _voice_option("bf_alice", "GB", "Female", "en-GB"),
-        _voice_option("bf_emma", "GB", "Female", "en-GB"),
-        _voice_option("bf_isabella", "GB", "Female", "en-GB"),
-        _voice_option("bf_lily", "GB", "Female", "en-GB"),
+        _voice_option("bf_alice", "GB", "Female", GB_LANG),
+        _voice_option("bf_emma", "GB", "Female", GB_LANG),
+        _voice_option("bf_isabella", "GB", "Female", GB_LANG),
+        _voice_option("bf_lily", "GB", "Female", GB_LANG),
     ]
     uk_male = [
-        _voice_option("bm_daniel", "GB", "Male", "en-GB"),
-        _voice_option("bm_fable", "GB", "Male", "en-GB"),
-        _voice_option("bm_george", "GB", "Male", "en-GB"),
-        _voice_option("bm_lewis", "GB", "Male", "en-GB"),
+        _voice_option("bm_daniel", "GB", "Male", GB_LANG),
+        _voice_option("bm_fable", "GB", "Male", GB_LANG),
+        _voice_option("bm_george", "GB", "Male", GB_LANG),
+        _voice_option("bm_lewis", "GB", "Male", GB_LANG),
     ]
 
     voice_options: list[FieldOption] = us_female + us_male + uk_female + uk_male
@@ -1768,11 +1772,29 @@ def _apply_settings(previous: Settings | None):
                             content=f"Kokoro TTS using merged voices: {new_voice} + {secondary_voice}",
                             temp=False
                         )
+                        from python.helpers.notification import NotificationManager, NotificationType, NotificationPriority
+                        NotificationManager.send_notification(
+                            NotificationType.INFO,
+                            NotificationPriority.NORMAL,
+                            message=f"Kokoro TTS using merged voices: {new_voice} + {secondary_voice}",
+                            title="Kokoro TTS",
+                            display_time=4,
+                            group="kokoro-voice",
+                        )
                     else:
                         AgentContext.log_to_all(
                             type="info",
                             content=f"Kokoro TTS voice changed to {new_voice} successfully.",
                             temp=False
+                        )
+                        from python.helpers.notification import NotificationManager, NotificationType, NotificationPriority
+                        NotificationManager.send_notification(
+                            NotificationType.SUCCESS,
+                            NotificationPriority.NORMAL,
+                            message=f"Kokoro TTS voice changed to {new_voice} successfully.",
+                            title="Kokoro TTS",
+                            display_time=3,
+                            group="kokoro-voice",
                         )
                 
                 # Speed change detection and notification
@@ -1785,6 +1807,15 @@ def _apply_settings(previous: Settings | None):
                             type="info",
                             content=f"Kokoro TTS speed changed to {new_speed} successfully.",
                             temp=False
+                        )
+                        from python.helpers.notification import NotificationManager, NotificationType, NotificationPriority
+                        NotificationManager.send_notification(
+                            NotificationType.SUCCESS,
+                            NotificationPriority.NORMAL,
+                            message=f"Kokoro TTS speed changed to {new_speed} successfully.",
+                            title="Kokoro TTS",
+                            display_time=3,
+                            group="kokoro-speed",
                         )
                         
             except Exception as e:

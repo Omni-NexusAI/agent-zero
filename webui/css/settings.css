@@ -180,7 +180,7 @@ select {
 .voice-option:hover { background: var(--color-panel); }
 /* Region (category) - table-style category appearance */
 .voice-region { 
-  color: #888; /* Light grey */
+  color: var(--color-primary); /* Match section label color */
   font-weight: 400; 
   font-size: 0.75em; /* Smaller than other elements */
   font-family: var(--font-family-code); /* Monospace font like table headers */
