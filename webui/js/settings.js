@@ -232,17 +232,38 @@ const settingsModalProxy = {
         sections.forEach(section => {
             if (!section.fields) return;
             section.fields.forEach(field => {
-                // Check if this is a model name field with a value
+                // Check if this is a model name field
                 if (field.type === 'text' && 
-                    field.value && 
-                    field.value.trim() &&
                     (field.id && (field.id.endsWith('_model_name') ||
                      field.id === 'chat_model_name' ||
                      field.id === 'util_model_name' ||
                      field.id === 'browser_model_name' ||
                      field.id === 'embed_model_name'))) {
-                    // Cache this model name (use global function)
-                    cacheModelName(field);
+                    
+                    // Get all values to cache: current value + temp staged models
+                    const valuesToCache = [];
+                    
+                    // Add temp staged models
+                    if (field._tempModels && field._tempModels.length > 0) {
+                        valuesToCache.push(...field._tempModels);
+                    }
+                    
+                    // Add current field value if present
+                    if (field.value && field.value.trim()) {
+                        valuesToCache.push(field.value.trim());
+                    }
+                    
+                    // Cache all unique values
+                    valuesToCache.forEach(val => {
+                        if (val) {
+                            // Create a temp field object for caching
+                            cacheModelName({id: field.id, value: val});
+                        }
+                    });
+                    
+                    // Clear temp staging after persisting
+                    field._tempModels = [];
+                    field.historyNonce = (field.historyNonce || 0) + 1;
                 }
             });
         });
@@ -654,14 +675,34 @@ document.addEventListener('alpine:init', function () {
 });
 
 // Model name caching functions for Model Picker feature
+
+// Get temp models that were staged via Enter but not yet saved
+function getTempModels(field) {
+    return field?._tempModels || [];
+}
+
+// Get local model history from localStorage
+function getLocalModelHistory(field) {
+    const key = `model_history_${field.id}`;
+    const cached = localStorage.getItem(key);
+    return cached ? JSON.parse(cached) : [];
+}
+
+// Get all cached model names (local history + temp staged models)
 function getCachedModelNames(field) {
     // Read reactive nonce to make Alpine re-evaluate when it changes
     // This creates a dependency on field.historyNonce
     // eslint-disable-next-line no-unused-vars
     const _nonce = field?.historyNonce;
-    const key = `model_history_${field.id}`;
-    const cached = localStorage.getItem(key);
-    return cached ? JSON.parse(cached) : [];
+    const local = getLocalModelHistory(field);
+    const temp = getTempModels(field);
+    // Combine and deduplicate
+    return [...new Set([...temp, ...local])];
+}
+
+// Helper to ensure unique values
+function uniqueList(arr) {
+    return [...new Set(arr)];
 }
 
 function cacheModelName(field) {
@@ -699,6 +740,11 @@ function removeModelName(field, modelName) {
     const currentValue = field?.value?.trim();
     const targetValue = modelName || currentValue;
     
+    // Remove from temp staged models
+    if (field._tempModels) {
+        field._tempModels = field._tempModels.filter((name) => name !== targetValue);
+    }
+    
     // Remove from localStorage history IMMEDIATELY
     const key = `model_history_${fieldId}`;
     const cached = JSON.parse(localStorage.getItem(key) || '[]');
@@ -725,8 +771,8 @@ function removeModelName(field, modelName) {
 }
 
 function handleFieldInput(field, value) {
-    // Just update the field value, don't cache yet
-    // Models will be cached when user clicks Save in settings modal
+    // Just update the field value, don't cache or stage yet
+    // Models will be staged on Enter, cached when Save is clicked
     field.value = value;
 }
 
@@ -756,8 +802,26 @@ function selectModelName(field, modelName) {
 }
 
 function saveModelName(field) {
-    // Just close the dropdown, don't cache yet
-    // Model will be cached when user clicks Save in settings modal
+    const value = field.value?.trim();
+    if (!value) return;
+    
+    // Initialize temp models array if it doesn't exist
+    if (!field._tempModels) {
+        field._tempModels = [];
+    }
+    
+    // Add to temp staging (deduplicate)
+    if (!field._tempModels.includes(value)) {
+        field._tempModels.unshift(value);
+    }
+    
+    // Bump historyNonce to trigger dropdown refresh
+    field.historyNonce = (field.historyNonce || 0) + 1;
+    
+    // Clear the input for next entry
+    field.value = '';
+    
+    // Close dropdown if open
     if (field.showDropdown) {
         field.showDropdown = false;
     }
