@@ -144,6 +144,55 @@ select {
   cursor: pointer;
 }
 
+/* Custom Kokoro Voice Select */
+.voice-select { position: relative; width: 100%; }
+.voice-select-btn {
+  width: 100%;
+  padding: 0.5rem 2rem 0.5rem 0.5rem; /* space for arrow on right */
+  border: 1px solid var(--color-secondary);
+  border-radius: 0.25rem;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  text-align: left;
+  position: relative;
+  font-size: var(--font-size-small);
+}
+.voice-select-btn::after {
+  content: "\25BE"; /* ▼ */
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text);
+  opacity: 0.8;
+  pointer-events: none;
+}
+.voice-select-list {
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  max-height: 260px; overflow-y: auto;
+  z-index: 1000;
+}
+.voice-option { padding: 8px 10px; cursor: pointer; font-size: var(--font-size-small); }
+.voice-option:hover { background: var(--color-panel); }
+/* Region (category) - table-style category appearance */
+.voice-region { 
+  color: #888; /* Light grey */
+  font-weight: 400; 
+  font-size: 0.75em; /* Smaller than other elements */
+  font-family: var(--font-family-code); /* Monospace font like table headers */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+/* Gender/Lang at entry size */
+.voice-meta { color: var(--color-text); font-weight: 500; }
+/* Voice name slightly emphasized */
+.voice-name { color: var(--color-text); font-weight: 700; }
+.voice-sep { color: var(--color-text); opacity: 0.7; padding: 0 0.25ch; }
+
 select:disabled {
   background-color: var(--color-background);
   cursor: not-allowed;
