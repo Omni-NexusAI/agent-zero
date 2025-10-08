@@ -698,8 +698,36 @@
                                                         @click="handleFieldButton(field)" x-text="field.value"></button>
                                                 </template>
 
-                                                <!-- Select field -->
-                                                <template x-if="field.type === 'select'">
+                                                <!-- Select field (custom voice selector for Kokoro) -->
+                                                <template x-if="field.type === 'select' && (field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
+                                                    <div class="voice-select" x-data="{ open: false }" @click.outside="open=false">
+                                                        <button type="button" class="voice-select-btn" @click="open = !open">
+                                                            <span class="voice-region" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[0]"></span>
+                                                            <span class="voice-sep"> • </span>
+                                                            <span class="voice-meta" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[1]"></span>
+                                                            <span class="voice-sep"> • </span>
+                                                            <span class="voice-meta" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[2]"></span>
+                                                            <span class="voice-sep"> • </span>
+                                                            <span class="voice-name" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[3]"></span>
+                                                        </button>
+                                                        <div class="voice-select-list" x-show="open" x-transition>
+                                                            <template x-for="option in field.options" :key="option.value">
+                                                                <div class="voice-option" @click="field.value = option.value; open=false" x-data="{ parts: option.label.split(' • ') }">
+                                                                    <span class="voice-region" x-text="parts[0]"></span>
+                                                                    <span class="voice-sep"> • </span>
+                                                                    <span class="voice-meta" x-text="parts[1]"></span>
+                                                                    <span class="voice-sep"> • </span>
+                                                                    <span class="voice-meta" x-text="parts[2]"></span>
+                                                                    <span class="voice-sep"> • </span>
+                                                                    <span class="voice-name" x-text="parts[3]"></span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </template>
+
+                                                <!-- Default select rendering -->
+                                                <template x-if="field.type === 'select' && !(field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
                                                     <select :class="field.classes" x-model="field.value"
                                                         :disabled="field.readonly === true">
                                                         <template x-for="option in field.options" :key="option.value">
