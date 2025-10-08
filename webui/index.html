@@ -635,7 +635,7 @@
                                                             <template x-for="modelName in getCachedModelNames(field)" :key="modelName">
                                                                 <div class="model-dropdown-item" 
                                                                      @click="selectModelName(field, modelName)"
-                                                                     style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--color-border);"
+                                                                     style="padding:8px 12px; cursor:pointer;"
                                                                      x-text="modelName"></div>
                                                             </template>
                                                             <div x-show="getCachedModelNames(field).length === 0" 
