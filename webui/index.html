@@ -613,9 +613,9 @@
                                                 </template>
 
                                                 <!-- Model name field with history dropdown -->
-                                                <template x-if="field.type === 'text' && field.id.endsWith('_model_name')">
+                                                <template x-if="field.type === 'text' && (field.id.endsWith('_model_name') || field.id === 'chat_model_name' || field.id === 'util_model_name' || field.id === 'browser_model_name' || field.id === 'embed_model_name' || (field.value && (field.value.includes('model') || field.value.includes('qwen') || field.value.includes('deepseek') || field.value.includes('grok') || field.value.includes('openai') || field.value.includes('anthropic'))))">
                                                     <div class="model-name-wrapper" style="position:relative; display:flex; align-items:center; gap:0.25em; width:100%;">
-                                                        <input type="text" :id="field.id" :class="field.classes" :value="field.value"
+                                                        <input type="text" :id="field.id || 'model_field_' + $index" :class="field.classes" :value="field.value"
                                                                :readonly="field.readonly === true"
                                                                @input="handleFieldInput(field, $event.target.value)"
                                                                @keydown.enter="saveModelName(field)"
@@ -631,15 +631,14 @@
                                                         <div x-show="field.showDropdown" 
                                                              x-transition
                                                              class="model-dropdown"
-                                                             style="position:absolute; top:100%; left:0; right:0; background:var(--color-bg); border:1px solid var(--color-border); border-radius:4px; z-index:1000; max-height:200px; overflow-y:auto; margin-top:2px;">
+                                                             style="position:absolute; top:100%; left:0; right:0; background:#000; border:1px solid var(--color-border); border-radius:4px; z-index:1000; max-height:200px; overflow-y:auto; margin-top:2px;">
                                                             <template x-for="modelName in getCachedModelNames(field)" :key="modelName">
                                                                 <div class="model-dropdown-item" 
                                                                      @click="selectModelName(field, modelName)"
-                                                                     style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--color-border);"
                                                                      x-text="modelName"></div>
                                                             </template>
                                                             <div x-show="getCachedModelNames(field).length === 0" 
-                                                                 style="padding:8px 12px; color:var(--color-text-secondary); font-style:italic;"
+                                                                 style="padding:8px 12px; color:var(--color-text-secondary); font-style:italic; font-size:var(--font-size-small);"
                                                                  x-text="'No saved models'"></div>
                                                         </div>
                                                     </div>
@@ -698,24 +697,8 @@
                                                         @click="handleFieldButton(field)" x-text="field.value"></button>
                                                 </template>
 
-                                                <!-- Custom Voice Select for Kokoro (styled label parts) -->
-                                                <template x-if="field.type === 'select' && (field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
-                                                    <div class="voice-select" x-data="{ open:false }" @click.outside="open=false">
-                                                        <button type="button" class="voice-select-btn" :disabled="field.readonly === true" @click="open=!open">
-                                                            <span x-html="window.renderVoiceLabel((field.options.find(o=>o.value===field.value)||{}).label || '')"></span>
-                                                        </button>
-                                                        <div class="voice-select-list" x-show="open" x-transition>
-                                                            <template x-for="option in field.options" :key="option.value">
-                                                                <div class="voice-option" @click="field.value=option.value; open=false">
-                                                                    <span x-html="window.renderVoiceLabel(option.label)"></span>
-                                                                </div>
-                                                            </template>
-                                                        </div>
-                                                    </div>
-                                                </template>
-
-                                                <!-- Generic Select field -->
-                                                <template x-if="field.type === 'select' && !(field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
+                                                <!-- Select field -->
+                                                <template x-if="field.type === 'select'">
                                                     <select :class="field.classes" x-model="field.value"
                                                         :disabled="field.readonly === true">
                                                         <template x-for="option in field.options" :key="option.value">
@@ -1871,7 +1854,7 @@
             top: 100%;
             left: 0;
             right: 0;
-            background-color: #000 !important; /* force solid black to avoid transparency */
+            background: var(--color-bg);
             border: 1px solid var(--color-border);
             border-radius: 4px;
             z-index: 1000;
@@ -1882,20 +1865,13 @@
         }
 
         .model-dropdown-item {
-            padding: 6px 10px;
+            padding: 8px 12px;
             cursor: pointer;
-            border-bottom: 1px solid var(--color-border);
             transition: background-color 0.2s ease;
-            font-size: var(--font-size-small);
-            background-color: #000; /* ensure each row is opaque black */
         }
 
         .model-dropdown-item:hover {
             background-color: var(--color-bg-hover);
-        }
-
-        .model-dropdown-item:last-child {
-            border-bottom: none;
         }
     </style>
 
