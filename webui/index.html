@@ -698,28 +698,42 @@
                                                         @click="handleFieldButton(field)" x-text="field.value"></button>
                                                 </template>
 
-                                                <!-- Select field (custom voice selector for Kokoro) -->
+                                                <!-- Kokoro Voice Select (custom styled dropdown) -->
                                                 <template x-if="field.type === 'select' && (field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
                                                     <div class="voice-select" x-data="{ open: false }" @click.outside="open=false">
-                                                        <button type="button" class="voice-select-btn" @click="open = !open">
-                                                            <span class="voice-region" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[0]"></span>
-                                                            <span class="voice-sep"> • </span>
-                                                            <span class="voice-meta" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[1]"></span>
-                                                            <span class="voice-sep"> • </span>
-                                                            <span class="voice-meta" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[2]"></span>
-                                                            <span class="voice-sep"> • </span>
-                                                            <span class="voice-name" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[3]"></span>
+                                                        <button type="button" class="voice-select-btn" :disabled="field.readonly === true" @click="!field.readonly && (open = !open)">
+                                                            <template x-if="field.options.find(o => o.value===field.value)?.label">
+                                                                <div>
+                                                                    <span class="voice-region" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[0]"></span>
+                                                                    <span class="voice-sep"> • </span>
+                                                                    <span class="voice-meta" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[1]"></span>
+                                                                    <span class="voice-sep"> • </span>
+                                                                    <span class="voice-meta" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[2]"></span>
+                                                                    <span class="voice-sep"> • </span>
+                                                                    <span class="voice-name" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[3]"></span>
+                                                                </div>
+                                                            </template>
+                                                            <template x-if="!field.options.find(o => o.value===field.value)?.label">
+                                                                <span>Select voice...</span>
+                                                            </template>
                                                         </button>
-                                                        <div class="voice-select-list" x-show="open" x-transition>
+                                                        <div class="voice-select-list" x-show="open && !field.readonly" x-transition>
                                                             <template x-for="option in field.options" :key="option.value">
-                                                                <div class="voice-option" @click="field.value = option.value; open=false" x-data="{ parts: option.label.split(' • ') }">
-                                                                    <span class="voice-region" x-text="parts[0]"></span>
-                                                                    <span class="voice-sep"> • </span>
-                                                                    <span class="voice-meta" x-text="parts[1]"></span>
-                                                                    <span class="voice-sep"> • </span>
-                                                                    <span class="voice-meta" x-text="parts[2]"></span>
-                                                                    <span class="voice-sep"> • </span>
-                                                                    <span class="voice-name" x-text="parts[3]"></span>
+                                                                <div class="voice-option" @click="field.value = option.value; open=false" x-data="{ parts: option.label ? option.label.split(' • ') : ['', '', '', ''] }">
+                                                                    <template x-if="option.label && parts.length >= 4">
+                                                                        <div>
+                                                                            <span class="voice-region" x-text="parts[0]"></span>
+                                                                            <span class="voice-sep"> • </span>
+                                                                            <span class="voice-meta" x-text="parts[1]"></span>
+                                                                            <span class="voice-sep"> • </span>
+                                                                            <span class="voice-meta" x-text="parts[2]"></span>
+                                                                            <span class="voice-sep"> • </span>
+                                                                            <span class="voice-name" x-text="parts[3]"></span>
+                                                                        </div>
+                                                                    </template>
+                                                                    <template x-if="!option.label || parts.length < 4">
+                                                                        <span x-text="option.label || option.value"></span>
+                                                                    </template>
                                                                 </div>
                                                             </template>
                                                         </div>

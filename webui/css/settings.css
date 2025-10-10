@@ -156,6 +156,12 @@ select {
   text-align: left;
   position: relative;
   font-size: var(--font-size-small);
+  cursor: pointer;
+}
+.voice-select-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--color-background);
 }
 .voice-select-btn::after {
   content: "\25BE"; /* ▼ */
