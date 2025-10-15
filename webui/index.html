@@ -613,8 +613,8 @@
                                                 </template>
 
                                                 <!-- Model name field with history dropdown -->
-                                                <template x-if="field.type === 'text' && (field.id.endsWith('_model_name') || field.id === 'chat_model_name' || field.id === 'util_model_name' || field.id === 'browser_model_name' || field.id === 'embed_model_name' || (field.value && (field.value.includes('model') || field.value.includes('qwen') || field.value.includes('deepseek') || field.value.includes('grok') || field.value.includes('openai') || field.value.includes('anthropic'))))">
-                                                    <div class="model-name-wrapper" style="position:relative; display:flex; align-items:center; gap:0.25em; width:100%;">
+                                                <template x-if="field.type === 'text' && field.id.endsWith('_model_name')">
+                                                    <div class="model-name-wrapper" @click.outside="field.showDropdown=false" style="position:relative; display:flex; align-items:center; gap:0.25em; width:100%;">
                                                         <input type="text" :id="field.id || 'model_field_' + $index" :class="field.classes" :value="field.value"
                                                                :readonly="field.readonly === true"
                                                                @input="handleFieldInput(field, $event.target.value)"
@@ -697,8 +697,50 @@
                                                         @click="handleFieldButton(field)" x-text="field.value"></button>
                                                 </template>
 
-                                                <!-- Select field -->
-                                                <template x-if="field.type === 'select'">
+                                                <!-- Kokoro Voice Select (custom styled dropdown) -->
+                                                <template x-if="field.type === 'select' && (field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
+                                                    <div class="voice-select" x-data="{ open: false }" @click.outside="open=false">
+                                                        <button type="button" class="voice-select-btn" :disabled="field.readonly === true" @click="!field.readonly && (open = !open)">
+                                                            <template x-if="field.options.find(o => o.value===field.value)?.label">
+                                                                <div>
+                                                                    <span class="voice-region" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[0]"></span>
+                                                                    <span class="voice-sep"> • </span>
+                                                                    <span class="voice-meta" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[1]"></span>
+                                                                    <span class="voice-sep"> • </span>
+                                                                    <span class="voice-meta" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[2]"></span>
+                                                                    <span class="voice-sep"> • </span>
+                                                                    <span class="voice-name" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[3]"></span>
+                                                                </div>
+                                                            </template>
+                                                            <template x-if="!field.options.find(o => o.value===field.value)?.label">
+                                                                <span>Select voice...</span>
+                                                            </template>
+                                                        </button>
+                                                        <div class="voice-select-list" x-show="open && !field.readonly" x-transition>
+                                                            <template x-for="option in field.options" :key="option.value">
+                                                                <div class="voice-option" @click="field.value = option.value; open=false" x-data="{ parts: option.label ? option.label.split(' • ') : ['', '', '', ''] }">
+                                                                    <template x-if="option.label && parts.length >= 4">
+                                                                        <div>
+                                                                            <span class="voice-region" x-text="parts[0]"></span>
+                                                                            <span class="voice-sep"> • </span>
+                                                                            <span class="voice-meta" x-text="parts[1]"></span>
+                                                                            <span class="voice-sep"> • </span>
+                                                                            <span class="voice-meta" x-text="parts[2]"></span>
+                                                                            <span class="voice-sep"> • </span>
+                                                                            <span class="voice-name" x-text="parts[3]"></span>
+                                                                        </div>
+                                                                    </template>
+                                                                    <template x-if="!option.label || parts.length < 4">
+                                                                        <span x-text="option.label || option.value"></span>
+                                                                    </template>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </template>
+
+                                                <!-- Default select rendering -->
+                                                <template x-if="field.type === 'select' && !(field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
                                                     <select :class="field.classes" x-model="field.value"
                                                         :disabled="field.readonly === true">
                                                         <template x-for="option in field.options" :key="option.value">
@@ -1812,7 +1854,7 @@
             height: 1.4em;
             background: transparent;
             border: none;
-            color: #6f6f6f; /* slightly dark gray */
+            color: #6f6f6f;
             cursor: pointer;
             font-weight: 700;
             font-size: 0.85em;
@@ -1824,19 +1866,19 @@
         }
 
         .model-remove-btn:hover {
-            color: #cfcfcf; /* light gray on hover */
+            color: #cfcfcf;
         }
 
         .model-dropdown-btn {
             position: absolute;
             right: 0.5em;
-            width: 0.9em;  /* match other dropdowns */
+            width: 0.9em;
             height: 0.9em;
             background: transparent;
             border: none;
             color: var(--color-text);
             cursor: pointer;
-            font-size: 0.55em; /* subtle chevron */
+            font-size: 0.55em;
             line-height: 1;
             display: flex;
             align-items: center;
@@ -1867,11 +1909,13 @@
         .model-dropdown-item {
             padding: 8px 12px;
             cursor: pointer;
-            transition: background-color 0.2s ease;
+            border: none;
+            transition: background-color 0.15s ease;
+            font-size: var(--font-size-small);
         }
 
         .model-dropdown-item:hover {
-            background-color: var(--color-bg-hover);
+            background-color: rgba(255, 255, 255, 0.10);
         }
     </style>
 

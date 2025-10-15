@@ -144,6 +144,16 @@ select {
   cursor: pointer;
 }
 
+/* Model Picker Dropdown Styles (matching Kokoro voice selector) */
+.model-dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: var(--font-size-small);
+}
+.model-dropdown-item:hover {
+  background: var(--color-panel);
+}
+
 /* Custom Kokoro Voice Select */
 .voice-select { position: relative; width: 100%; }
 .voice-select-btn {
@@ -155,8 +165,13 @@ select {
   color: var(--color-text);
   text-align: left;
   position: relative;
-  /* smaller overall text inside selector */
   font-size: var(--font-size-small);
+  cursor: pointer;
+}
+.voice-select-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--color-background);
 }
 .voice-select-btn::after {
   content: "\25BE"; /* ▼ */
@@ -179,23 +194,29 @@ select {
 }
 .voice-option { padding: 8px 10px; cursor: pointer; font-size: var(--font-size-small); }
 .voice-option:hover { background: var(--color-panel); }
-/* Region (category) slightly smaller + muted */
-.voice-region { color: var(--color-primary); font-weight: 600; font-size: 0.9em; }
+/* Region (category) - table-style category appearance */
+.voice-region { 
+  color: #7f8790; /* Slightly darker grey for category acronym */
+  font-weight: 400; 
+  font-size: 0.70em; /* Smaller than other elements */
+  font-family: var(--font-family-code); /* Monospace font like table headers */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Native select sizing for voice fields */
+.voice-select-native {
+  font-size: 0.90em;
+}
+.voice-select-native option {
+  color: var(--color-text);
+  font-weight: 600; /* Bold to increase contrast per request */
+}
 /* Gender/Lang at entry size */
 .voice-meta { color: var(--color-text); font-weight: 500; }
 /* Voice name slightly emphasized */
 .voice-name { color: var(--color-text); font-weight: 700; }
 .voice-sep { color: var(--color-text); opacity: 0.7; padding: 0 0.25ch; }
-
-/* Model Picker Dropdown Styles (matching Kokoro voice selector) */
-.model-dropdown-item {
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: var(--font-size-small);
-}
-.model-dropdown-item:hover {
-  background: var(--color-panel);
-}
 
 select:disabled {
   background-color: var(--color-background);
