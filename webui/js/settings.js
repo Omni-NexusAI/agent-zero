@@ -70,24 +70,23 @@ const settingsModalProxy = {
         }, 10);
     },
 
+    // Initialize model picker reactive flags for dropdown/history
     initializeModelFieldDropdowns(sections) {
         if (!sections) return;
         sections.forEach(section => {
             if (!section.fields) return;
             section.fields.forEach(field => {
-                // Check if this is a model name field
-                if (field.type === 'text' && 
+                if (field.type === 'text' && (
                     (field.id && (field.id.endsWith('_model_name') ||
                      field.id === 'chat_model_name' ||
                      field.id === 'util_model_name' ||
                      field.id === 'browser_model_name' ||
-                     field.id === 'embed_model_name'))) {
-                    // Initialize showDropdown as a reactive property
-                    if (!field.hasOwnProperty('showDropdown')) {
+                     field.id === 'embed_model_name'))
+                )) {
+                    if (!Object.prototype.hasOwnProperty.call(field, 'showDropdown')) {
                         field.showDropdown = false;
                     }
-                    // Initialize historyNonce to enable reactive updates of dropdown list
-                    if (!field.hasOwnProperty('historyNonce')) {
+                    if (!Object.prototype.hasOwnProperty.call(field, 'historyNonce')) {
                         field.historyNonce = 0;
                     }
                 }
@@ -130,7 +129,7 @@ const settingsModalProxy = {
                 "sections": set.settings.sections
             }
 
-            // Initialize showDropdown for model name fields
+            // Initialize model picker dropdown flags before wiring to modal
             this.initializeModelFieldDropdowns(settings.sections);
 
             // Update modal data
@@ -225,64 +224,18 @@ const settingsModalProxy = {
         }
     },
 
-    cacheAllModelNames(sections) {
-        // Cache all model name field values to localStorage
-        if (!sections) return;
-        
-        sections.forEach(section => {
-            if (!section.fields) return;
-            section.fields.forEach(field => {
-                // Check if this is a model name field
-                if (field.type === 'text' && 
-                    (field.id && (field.id.endsWith('_model_name') ||
-                     field.id === 'chat_model_name' ||
-                     field.id === 'util_model_name' ||
-                     field.id === 'browser_model_name' ||
-                     field.id === 'embed_model_name'))) {
-                    
-                    // Get all values to cache: current value + temp staged models
-                    const valuesToCache = [];
-                    
-                    // Add temp staged models
-                    if (field._tempModels && field._tempModels.length > 0) {
-                        valuesToCache.push(...field._tempModels);
-                    }
-                    
-                    // Add current field value if present
-                    if (field.value && field.value.trim()) {
-                        valuesToCache.push(field.value.trim());
-                    }
-                    
-                    // Cache all unique values
-                    valuesToCache.forEach(val => {
-                        if (val) {
-                            // Create a temp field object for caching
-                            cacheModelName({id: field.id, value: val});
-                        }
-                    });
-                    
-                    // Clear temp staging after persisting
-                    field._tempModels = [];
-                    field.historyNonce = (field.historyNonce || 0) + 1;
-                }
-            });
-        });
-    },
-
     async handleButton(buttonId) {
         if (buttonId === 'save') {
 
             const modalEl = document.getElementById('settingsModal');
             const modalAD = Alpine.$data(modalEl);
-            
             try {
-                // Cache all model names to localStorage before saving, but never block save/close
+                // Persist any staged model names to localStorage before saving
                 try {
-                    this.cacheAllModelNames(modalAD.settings.sections);
+                    cacheAllModelNames(modalAD.settings.sections);
                 } catch (cacheErr) {
                     console.warn('cacheAllModelNames failed:', cacheErr);
                 }
-
                 resp = await window.sendJsonData("/settings_set", modalAD.settings);
             } catch (e) {
                 window.toastFetchError("Error saving settings", e)
@@ -416,31 +369,27 @@ document.addEventListener('alpine:init', function () {
                     }
                 });
 
-            // Load settings
+                // Load settings
                 await this.fetchSettings();
-                // Initialize showDropdown for all model name fields
+                // Ensure model fields have reactive flags
                 this.initializeModelFields();
                 this.updateFilteredSections();
             },
 
             initializeModelFields() {
-                // Initialize showDropdown property for all model name fields
                 if (!this.settingsData.sections) return;
-                
                 this.settingsData.sections.forEach(section => {
                     if (!section.fields) return;
                     section.fields.forEach(field => {
-                        // Check if this is a model name field
-                        if (field.type === 'text' && 
-                            (field.id && field.id.endsWith('_model_name') ||
+                        if (field.type === 'text' && (
+                            (field.id && (field.id.endsWith('_model_name') ||
                              field.id === 'chat_model_name' ||
                              field.id === 'util_model_name' ||
                              field.id === 'browser_model_name' ||
-                             field.id === 'embed_model_name')) {
-                            // Initialize showDropdown as a reactive property
+                             field.id === 'embed_model_name'))
+                        )) {
                             field.showDropdown = false;
-                            // Initialize historyNonce to enable reactive updates of dropdown list
-                            if (!field.hasOwnProperty('historyNonce')) {
+                            if (!Object.prototype.hasOwnProperty.call(field, 'historyNonce')) {
                                 field.historyNonce = 0;
                             }
                         }
@@ -675,7 +624,6 @@ document.addEventListener('alpine:init', function () {
 });
 
 // Model name caching functions for Model Picker feature
-
 // Get temp models that were staged via Enter but not yet saved
 function getTempModels(field) {
     return field?._tempModels || [];
@@ -691,18 +639,11 @@ function getLocalModelHistory(field) {
 // Get all cached model names (local history + temp staged models)
 function getCachedModelNames(field) {
     // Read reactive nonce to make Alpine re-evaluate when it changes
-    // This creates a dependency on field.historyNonce
     // eslint-disable-next-line no-unused-vars
     const _nonce = field?.historyNonce;
     const local = getLocalModelHistory(field);
     const temp = getTempModels(field);
-    // Combine and deduplicate
     return [...new Set([...temp, ...local])];
-}
-
-// Helper to ensure unique values
-function uniqueList(arr) {
-    return [...new Set(arr)];
 }
 
 function cacheModelName(field) {
@@ -710,7 +651,7 @@ function cacheModelName(field) {
     if (!value) return;
     
     const key = `model_history_${field.id}`;
-    const cached = getCachedModelNames(field);
+    const cached = getLocalModelHistory(field);
     
     // Remove if already exists to avoid duplicates
     const filtered = cached.filter(name => name !== value);
@@ -725,7 +666,7 @@ function cacheModelName(field) {
 }
 
 function removeModelName(field, modelName) {
-    // Prefer explicit id; if missing, try to infer from a bound input element
+    // Prefer explicit id; if missing, try infer from active input
     let fieldId = field?.id;
     if (!fieldId) {
         try {
@@ -736,32 +677,28 @@ function removeModelName(field, modelName) {
     }
     if (!fieldId) return;
 
-    // Get the current value from the field to check if it matches
     const currentValue = field?.value?.trim();
     const targetValue = modelName || currentValue;
-    
+
     // Remove from temp staged models
     if (field._tempModels) {
-        field._tempModels = field._tempModels.filter((name) => name !== targetValue);
+        field._tempModels = field._tempModels.filter(name => name !== targetValue);
     }
-    
-    // Remove from localStorage history IMMEDIATELY
+
+    // Remove from localStorage history immediately
     const key = `model_history_${fieldId}`;
     const cached = JSON.parse(localStorage.getItem(key) || '[]');
-    const filtered = cached.filter((name) => name !== targetValue);
+    const filtered = cached.filter(name => name !== targetValue);
     localStorage.setItem(key, JSON.stringify(filtered));
-    
-    // Bump a reactive nonce so the dropdown list re-renders immediately
+
+    // Trigger reactive refresh
     try {
         field.historyNonce = (field.historyNonce || 0) + 1;
     } catch {}
-    
-    // IMMEDIATELY clear the field value if it matches what we're removing
+
+    // Clear the field if it matches removed value and propagate input
     if (field && currentValue === targetValue) {
         field.value = '';
-        
-        // Force the UI to update immediately by triggering an input event
-        // This ensures Alpine.js sees the change right away
         const inputElement = document.getElementById(fieldId);
         if (inputElement) {
             inputElement.value = '';
@@ -771,8 +708,7 @@ function removeModelName(field, modelName) {
 }
 
 function handleFieldInput(field, value) {
-    // Just update the field value, don't cache or stage yet
-    // Models will be staged on Enter, cached when Save is clicked
+    // Just update; staging/persisting handled on Enter/Save
     field.value = value;
 }
 
@@ -798,33 +734,50 @@ function toggleModelDropdown(field) {
 function selectModelName(field, modelName) {
     field.value = modelName;
     field.showDropdown = false;
-    // Don't cache here - will be cached when Save is clicked
+    // Do not cache here; caching occurs on Save
 }
 
 function saveModelName(field) {
     const value = field.value?.trim();
     if (!value) return;
-    
-    // Initialize temp models array if it doesn't exist
-    if (!field._tempModels) {
-        field._tempModels = [];
-    }
-    
-    // Add to temp staging (deduplicate)
+    if (!field._tempModels) field._tempModels = [];
     if (!field._tempModels.includes(value)) {
         field._tempModels.unshift(value);
     }
-    
-    // Bump historyNonce to trigger dropdown refresh
     field.historyNonce = (field.historyNonce || 0) + 1;
-    
-    // Clear the input for next entry
     field.value = '';
-    
-    // Close dropdown if open
-    if (field.showDropdown) {
-        field.showDropdown = false;
-    }
+    if (field.showDropdown) field.showDropdown = false;
+}
+
+// Persist all model names from all fields to localStorage
+function cacheAllModelNames(sections) {
+    if (!sections) return;
+    sections.forEach(section => {
+        if (!section.fields) return;
+        section.fields.forEach(field => {
+            if (field.type === 'text' && (
+                field.id && (field.id.endsWith('_model_name') ||
+                field.id === 'chat_model_name' ||
+                field.id === 'util_model_name' ||
+                field.id === 'browser_model_name' ||
+                field.id === 'embed_model_name'))
+            ) {
+                const valuesToCache = [];
+                if (field._tempModels && field._tempModels.length > 0) {
+                    valuesToCache.push(...field._tempModels);
+                }
+                if (field.value && field.value.trim()) {
+                    valuesToCache.push(field.value.trim());
+                }
+                valuesToCache.forEach(val => {
+                    if (!val) return;
+                    cacheModelName({ id: field.id, value: val });
+                });
+                field._tempModels = [];
+                field.historyNonce = (field.historyNonce || 0) + 1;
+            }
+        });
+    });
 }
 
 // Show toast notification - now uses new notification system
