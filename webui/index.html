@@ -614,8 +614,8 @@
 
                                                 <!-- Model name field with history dropdown -->
                                                 <template x-if="field.type === 'text' && field.id.endsWith('_model_name')">
-                                                    <div class="model-name-wrapper" style="position:relative; display:flex; align-items:center; gap:0.25em; width:100%;">
-                                                        <input type="text" :id="field.id" :class="field.classes" :value="field.value"
+                                                    <div class="model-name-wrapper" @click.outside="field.showDropdown=false" style="position:relative; display:flex; align-items:center; gap:0.25em; width:100%;">
+                                                        <input type="text" :id="field.id || 'model_field_' + $index" :class="field.classes" :value="field.value"
                                                                :readonly="field.readonly === true"
                                                                @input="handleFieldInput(field, $event.target.value)"
                                                                @keydown.enter="saveModelName(field)"
@@ -631,15 +631,14 @@
                                                         <div x-show="field.showDropdown" 
                                                              x-transition
                                                              class="model-dropdown"
-                                                             style="position:absolute; top:100%; left:0; right:0; background:var(--color-bg); border:1px solid var(--color-border); border-radius:4px; z-index:1000; max-height:200px; overflow-y:auto; margin-top:2px;">
+                                                             style="position:absolute; top:100%; left:0; right:0; background:#000; border:1px solid var(--color-border); border-radius:4px; z-index:1000; max-height:200px; overflow-y:auto; margin-top:2px;">
                                                             <template x-for="modelName in getCachedModelNames(field)" :key="modelName">
                                                                 <div class="model-dropdown-item" 
                                                                      @click="selectModelName(field, modelName)"
-                                                                     style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--color-border);"
                                                                      x-text="modelName"></div>
                                                             </template>
                                                             <div x-show="getCachedModelNames(field).length === 0" 
-                                                                 style="padding:8px 12px; color:var(--color-text-secondary); font-style:italic;"
+                                                                 style="padding:8px 12px; color:var(--color-text-secondary); font-style:italic; font-size:var(--font-size-small);"
                                                                  x-text="'No saved models'"></div>
                                                         </div>
                                                     </div>
@@ -1851,41 +1850,41 @@
         .model-remove-btn {
             position: absolute;
             right: 3.0em;
-            width: 1.6em;
-            height: 1.6em;
+            width: 1.4em;
+            height: 1.4em;
             background: transparent;
             border: none;
-            color: var(--color-text);
+            color: #6f6f6f;
             cursor: pointer;
-            font-weight: bold;
-            font-size: 0.9em;
+            font-weight: 700;
+            font-size: 0.85em;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 2px;
-            transition: background-color 0.2s ease;
+            transition: color 0.15s ease;
         }
 
         .model-remove-btn:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #ccc;
+            color: #cfcfcf;
         }
 
         .model-dropdown-btn {
             position: absolute;
-            right: 0.4em;
-            width: 1.2em;
-            height: 1.2em;
+            right: 0.5em;
+            width: 0.9em;
+            height: 0.9em;
             background: transparent;
             border: none;
             color: var(--color-text);
             cursor: pointer;
-            font-size: 0.7em;
+            font-size: 0.55em;
+            line-height: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            opacity: 0.7;
-            transition: opacity 0.2s ease;
+            opacity: 0.75;
+            transition: opacity 0.15s ease;
         }
 
         .model-dropdown-btn:hover {
@@ -1910,16 +1909,13 @@
         .model-dropdown-item {
             padding: 8px 12px;
             cursor: pointer;
-            border-bottom: 1px solid var(--color-border);
-            transition: background-color 0.2s ease;
+            border: none;
+            transition: background-color 0.15s ease;
+            font-size: var(--font-size-small);
         }
 
         .model-dropdown-item:hover {
-            background-color: var(--color-bg-hover);
-        }
-
-        .model-dropdown-item:last-child {
-            border-bottom: none;
+            background-color: rgba(255, 255, 255, 0.10);
         }
     </style>
 

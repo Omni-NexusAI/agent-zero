@@ -70,6 +70,30 @@ const settingsModalProxy = {
         }, 10);
     },
 
+    // Initialize model picker reactive flags for dropdown/history
+    initializeModelFieldDropdowns(sections) {
+        if (!sections) return;
+        sections.forEach(section => {
+            if (!section.fields) return;
+            section.fields.forEach(field => {
+                if (field.type === 'text' && (
+                    (field.id && (field.id.endsWith('_model_name') ||
+                     field.id === 'chat_model_name' ||
+                     field.id === 'util_model_name' ||
+                     field.id === 'browser_model_name' ||
+                     field.id === 'embed_model_name'))
+                )) {
+                    if (!Object.prototype.hasOwnProperty.call(field, 'showDropdown')) {
+                        field.showDropdown = false;
+                    }
+                    if (!Object.prototype.hasOwnProperty.call(field, 'historyNonce')) {
+                        field.historyNonce = 0;
+                    }
+                }
+            });
+        });
+    },
+
     async openModal() {
         console.log('Settings modal opening');
         const modalEl = document.getElementById('settingsModal');
@@ -104,6 +128,9 @@ const settingsModalProxy = {
                 ],
                 "sections": set.settings.sections
             }
+
+            // Initialize model picker dropdown flags before wiring to modal
+            this.initializeModelFieldDropdowns(settings.sections);
 
             // Update modal data
             modalAD.isOpen = true;
@@ -203,6 +230,12 @@ const settingsModalProxy = {
             const modalEl = document.getElementById('settingsModal');
             const modalAD = Alpine.$data(modalEl);
             try {
+                // Persist any staged model names to localStorage before saving
+                try {
+                    cacheAllModelNames(modalAD.settings.sections);
+                } catch (cacheErr) {
+                    console.warn('cacheAllModelNames failed:', cacheErr);
+                }
                 resp = await window.sendJsonData("/settings_set", modalAD.settings);
             } catch (e) {
                 window.toastFetchError("Error saving settings", e)
@@ -338,7 +371,30 @@ document.addEventListener('alpine:init', function () {
 
                 // Load settings
                 await this.fetchSettings();
+                // Ensure model fields have reactive flags
+                this.initializeModelFields();
                 this.updateFilteredSections();
+            },
+
+            initializeModelFields() {
+                if (!this.settingsData.sections) return;
+                this.settingsData.sections.forEach(section => {
+                    if (!section.fields) return;
+                    section.fields.forEach(field => {
+                        if (field.type === 'text' && (
+                            (field.id && (field.id.endsWith('_model_name') ||
+                             field.id === 'chat_model_name' ||
+                             field.id === 'util_model_name' ||
+                             field.id === 'browser_model_name' ||
+                             field.id === 'embed_model_name'))
+                        )) {
+                            field.showDropdown = false;
+                            if (!Object.prototype.hasOwnProperty.call(field, 'historyNonce')) {
+                                field.historyNonce = 0;
+                            }
+                        }
+                    });
+                });
             },
 
             switchTab(tab) {
@@ -568,10 +624,26 @@ document.addEventListener('alpine:init', function () {
 });
 
 // Model name caching functions for Model Picker feature
-function getCachedModelNames(field) {
+// Get temp models that were staged via Enter but not yet saved
+function getTempModels(field) {
+    return field?._tempModels || [];
+}
+
+// Get local model history from localStorage
+function getLocalModelHistory(field) {
     const key = `model_history_${field.id}`;
     const cached = localStorage.getItem(key);
     return cached ? JSON.parse(cached) : [];
+}
+
+// Get all cached model names (local history + temp staged models)
+function getCachedModelNames(field) {
+    // Read reactive nonce to make Alpine re-evaluate when it changes
+    // eslint-disable-next-line no-unused-vars
+    const _nonce = field?.historyNonce;
+    const local = getLocalModelHistory(field);
+    const temp = getTempModels(field);
+    return [...new Set([...temp, ...local])];
 }
 
 function cacheModelName(field) {
@@ -579,7 +651,7 @@ function cacheModelName(field) {
     if (!value) return;
     
     const key = `model_history_${field.id}`;
-    const cached = getCachedModelNames(field);
+    const cached = getLocalModelHistory(field);
     
     // Remove if already exists to avoid duplicates
     const filtered = cached.filter(name => name !== value);
@@ -594,18 +666,50 @@ function cacheModelName(field) {
 }
 
 function removeModelName(field, modelName) {
-    const key = `model_history_${field.id}`;
-    const cached = getCachedModelNames(field);
-    const filtered = cached.filter(name => name !== modelName);
+    // Prefer explicit id; if missing, try infer from active input
+    let fieldId = field?.id;
+    if (!fieldId) {
+        try {
+            const wrapper = document.activeElement?.closest?.('.model-name-wrapper');
+            const input = wrapper ? wrapper.querySelector('input') : null;
+            fieldId = input?.id || fieldId;
+        } catch {}
+    }
+    if (!fieldId) return;
+
+    const currentValue = field?.value?.trim();
+    const targetValue = modelName || currentValue;
+
+    // Remove from temp staged models
+    if (field._tempModels) {
+        field._tempModels = field._tempModels.filter(name => name !== targetValue);
+    }
+
+    // Remove from localStorage history immediately
+    const key = `model_history_${fieldId}`;
+    const cached = JSON.parse(localStorage.getItem(key) || '[]');
+    const filtered = cached.filter(name => name !== targetValue);
     localStorage.setItem(key, JSON.stringify(filtered));
+
+    // Trigger reactive refresh
+    try {
+        field.historyNonce = (field.historyNonce || 0) + 1;
+    } catch {}
+
+    // Clear the field if it matches removed value and propagate input
+    if (field && currentValue === targetValue) {
+        field.value = '';
+        const inputElement = document.getElementById(fieldId);
+        if (inputElement) {
+            inputElement.value = '';
+            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
 }
 
 function handleFieldInput(field, value) {
+    // Just update; staging/persisting handled on Enter/Save
     field.value = value;
-    // Cache the model name when it's a model name field
-    if (field.id.endsWith('_model_name')) {
-        cacheModelName(field);
-    }
 }
 
 function toggleModelDropdown(field) {
@@ -630,16 +734,50 @@ function toggleModelDropdown(field) {
 function selectModelName(field, modelName) {
     field.value = modelName;
     field.showDropdown = false;
-    // Cache the selected model name
-    cacheModelName(field);
+    // Do not cache here; caching occurs on Save
 }
 
 function saveModelName(field) {
     const value = field.value?.trim();
-    if (value && field.id.endsWith('_model_name')) {
-        cacheModelName(field);
-        field.showDropdown = false;
+    if (!value) return;
+    if (!field._tempModels) field._tempModels = [];
+    if (!field._tempModels.includes(value)) {
+        field._tempModels.unshift(value);
     }
+    field.historyNonce = (field.historyNonce || 0) + 1;
+    field.value = '';
+    if (field.showDropdown) field.showDropdown = false;
+}
+
+// Persist all model names from all fields to localStorage
+function cacheAllModelNames(sections) {
+    if (!sections) return;
+    sections.forEach(section => {
+        if (!section.fields) return;
+        section.fields.forEach(field => {
+            if (field.type === 'text' && (
+                field.id && (field.id.endsWith('_model_name') ||
+                field.id === 'chat_model_name' ||
+                field.id === 'util_model_name' ||
+                field.id === 'browser_model_name' ||
+                field.id === 'embed_model_name'))
+            ) {
+                const valuesToCache = [];
+                if (field._tempModels && field._tempModels.length > 0) {
+                    valuesToCache.push(...field._tempModels);
+                }
+                if (field.value && field.value.trim()) {
+                    valuesToCache.push(field.value.trim());
+                }
+                valuesToCache.forEach(val => {
+                    if (!val) return;
+                    cacheModelName({ id: field.id, value: val });
+                });
+                field._tempModels = [];
+                field.historyNonce = (field.historyNonce || 0) + 1;
+            }
+        });
+    });
 }
 
 // Show toast notification - now uses new notification system
