@@ -1,0 +1,105 @@
+{
+    "version_id": "dev-D-0.9.7-custom",
+    "description": "Baseline development build snapshot ensuring latest model picker, MCP toggles, and Kokoro settings are present.",
+    "timestamp": "2025-10-25T23:43:21+00:00",
+    "commit_sha": "4e6600d89c5b14b2ca6513eff5fc47ea96933516",
+    "features": [
+        {
+            "name": "model_picker_latest_ui",
+            "description": "Dropdown with click-outside, staged history, and refined controls.",
+            "required_paths": [
+                "webui/index.html",
+                "webui/js/settings.js"
+            ],
+            "markers": [
+                {
+                    "path": "webui/index.html",
+                    "must_include": [
+                        "@click.outside=\"field.showDropdown=false\"",
+                        "class=\"model-dropdown-btn\"",
+                        "class=\"model-remove-btn\""
+                    ]
+                },
+                {
+                    "path": "webui/js/settings.js",
+                    "must_include": [
+                        "cacheAllModelNames",
+                        "field.historyNonce",
+                        "toggleModelDropdown"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "mcp_toggle_panel",
+            "description": "Dedicated MCP servers modal with enable/disable toggles and status feed.",
+            "required_paths": [
+                "webui/components/settings/mcp/client/mcp-servers.html",
+                "webui/components/settings/mcp/client/mcp-servers-store.js",
+                "python/api/mcp_servers_apply.py"
+            ],
+            "markers": [
+                {
+                    "path": "webui/components/settings/mcp/client/mcp-servers.html",
+                    "must_include": [
+                        "toggleServer",
+                        "server-toggle-slider",
+                        "mcp-servers-config-json"
+                    ]
+                },
+                {
+                    "path": "webui/components/settings/mcp/client/mcp-servers-store.js",
+                    "must_include": [
+                        "toggleServer(name)",
+                        "applyNow",
+                        "initialize()"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "kokoro_enhanced_settings",
+            "description": "Kokoro compute/device, primary/blend voice, and voice speed controls present with custom styling.",
+            "required_paths": [
+                "webui/index.html",
+                "webui/css/settings.css",
+                "python/helpers/kokoro_tts.py",
+                "python/api/synthesize.py"
+            ],
+            "markers": [
+                {
+                    "path": "webui/index.html",
+                    "must_include": [
+                        "voice-select",
+                        "voice-select-btn",
+                        "tts_kokoro_voice",
+                        "tts_kokoro_voice_secondary"
+                    ]
+                },
+                {
+                    "path": "webui/css/settings.css",
+                    "must_include": [
+                        ".voice-select",
+                        ".voice-select-btn",
+                        ".voice-select-list"
+                    ]
+                },
+                {
+                    "path": "python/helpers/kokoro_tts.py",
+                    "must_include": [
+                        "async def preload",
+                        "KPipeline",
+                        "synthesize_sentences"
+                    ]
+                },
+                {
+                    "path": "python/api/synthesize.py",
+                    "must_include": [
+                        "from python.helpers import runtime, settings, kokoro_tts",
+                        "kokoro_tts.synthesize_sentences"
+                    ]
+                }
+            ]
+        }
+    ]
+}
