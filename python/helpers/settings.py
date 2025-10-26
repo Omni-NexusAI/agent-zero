@@ -1037,6 +1037,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
     # TTS fields
     tts_fields: list[SettingsField] = []
 
+    # Master toggle
     tts_fields.append(
         {
             "id": "tts_kokoro",
@@ -1044,6 +1045,124 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "description": "Enable higher quality server-side AI (Kokoro) instead of browser-based text-to-speech.",
             "type": "switch",
             "value": settings["tts_kokoro"],
+        }
+    )
+
+    # Device selection (Auto/CPU/CUDA)
+    try:
+        from python.helpers.device_utils import enumerate_devices
+        devices = enumerate_devices()
+        device_options: list[FieldOption] = [
+            {"value": "auto", "label": "Auto (recommended)"},
+            {"value": "cpu", "label": "CPU"},
+        ]
+        if devices.get("cuda", {}).get("available"):
+            device_options.append({"value": "cuda:auto", "label": "CUDA: Auto"})
+            for d in devices.get("cuda", {}).get("devices", []):
+                device_options.append({
+                    "value": f"cuda:{d['index']}",
+                    "label": f"CUDA: GPU {d['index']} – {d['name']} ({d['memory_total']})",
+                })
+    except Exception:
+        device_options = [
+            {"value": "auto", "label": "Auto (recommended)"},
+            {"value": "cpu", "label": "CPU"},
+        ]
+
+    tts_fields.append(
+        {
+            "id": "tts_device",
+            "title": "Compute device",
+            "description": "Select the device used for Kokoro TTS.",
+            "type": "select",
+            "value": settings.get("tts_device", "auto"),
+            "options": device_options,
+            "readonly": not settings["tts_kokoro"],
+        }
+    )
+
+    # Voice lists (US/UK only)
+    def _voice_option(voice_id: str, region: str, gender: str, lang_label: str) -> FieldOption:
+        label = f"{region} • {gender} • {lang_label} • {voice_id}"
+        return {"value": voice_id, "label": label}
+
+    # Use human-friendly language labels instead of codes
+    US_LANG = "American"
+    GB_LANG = "British"
+
+    us_female = [
+        _voice_option("af_alloy", "US", "Female", US_LANG),
+        _voice_option("af_aoede", "US", "Female", US_LANG),
+        _voice_option("af_bella", "US", "Female", US_LANG),
+        _voice_option("af_heart", "US", "Female", US_LANG),
+        _voice_option("af_jessica", "US", "Female", US_LANG),
+        _voice_option("af_kore", "US", "Female", US_LANG),
+        _voice_option("af_nicole", "US", "Female", US_LANG),
+        _voice_option("af_nova", "US", "Female", US_LANG),
+        _voice_option("af_river", "US", "Female", US_LANG),
+        _voice_option("af_sarah", "US", "Female", US_LANG),
+        _voice_option("af_sky", "US", "Female", US_LANG),
+    ]
+    us_male = [
+        _voice_option("am_adam", "US", "Male", US_LANG),
+        _voice_option("am_echo", "US", "Male", US_LANG),
+        _voice_option("am_eric", "US", "Male", US_LANG),
+        _voice_option("am_fenrir", "US", "Male", US_LANG),
+        _voice_option("am_liam", "US", "Male", US_LANG),
+        _voice_option("am_michael", "US", "Male", US_LANG),
+        _voice_option("am_onyx", "US", "Male", US_LANG),
+        _voice_option("am_puck", "US", "Male", US_LANG),
+    ]
+    uk_female = [
+        _voice_option("bf_alice", "GB", "Female", GB_LANG),
+        _voice_option("bf_emma", "GB", "Female", GB_LANG),
+        _voice_option("bf_isabella", "GB", "Female", GB_LANG),
+        _voice_option("bf_lily", "GB", "Female", GB_LANG),
+    ]
+    uk_male = [
+        _voice_option("bm_daniel", "GB", "Male", GB_LANG),
+        _voice_option("bm_fable", "GB", "Male", GB_LANG),
+        _voice_option("bm_george", "GB", "Male", GB_LANG),
+        _voice_option("bm_lewis", "GB", "Male", GB_LANG),
+    ]
+
+    voice_options: list[FieldOption] = us_female + us_male + uk_female + uk_male
+
+    # Primary voice
+    tts_fields.append(
+        {
+            "id": "tts_kokoro_voice",
+            "title": "Primary voice",
+            "description": "Select an English (US/UK) Kokoro voice.",
+            "type": "select",
+            "value": settings.get("tts_kokoro_voice", "am_michael"),
+            "options": voice_options,
+            "readonly": not settings["tts_kokoro"],
+        }
+    )
+
+    # Secondary voice (optional)
+    tts_fields.append(
+        {
+            "id": "tts_kokoro_voice_secondary",
+            "title": "Blend with (optional)",
+            "description": "Optional secondary voice to blend (50/50).",
+            "type": "select",
+            "value": settings.get("tts_kokoro_voice_secondary", ""),
+            "options": ([{"value": "", "label": "None"}] + voice_options),
+            "readonly": not settings["tts_kokoro"],
+        }
+    )
+
+    # Speed
+    tts_fields.append(
+        {
+            "id": "tts_kokoro_speed",
+            "title": "Voice speed",
+            "description": "Playback speed multiplier (1.0 = normal).",
+            "type": "number",
+            "value": settings.get("tts_kokoro_speed", 1.1),
+            "readonly": not settings["tts_kokoro"],
         }
     )
 
@@ -1494,6 +1613,10 @@ def get_default_settings() -> Settings:
         stt_silence_duration=1000,
         stt_waiting_timeout=2000,
         tts_kokoro=True,
+        tts_device="auto",
+        tts_kokoro_voice="am_michael",
+        tts_kokoro_voice_secondary="",
+        tts_kokoro_speed=1.1,
         mcp_servers='{\n    "mcpServers": {}\n}',
         mcp_client_init_timeout=10,
         mcp_client_tool_timeout=120,
@@ -1611,6 +1734,96 @@ def _apply_settings(previous: Settings | None):
             task4 = defer.DeferredTask().start_task(
                 update_a2a_token, current_token
             )  # TODO overkill, replace with background task
+        
+        # Kokoro TTS hot-apply settings
+        if _settings.get("tts_kokoro"):
+            try:
+                from python.helpers import kokoro_tts
+                
+                # Device change detection and reload
+                if not previous or _settings.get("tts_device") != previous.get("tts_device"):
+                    device_changed = True
+                    new_device = _settings.get("tts_device", "auto")
+                    
+                    async def reload_kokoro_device(device: str):
+                        await kokoro_tts.reload_model(device)
+                    
+                    task5 = defer.DeferredTask().start_task(
+                        reload_kokoro_device, new_device
+                    )
+                else:
+                    device_changed = False
+                
+                # Voice change detection and notification
+                voice_changed = False
+                if not previous or (
+                    _settings.get("tts_kokoro_voice") != previous.get("tts_kokoro_voice")
+                    or _settings.get("tts_kokoro_voice_secondary") != previous.get("tts_kokoro_voice_secondary")
+                ):
+                    voice_changed = True
+                    new_voice = _settings.get("tts_kokoro_voice", "am_michael")
+                    secondary_voice = _settings.get("tts_kokoro_voice_secondary", "")
+                    
+                    kokoro_tts.set_voice(new_voice)
+                    
+                    if secondary_voice:
+                        AgentContext.log_to_all(
+                            type="info",
+                            content=f"Kokoro TTS using merged voices: {new_voice} + {secondary_voice}",
+                            temp=False
+                        )
+                        from python.helpers.notification import NotificationManager, NotificationType, NotificationPriority
+                        NotificationManager.send_notification(
+                            NotificationType.INFO,
+                            NotificationPriority.NORMAL,
+                            message=f"Kokoro TTS using merged voices: {new_voice} + {secondary_voice}",
+                            title="Kokoro TTS",
+                            display_time=4,
+                            group="kokoro-voice",
+                        )
+                    else:
+                        AgentContext.log_to_all(
+                            type="info",
+                            content=f"Kokoro TTS voice changed to {new_voice} successfully.",
+                            temp=False
+                        )
+                        from python.helpers.notification import NotificationManager, NotificationType, NotificationPriority
+                        NotificationManager.send_notification(
+                            NotificationType.SUCCESS,
+                            NotificationPriority.NORMAL,
+                            message=f"Kokoro TTS voice changed to {new_voice} successfully.",
+                            title="Kokoro TTS",
+                            display_time=3,
+                            group="kokoro-voice",
+                        )
+                
+                # Speed change detection and notification
+                if not previous or _settings.get("tts_kokoro_speed") != previous.get("tts_kokoro_speed"):
+                    new_speed = _settings.get("tts_kokoro_speed", 1.1)
+                    kokoro_tts.set_speed(float(new_speed))
+                    
+                    if not device_changed:  # Only notify if not already showing device reload notifications
+                        AgentContext.log_to_all(
+                            type="info",
+                            content=f"Kokoro TTS speed changed to {new_speed} successfully.",
+                            temp=False
+                        )
+                        from python.helpers.notification import NotificationManager, NotificationType, NotificationPriority
+                        NotificationManager.send_notification(
+                            NotificationType.SUCCESS,
+                            NotificationPriority.NORMAL,
+                            message=f"Kokoro TTS speed changed to {new_speed} successfully.",
+                            title="Kokoro TTS",
+                            display_time=3,
+                            group="kokoro-speed",
+                        )
+                        
+            except Exception as e:
+                AgentContext.log_to_all(
+                    type="error",
+                    content=f"Failed to apply Kokoro TTS settings: {e}",
+                    temp=False
+                )
 
 
 def _env_to_dict(data: str):
