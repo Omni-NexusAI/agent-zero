@@ -1,8 +1,8 @@
 {
     "version_id": "dev-D-0.9.7-custom",
     "description": "Baseline development build snapshot ensuring latest model picker, MCP toggles, and Kokoro settings are present.",
-    "timestamp": "2025-10-25T23:43:21+00:00",
-    "commit_sha": "4e6600d89c5b14b2ca6513eff5fc47ea96933516",
+    "timestamp": "2025-10-26T04:15:00+00:00",
+    "commit_sha": "55191ed7a18543ded33e7ecc93ed69795c964cce",
     "features": [
         {
             "name": "model_picker_latest_ui",
@@ -95,7 +95,7 @@
                 {
                     "path": "python/api/synthesize.py",
                     "must_include": [
-                        "from python.helpers import runtime, settings, kokoro_tts",
+                        "from python.helpers import settings, kokoro_tts",
                         "kokoro_tts.synthesize_sentences"
                     ]
                 }
