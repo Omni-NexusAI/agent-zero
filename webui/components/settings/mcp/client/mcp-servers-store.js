@@ -3,6 +3,57 @@ import { scrollModal } from "/js/modals.js";
 import sleep from "/js/sleep.js";
 import * as API from "/js/api.js";
 
+function normalizeServerName(name) {
+  if (!name) return "";
+  return name
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[\W]/gu, "_");
+}
+
+function toggleDisabledFlag(serverConfig) {
+  if (!serverConfig || typeof serverConfig !== "object") return false;
+  const currentlyDisabled = Boolean(serverConfig.disabled);
+  serverConfig.disabled = !currentlyDisabled;
+  return true;
+}
+
+function tryToggleInCollection(collection, targetName) {
+  if (!collection) return false;
+
+  const evaluateMatch = (serverItem, keyName) => {
+    const candidates = [];
+    if (keyName) candidates.push(normalizeServerName(keyName));
+    if (serverItem && typeof serverItem === "object") {
+      if (serverItem.name) candidates.push(normalizeServerName(serverItem.name));
+      if (serverItem.displayName)
+        candidates.push(normalizeServerName(serverItem.displayName));
+      if (serverItem.id) candidates.push(normalizeServerName(serverItem.id));
+    }
+    return candidates.filter(Boolean).includes(targetName);
+  };
+
+  if (Array.isArray(collection)) {
+    for (const server of collection) {
+      if (evaluateMatch(server)) {
+        return toggleDisabledFlag(server);
+      }
+    }
+    return false;
+  }
+
+  if (typeof collection === "object") {
+    for (const [key, server] of Object.entries(collection)) {
+      if (evaluateMatch(server, key)) {
+        return toggleDisabledFlag(server);
+      }
+    }
+  }
+
+  return false;
+}
+
 const model = {
   editor: null,
   servers: [],
@@ -96,34 +147,42 @@ const model = {
     try {
       // Stop status check completely to avoid conflicts
       this.statusCheck = false;
-      
-      const current = JSON.parse(this.getEditorValue() || "{}");
-      if (!current.mcpServers || typeof current.mcpServers !== "object") {
-        console.error("No mcpServers configuration found");
-        this.startStatusCheck();
-        return;
+
+      const currentRaw = this.getEditorValue();
+      const current = currentRaw ? JSON.parse(currentRaw) : {};
+      const normalizedTarget = normalizeServerName(name);
+
+      let updated = false;
+
+      if (Array.isArray(current)) {
+        updated = tryToggleInCollection(current, normalizedTarget);
       }
-      
-      // Find the server by name (case-insensitive)
-      let found = false;
-      for (const [key, server] of Object.entries(current.mcpServers)) {
-        if (key.toLowerCase() === name.toLowerCase()) {
-          server.disabled = !server.disabled;
-          found = true;
-          break;
+
+      if (!updated && current && typeof current === "object") {
+        if (current.mcpServers) {
+          updated = tryToggleInCollection(current.mcpServers, normalizedTarget);
+        }
+
+        if (!updated && current.servers) {
+          updated = tryToggleInCollection(current.servers, normalizedTarget);
+        }
+
+        if (!updated) {
+          updated = tryToggleInCollection(current, normalizedTarget);
         }
       }
-      
-      if (!found) {
+
+      if (!updated) {
         console.error(`Server ${name} not found in configuration`);
         this.startStatusCheck();
         return;
       }
-      
+
       const formatted = JSON.stringify(current, null, 2);
       this.editor.setValue(formatted);
       this.editor.clearSelection();
-      
+      this.getSettingsFieldConfigJson().value = formatted;
+
       // Set loading state
       this.loading = true;
       
