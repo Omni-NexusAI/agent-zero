@@ -1,8 +1,9 @@
 {
     "version_id": "dev-D-0.9.7-custom",
     "description": "Baseline development build snapshot ensuring latest model picker, MCP toggles, and Kokoro settings are present.",
-    "timestamp": "2025-10-26T04:15:00+00:00",
-    "commit_sha": "55191ed7a18543ded33e7ecc93ed69795c964cce",
+    "timestamp": "2025-10-27T02:32:27+00:00",
+    "commit_sha": "aae72009e36b788648ba5b5c4e5376b684c4b859",
+    "display_version": "Version D 0.9.7-custom 2025-10-27 02:32:27",
     "features": [
         {
             "name": "model_picker_latest_ui",
