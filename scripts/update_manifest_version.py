@@ -18,6 +18,7 @@ import json
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+import sys
 
 
 def parse_args() -> argparse.Namespace:
@@ -43,6 +44,16 @@ def parse_args() -> argparse.Namespace:
 
 def get_repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
+
+
+def add_repo_to_path() -> None:
+    repo_root = get_repo_root()
+    sys.path.insert(0, str(repo_root))
+
+
+add_repo_to_path()
+
+from python.helpers import build_info
 
 
 def get_current_commit(repo_root: Path) -> str:
@@ -82,6 +93,10 @@ def main() -> int:
     if args.version_id:
         data["version_id"] = args.version_id
 
+    build_label = build_info.friendly_version_label(data.get("version_id"))
+    formatted_time = build_info.format_timestamp(timestamp)
+    data["display_version"] = f"{build_label} {formatted_time}"
+
     write_manifest(manifest_path, data)
 
     print(f"Updated manifest at {manifest_path}")
@@ -89,6 +104,7 @@ def main() -> int:
     print(f"  timestamp  = {timestamp}")
     if args.version_id:
         print(f"  version_id = {args.version_id}")
+    print(f"  display_version = {data['display_version']}")
 
     return 0
 

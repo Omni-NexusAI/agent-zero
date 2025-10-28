@@ -44,6 +44,11 @@ def parse_args() -> argparse.Namespace:
         help="Skip verifying manifest commit against current HEAD",
     )
     parser.add_argument(
+        "--skip-banner-check",
+        action="store_true",
+        help="Skip verifying that display_version is present",
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Print additional details about validation",
@@ -129,6 +134,10 @@ def validate_manifest(data: Dict[str, Any], repo_root: Path, skip_commit: bool, 
                 )
             )
         debug(f"Commit OK: {current_commit}", verbose)
+
+    display_version = data.get("display_version")
+    if not display_version or not isinstance(display_version, str) or not display_version.strip():
+        raise ValidationError("Manifest missing display_version. Run promote_dev_build.py to populate it.")
 
     features = data.get("features", [])
     if not isinstance(features, list) or not features:
