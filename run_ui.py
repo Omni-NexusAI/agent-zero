@@ -11,7 +11,7 @@ import threading
 from flask import Flask, request, Response, session, redirect, url_for, render_template_string
 from werkzeug.wrappers.response import Response as BaseResponse
 import initialize
-from python.helpers import files, git, mcp_server, fasta2a_server
+from python.helpers import files, git, mcp_server, fasta2a_server, build_info
 from python.helpers.files import get_abs_path
 from python.helpers import runtime, dotenv, process
 from python.helpers.extract_tools import load_classes_from_folder
@@ -189,7 +189,8 @@ async def serve_index():
     index = files.replace_placeholders_text(
         _content=index,
         version_no=gitinfo["version"],
-        version_time=gitinfo["commit_time"]
+        version_time=gitinfo["commit_time"],
+        version_banner=build_info.get_display_version()
     )
     return index
 
