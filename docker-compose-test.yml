@@ -12,3 +12,7 @@ services:
       - A0_BUILD_VERSION=Version D v0.9.7-custom 2025-10-26
     restart: unless-stopped
 
+
+
+
+

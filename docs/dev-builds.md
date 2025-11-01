@@ -32,10 +32,45 @@ The promote script automatically refreshes manifest metadata, validates required
 Fresh environment bootstrap
 ---------------------------
 
+### Standard Process (Recommended)
+
+**For creating a fresh A0-dev container, use the `development` branch:**
+
+```bash
+# Clone the development branch from Omni-NexusAI repository
+git clone -b development https://github.com/Omni-NexusAI/agent-zero.git <target-directory>
+cd <target-directory>
+
+# Verify critical dependencies
+grep "fastmcp==" requirements.txt  # Must show: fastmcp==2.3.0
+
+# Build container with no cache to ensure dependencies install correctly
+docker compose -f docker/run/docker-compose.yml build --no-cache
+docker compose -f docker/run/docker-compose.yml up -d
+
+# Validate the build
+python scripts/validate_manifest.py
 ```
+
+**Important**: The `development` branch always contains:
+- `fastmcp==2.3.0` in `requirements.txt` (prevents Pydantic TypeError)
+- Latest `mcp_server.py` with `create_streamable_http_app` compatibility
+- All validated features (model picker, MCP toggles, Kokoro settings)
+
+### Tagged Build Process (Alternative)
+
+If you need a specific tagged build:
+
+```
+git clone https://github.com/Omni-NexusAI/agent-zero.git <target-directory>
+cd <target-directory>
 git fetch origin
 git checkout tags/dev-D-0.9.7-custom-<timestamp>  # or latest-dev
 python scripts/validate_manifest.py --skip-commit-check
+
+# Still must rebuild container to install dependencies
+docker compose -f docker/run/docker-compose.yml build --no-cache
+docker compose -f docker/run/docker-compose.yml up -d
 ```
 
 The validator confirms that the checkout contains required feature files/snippets before any manual UI verification.

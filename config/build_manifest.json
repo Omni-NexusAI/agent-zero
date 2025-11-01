@@ -1,9 +1,9 @@
 {
     "version_id": "dev-D-0.9.7-custom",
     "description": "Baseline development build snapshot ensuring latest model picker, MCP toggles, and Kokoro settings are present.",
-    "timestamp": "2025-10-27T02:32:27+00:00",
-    "commit_sha": "aae72009e36b788648ba5b5c4e5376b684c4b859",
-    "display_version": "Version D 0.9.7-custom 2025-10-27 02:32:27",
+    "timestamp": "2025-11-01T03:02:16+00:00",
+    "commit_sha": "1621db4850d500a84189811a24bee37c5bd56b6d",
+    "display_version": "Version D 0.9.7-custom 2025-11-01 03:02:16",
     "features": [
         {
             "name": "model_picker_latest_ui",
@@ -98,6 +98,29 @@
                     "must_include": [
                         "from python.helpers import settings, kokoro_tts",
                         "kokoro_tts.synthesize_sentences"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "fastmcp_compatibility",
+            "description": "fastmcp pinned to 2.3.0 and mcp_server.py adapted for API compatibility. Prevents Pydantic TypeError on startup.",
+            "required_paths": [
+                "requirements.txt",
+                "python/helpers/mcp_server.py"
+            ],
+            "markers": [
+                {
+                    "path": "requirements.txt",
+                    "must_include": [
+                        "fastmcp==2.3.0"
+                    ]
+                },
+                {
+                    "path": "python/helpers/mcp_server.py",
+                    "must_include": [
+                        "create_streamable_http_app",
+                        "from fastmcp.server.http import create_sse_app, create_streamable_http_app"
                     ]
                 }
             ]
