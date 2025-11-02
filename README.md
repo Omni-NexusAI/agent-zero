@@ -11,6 +11,7 @@
 [Introduction](#a-personal-organic-agentic-framework-that-grows-and-learns-with-you) •
 [Installation](./docs/installation.md) •
 [Development](./docs/development.md) •
+**[Development Build Setup](./SETUP.md)** • 
 [Extensibility](./docs/extensibility.md) •
 [Connectivity](./docs/connectivity.md) •
 [How to update](./docs/installation.md#how-to-update-agent-zero) •

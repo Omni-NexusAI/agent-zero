@@ -28,6 +28,10 @@ fi
 
 . "/ins/setup_venv.sh" "$@"
 
+# Validate and fix critical dependencies (e.g., fastmcp==2.3.0)
+echo "Validating critical dependencies..."
+bash /ins/validate_dependencies.sh /git/agent-zero
+
 # moved to base image
 # # Ensure the virtual environment and pip setup
 # pip install --upgrade pip ipython requests
@@ -36,6 +40,21 @@ fi
 
 # Install remaining A0 python packages
 uv pip install -r /git/agent-zero/requirements.txt
+
+# Safety check: explicitly ensure fastmcp==2.3.0 is installed (overrides if wrong version was installed)
+echo "Ensuring fastmcp==2.3.0 is correctly installed..."
+uv pip install --force-reinstall --no-cache-dir "fastmcp==2.3.0" || {
+    echo "ERROR: Failed to install fastmcp==2.3.0"
+    exit 1
+}
+
+# Verify fastmcp version
+INSTALLED_VERSION=$(python -c "import fastmcp; print(fastmcp.__version__)" 2>/dev/null || echo "not found")
+if [ "$INSTALLED_VERSION" != "2.3.0" ]; then
+    echo "ERROR: fastmcp version mismatch. Expected: 2.3.0, Got: $INSTALLED_VERSION"
+    exit 1
+fi
+echo "✓ Verified fastmcp==2.3.0 is installed"
 
 # install playwright
 bash /ins/install_playwright.sh "$@"
