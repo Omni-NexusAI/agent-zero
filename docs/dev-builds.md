@@ -16,6 +16,29 @@ Each curated build updates `config/build_manifest.json` with:
 
 Run `python scripts/validate_manifest.py` to assert required files exist and markers are present before creating a tag. Use `--skip-commit-check` while drafting, but restore the field before release.
 
+## Creating Pre-Releases for Agent Systems
+
+To make it easier for agent systems (Warp.dev, Gemini CLI, etc.) to pull validated versions, create pre-release tags:
+
+1. Update manifest and create tag:
+   ```bash
+   python scripts/promote_dev_build.py --update-env
+   git tag -a v0.9.7-custom -m "Pre-release: Development build with fastmcp enforcement"
+   git push origin development v0.9.7-custom
+   ```
+
+2. Create GitHub pre-release (use the helper script):
+   ```bash
+   bash scripts/create_pre_release.sh v0.9.7-custom "Development build description"
+   ```
+
+3. Agents can now pull the pre-release easily:
+   ```bash
+   git clone -b v0.9.7-custom --depth 1 https://github.com/Omni-NexusAI/agent-zero.git
+   ```
+
+Pre-releases are easier for agent systems to discover and use than development branch commits.
+
 Promotion workflow
 ------------------
 

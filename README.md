@@ -37,6 +37,22 @@ From now on, please use this name for both `git clone` and `docker pull` command
 
 </div>
 
+<div align="center">
+
+> ### 🚀 **DEVELOPMENT BUILDS** 🚀
+
+**For Agent Systems (Warp.dev, Gemini CLI, etc.):**
+
+Use the pre-release tag for validated builds:
+
+```bash
+git clone -b v0.9.7-custom --depth 1 https://github.com/Omni-NexusAI/agent-zero.git
+```
+
+See [SETUP.md](./SETUP.md) for complete setup instructions.
+
+</div>
+
 
 
 [![Showcase](/docs/res/showcase-thumb.png)](https://youtu.be/lazLNcEYsiQ)
