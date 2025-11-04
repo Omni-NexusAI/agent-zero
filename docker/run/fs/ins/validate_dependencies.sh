@@ -40,3 +40,6 @@ fi
 
 echo "✓ All critical dependencies validated"
 
+
+
+

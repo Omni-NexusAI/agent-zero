@@ -6,10 +6,13 @@ This guide explains how to set up a fresh Agent Zero development environment tha
 
 ### Option 1: Use Pre-Release (Easiest for Agent Systems)
 
+⚠️ **CRITICAL**: Pre-release tags ONLY exist in `Omni-NexusAI/agent-zero` repository.  
+**DO NOT** use `agent0ai/agent-zero` - tags don't exist there!
+
 **Pull from the latest pre-release tag:**
 
 ```bash
-# Clone the pre-release version
+# Clone the pre-release version from Omni-NexusAI repository
 git clone -b v0.9.7-custom --depth 1 https://github.com/Omni-NexusAI/agent-zero.git agent-zero-dev
 cd agent-zero-dev
 
@@ -27,6 +30,8 @@ docker compose -f docker/run/docker-compose.yml exec a0-dev pip show fastmcp
 **Or checkout from existing clone:**
 
 ```bash
+# Make sure you're cloning from Omni-NexusAI, not agent0ai!
+git remote set-url origin https://github.com/Omni-NexusAI/agent-zero.git
 git fetch origin --tags
 git checkout v0.9.7-custom
 docker compose -f docker/run/docker-compose.yml build --no-cache
@@ -153,9 +158,15 @@ docker compose -f docker/run/docker-compose.yml ps
 
 If you're an AI agent setting up this environment:
 
+### ⚠️ CRITICAL: Repository Choice
+
+**Pre-release tags ONLY exist in `Omni-NexusAI/agent-zero` repository.**  
+**DO NOT use `agent0ai/agent-zero`** - tags don't exist there!
+
 ### Recommended Approach (Pre-Release):
 
 ```bash
+# MUST use Omni-NexusAI repository for tags
 git clone -b v0.9.7-custom --depth 1 https://github.com/Omni-NexusAI/agent-zero.git agent-zero-dev
 cd agent-zero-dev
 docker compose -f docker/run/docker-compose.yml build --no-cache
@@ -165,6 +176,7 @@ docker compose -f docker/run/docker-compose.yml up -d
 ### Alternative (Development Branch):
 
 ```bash
+# MUST use Omni-NexusAI repository
 git clone -b development https://github.com/Omni-NexusAI/agent-zero.git agent-zero-dev
 cd agent-zero-dev
 docker compose -f docker/run/docker-compose.yml build --no-cache
@@ -172,11 +184,12 @@ docker compose -f docker/run/docker-compose.yml up -d
 ```
 
 **Key Points**:
-1. **Always use** `Omni-NexusAI/agent-zero` repository
-2. **Pre-release tags** (like `v0.9.7-custom`) are recommended for stable builds
-3. **Always rebuild** with `--no-cache` to ensure dependencies are fresh
-4. **Verify fastmcp** version after build: `pip show fastmcp` should show `2.3.0`
-5. **Check logs** if startup fails: `docker compose logs a0-dev`
+1. **ALWAYS use** `Omni-NexusAI/agent-zero` repository (NOT `agent0ai/agent-zero`)
+2. **Pre-release tags** (like `v0.9.7-custom`) ONLY exist in Omni-NexusAI repository
+3. **Development branch** is `development` (NOT `dev` or `main`)
+4. **Always rebuild** with `--no-cache` to ensure dependencies are fresh
+5. **Verify fastmcp** version after build: `pip show fastmcp` should show `2.3.0`
+6. **Check logs** if startup fails: `docker compose logs a0-dev`
 
 The build system automatically handles dependency validation, but you must use the correct repository and version.
 

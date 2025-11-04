@@ -35,6 +35,8 @@ The original GitHub and DockerHub repositories for Agent Zero have been transfer
 
 From now on, please use this name for both `git clone` and `docker pull` commands.
 
+**Note:** This applies to production/stable builds. For development builds and pre-releases, see below.
+
 </div>
 
 <div align="center">
@@ -43,11 +45,15 @@ From now on, please use this name for both `git clone` and `docker pull` command
 
 **For Agent Systems (Warp.dev, Gemini CLI, etc.):**
 
+⚠️ **CRITICAL**: Pre-release tags and development builds ONLY exist in `Omni-NexusAI/agent-zero`.
+
 Use the pre-release tag for validated builds:
 
 ```bash
 git clone -b v0.9.7-custom --depth 1 https://github.com/Omni-NexusAI/agent-zero.git
 ```
+
+**DO NOT** use `agent0ai/agent-zero` for tags - they don't exist there!
 
 See [SETUP.md](./SETUP.md) for complete setup instructions.
 

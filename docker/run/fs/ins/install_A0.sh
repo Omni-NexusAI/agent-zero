@@ -17,8 +17,15 @@ if [ "$BRANCH" = "local" ]; then
     # List all files recursively in the target directory
     # echo "All files in /git/agent-zero (recursive):"
     # find "/git/agent-zero" -type f | sort
+elif [ "$BRANCH" = "development" ]; then
+    # For development branch, use Omni-NexusAI fork (contains validated features and fixes)
+    echo "Cloning development branch from Omni-NexusAI repository..."
+    git clone -b "$BRANCH" "https://github.com/Omni-NexusAI/agent-zero" "/git/agent-zero" || {
+        echo "CRITICAL ERROR: Failed to clone repository. Branch: $BRANCH from Omni-NexusAI"
+        exit 1
+    }
 else
-    # For other branches, clone from GitHub
+    # For other branches, clone from main agent0ai repository
     echo "Cloning repository from branch $BRANCH..."
     git clone -b "$BRANCH" "https://github.com/agent0ai/agent-zero" "/git/agent-zero" || {
         echo "CRITICAL ERROR: Failed to clone repository. Branch: $BRANCH"
