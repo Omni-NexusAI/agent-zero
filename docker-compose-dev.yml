@@ -1,0 +1,16 @@
+services:
+  agent-zero-dev:
+    container_name: A0-dev
+    build:
+      context: .
+      dockerfile: DockerfileLocal
+      args:
+        - BRANCH=development
+    image: omni-nexusai/agent-zero:dev
+    volumes:
+      - ./:/a0
+    ports:
+      - "8891:80"
+    environment:
+      - A0_BUILD_VERSION=Version D v0.9.7-custom 2025-11-04 13:59:00
+    restart: unless-stopped

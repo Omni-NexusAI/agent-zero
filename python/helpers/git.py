@@ -4,6 +4,18 @@ import os
 from python.helpers import files
 
 def get_git_info():
+    # Check for A0_BUILD_VERSION env var first (for custom/container builds)
+    build_version_env = os.environ.get("A0_BUILD_VERSION", "").strip()
+    if build_version_env:
+        return {
+            "branch": "custom",
+            "commit_hash": "env-override",
+            "commit_time": "",
+            "tag": "",
+            "short_tag": "",
+            "version": build_version_env
+        }
+
     # Get the current working directory (assuming the repo is in the same folder as the script)
     repo_path = files.get_base_dir()
     
