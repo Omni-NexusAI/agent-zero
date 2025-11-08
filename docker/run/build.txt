@@ -12,14 +12,17 @@ docker build -f DockerfileLocal -t agent-zero-local --no-cache .
 # GIT BASED BUILDS
 # Run these commands from the /docker/run directory
 
-# local image based on development branch instead of local files
-docker build -t agent-zero-development --build-arg BRANCH=development --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
+# Build from pre-release tag (RECOMMENDED - contains all custom features)
+docker build -t agent-zero:v0.9.7-custom --build-arg GIT_REF=v0.9.7-custom --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
 
-# local image based on testing branch instead of local files
-docker build -t agent-zero-testing --build-arg BRANCH=testing --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
+# Build from development branch (Omni-NexusAI fork with custom features)
+docker build -t agent-zero-development --build-arg GIT_REF=development --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
 
-# local image based on main branch instead of local files
-docker build -t agent-zero-main --build-arg BRANCH=main --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
+# Build from testing branch (agent0ai repository)
+docker build -t agent-zero-testing --build-arg GIT_REF=testing --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
+
+# Build from main branch (agent0ai repository)
+docker build -t agent-zero-main --build-arg GIT_REF=main --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
 
 
 
@@ -28,14 +31,17 @@ docker build -t agent-zero-main --build-arg BRANCH=main --build-arg CACHE_DATE=$
 
 docker login
 
+# Pre-release tag (RECOMMENDED):
+docker buildx build -t omni-nexusai/agent-zero:v0.9.7-custom --platform linux/amd64,linux/arm64 --push --build-arg GIT_REF=v0.9.7-custom --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
+
 # development:
-docker buildx build -t agent0ai/agent-zero:development --platform linux/amd64,linux/arm64 --push --build-arg BRANCH=development --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
+docker buildx build -t omni-nexusai/agent-zero:development --platform linux/amd64,linux/arm64 --push --build-arg GIT_REF=development --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
 
 # testing:
-docker buildx build -t agent0ai/agent-zero:testing --platform linux/amd64,linux/arm64 --push --build-arg BRANCH=testing --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
+docker buildx build -t agent0ai/agent-zero:testing --platform linux/amd64,linux/arm64 --push --build-arg GIT_REF=testing --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
 
 # main
-docker buildx build -t agent0ai/agent-zero:vx.x.x -t agent0ai/agent-zero:latest --platform linux/amd64,linux/arm64 --push --build-arg BRANCH=main --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
+docker buildx build -t agent0ai/agent-zero:vx.x.x -t agent0ai/agent-zero:latest --platform linux/amd64,linux/arm64 --push --build-arg GIT_REF=main --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
 
 
 # plain output

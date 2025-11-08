@@ -1,0 +1,15 @@
+services:
+  a0-development:
+    container_name: A0-development
+    build:
+      context: ./docker/run
+      dockerfile: Dockerfile
+      args:
+        GIT_REF: development  # Development branch from Omni-NexusAI
+        CACHE_DATE: ${CACHE_DATE:-none}
+    volumes:
+      - ./docker/run/fs/per:/per
+    ports:
+      - "8891:80"
+    restart: unless-stopped
+

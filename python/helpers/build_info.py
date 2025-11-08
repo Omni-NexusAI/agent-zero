@@ -75,11 +75,27 @@ def get_display_version() -> str:
     if isinstance(display, str) and display.strip():
         return display.strip()
 
-    base_label = friendly_version_label(meta.get("version_id"))
-    timestamp = format_timestamp(meta.get("timestamp"))
-    if timestamp and timestamp != "unknown":
-        return f"{base_label} {timestamp}"
-    return base_label
+    # Fallback: derive a sane display string from git metadata when manifest/env are missing
+    try:
+        # Lazy import to avoid circular dependency at module import time
+        from python.helpers import git as git_helpers  # type: ignore
+
+        gitinfo = git_helpers.get_git_info()
+        label = gitinfo.get("version") or "D unknown-custom"
+        # Ensure we always prefix with "Version " to match UI expectation
+        if not isinstance(label, str):
+            label = "D unknown-custom"
+        if not label.lower().startswith("version "):
+            label = f"Version {label}"
+        time_str = gitinfo.get("commit_time") or "unknown"
+        return f"{label} {time_str}"
+    except Exception:
+        # Last-resort fallback: use partially known manifest fields
+        base_label = friendly_version_label(meta.get("version_id"))
+        timestamp = format_timestamp(meta.get("timestamp"))
+        if timestamp and timestamp != "unknown":
+            return f"{base_label} {timestamp}"
+        return base_label
 
 
 def refresh_cache() -> None:
