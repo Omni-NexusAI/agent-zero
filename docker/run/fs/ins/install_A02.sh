@@ -8,8 +8,16 @@ if [ "$1" != "local" ]; then
     rm -rf /git/agent-zero
 fi
 
-# run the original install script again
+# run the original install script again (this will recompute version)
 bash /ins/install_A0.sh "$@"
+
+# Recompute and save build version after reinstall
+if [ -d /git/agent-zero/.git ]; then
+    echo "Recomputing build version after reinstall..."
+    BUILD_VERSION=$(bash /ins/compute_build_version.sh /git/agent-zero | tr -d '\n\r')
+    echo "$BUILD_VERSION" > /tmp/A0_BUILD_VERSION.txt
+    echo "Build version recomputed: $BUILD_VERSION"
+fi
 
 # remove python packages cache
 . "/ins/setup_venv.sh" "$@"

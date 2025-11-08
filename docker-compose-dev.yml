@@ -1,0 +1,18 @@
+services:
+  a0-dev:
+    container_name: A0-dev
+    build:
+      context: ./docker/run
+      dockerfile: Dockerfile
+      args:
+        GIT_REF: v0.9.7-custom  # Pre-release tag with all custom features
+        CACHE_DATE: ${CACHE_DATE:-none}
+    volumes:
+      - ./docker/run/fs/per:/per
+    ports:
+      - "8890:80"
+    restart: unless-stopped
+    environment:
+      # Version is automatically set from build, but can be overridden here if needed
+      # A0_BUILD_VERSION will be available from /a0_build_version.txt in the container
+

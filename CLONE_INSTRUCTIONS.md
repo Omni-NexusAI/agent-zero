@@ -42,3 +42,7 @@ git remote -v        # Should show: Omni-NexusAI/agent-zero
 git branch           # Should show: * (HEAD detached at v0.9.7-custom) or development
 ```
 
+
+
+
+
