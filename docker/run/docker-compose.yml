@@ -3,6 +3,11 @@ services:
     container_name: agent-zero
     image: agent0ai/agent-zero:latest
     volumes:
-      - ./agent-zero:/a0
+      # Mount source code from workspace root
+      - ../../agent-zero:/a0
+      # Preserve data directories from A0-dev (these will overlay on top of /a0)
+      - ./A0-dev/knowledge:/a0/knowledge
+      - ./A0-dev/memory:/a0/memory
+      - ./A0-dev/tmp:/a0/tmp
     ports:
       - "50080:80"

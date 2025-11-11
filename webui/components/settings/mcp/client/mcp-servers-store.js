@@ -3,179 +3,245 @@ import { scrollModal } from "/js/modals.js";
 import sleep from "/js/sleep.js";
 import * as API from "/js/api.js";
 
+const BATCH_DELAY_MS = 500;
+
+function normalizeName(value) {
+  return (value || "")
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_");
+}
+
+function toggleDisabledFlag(serverConfig) {
+  if (!serverConfig || typeof serverConfig !== "object") return false;
+  serverConfig.disabled = !Boolean(serverConfig.disabled);
+  return true;
+}
+
+function applyToggleToConfig(config, targetName) {
+  if (!config) return false;
+
+  const matchInObject = (collection) => {
+    if (!collection) return false;
+    for (const [key, value] of Object.entries(collection)) {
+      if (normalizeName(key) === targetName) {
+        return toggleDisabledFlag(value);
+      }
+      if (value && typeof value === "object" && normalizeName(value.name) === targetName) {
+        return toggleDisabledFlag(value);
+      }
+    }
+    return false;
+  };
+
+  if (Array.isArray(config)) {
+    for (const item of config) {
+      if (item && typeof item === "object" && normalizeName(item.name) === targetName) {
+        return toggleDisabledFlag(item);
+      }
+    }
+    return false;
+  }
+
+  if (typeof config === "object") {
+    if (config.mcpServers && matchInObject(config.mcpServers)) return true;
+    if (config.servers && matchInObject(config.servers)) return true;
+    if (matchInObject(config)) return true;
+  }
+
+  return false;
+}
+
 const model = {
   editor: null,
   servers: [],
   loading: true,
   statusCheck: false,
   serverLog: "",
+  batchTimer: null,
+  pendingConfig: null,
+  pendingToggles: new Set(),
+  applyInFlight: false,
+  statusTimer: null,
 
   async initialize() {
-    // Initialize the JSON Viewer after the modal is rendered
     const container = document.getElementById("mcp-servers-config-json");
     if (container) {
       const editor = ace.edit("mcp-servers-config-json");
-
       const dark = localStorage.getItem("darkMode");
-      if (dark != "false") {
-        editor.setTheme("ace/theme/github_dark");
-      } else {
-        editor.setTheme("ace/theme/tomorrow");
-      }
-
+      editor.setTheme(dark !== "false" ? "ace/theme/github_dark" : "ace/theme/tomorrow");
       editor.session.setMode("ace/mode/json");
-      const json = this.getSettingsFieldConfigJson().value;
-      editor.setValue(json);
+      editor.setValue(this.getSettingsField().value);
       editor.clearSelection();
       this.editor = editor;
     }
-
     this.startStatusCheck();
+  },
+
+  getSettingsField() {
+    return settingsModalProxy.settings.sections
+      .find((section) => section.id === "mcp_client")
+      .fields.find((field) => field.id === "mcp_servers");
+  },
+
+  getEditorValue() {
+    return this.editor ? this.editor.getValue() : this.getSettingsField().value;
+  },
+
+  setEditorValue(value) {
+    if (this.editor) {
+      this.editor.setValue(value);
+      this.editor.clearSelection();
+    }
+    this.getSettingsField().value = value;
   },
 
   formatJson() {
     try {
-      // get current content
-      const currentContent = this.editor.getValue();
-
-      // parse and format with 2 spaces indentation
-      const parsed = JSON.parse(currentContent);
-      const formatted = JSON.stringify(parsed, null, 2);
-
-      // update editor content
-      this.editor.setValue(formatted);
-      this.editor.clearSelection();
-
-      // move cursor to start
-      this.editor.navigateFileStart();
+      const content = this.getEditorValue();
+      const parsed = JSON.parse(content);
+      this.setEditorValue(JSON.stringify(parsed, null, 2));
+      if (this.editor) this.editor.navigateFileStart();
     } catch (error) {
       console.error("Failed to format JSON:", error);
       alert("Invalid JSON: " + error.message);
     }
   },
 
-  getEditorValue() {
-    return this.editor.getValue();
-  },
-
-  getSettingsFieldConfigJson() {
-    return settingsModalProxy.settings.sections
-      .filter((x) => x.id == "mcp_client")[0]
-      .fields.filter((x) => x.id == "mcp_servers")[0];
-  },
-
   onClose() {
-    const val = this.getEditorValue();
-    this.getSettingsFieldConfigJson().value = val;
+    this.getSettingsField().value = this.getEditorValue();
     this.stopStatusCheck();
   },
 
   async startStatusCheck() {
     this.statusCheck = true;
-    let firstLoad = true;
+    let firstPass = true;
 
     while (this.statusCheck) {
-      await this._statusCheck();
-      if (firstLoad) {
+      await this.refreshStatus();
+      if (firstPass) {
         this.loading = false;
-        firstLoad = false;
+        firstPass = false;
       }
       await sleep(3000);
     }
   },
 
-  async _statusCheck() {
-    const resp = await API.callJsonApi("mcp_servers_status", null);
-    if (resp.success) {
-      this.servers = resp.status;
-      this.servers.sort((a, b) => a.name.localeCompare(b.name));
-    }
-  },
-
-  async toggleServer(name) {
+  async refreshStatus() {
     try {
-      // Stop status check completely to avoid conflicts
-      this.statusCheck = false;
-      
-      const current = JSON.parse(this.getEditorValue() || "{}");
-      if (!current.mcpServers || typeof current.mcpServers !== "object") {
-        console.error("No mcpServers configuration found");
-        this.startStatusCheck();
-        return;
-      }
-      
-      // Find the server by name (case-insensitive)
-      let found = false;
-      for (const [key, server] of Object.entries(current.mcpServers)) {
-        if (key.toLowerCase() === name.toLowerCase()) {
-          server.disabled = !server.disabled;
-          found = true;
-          break;
-        }
-      }
-      
-      if (!found) {
-        console.error(`Server ${name} not found in configuration`);
-        this.startStatusCheck();
-        return;
-      }
-      
-      const formatted = JSON.stringify(current, null, 2);
-      this.editor.setValue(formatted);
-      this.editor.clearSelection();
-      
-      // Set loading state
-      this.loading = true;
-      
-      // Apply changes immediately using the same logic as applyNow
-      scrollModal("mcp-servers-status");
-      const resp = await API.callJsonApi("mcp_servers_apply", {
-        mcp_servers: formatted,
-      });
-      
+      const resp = await API.callJsonApi("mcp_servers_status", null);
       if (resp.success) {
         this.servers = resp.status;
         this.servers.sort((a, b) => a.name.localeCompare(b.name));
       }
-      
-      this.loading = false;
-      await sleep(100); // wait for ui and scroll
-      scrollModal("mcp-servers-status");
-      
-      // Restart status check after a delay
-      setTimeout(() => this.startStatusCheck(), 2000);
     } catch (error) {
-      console.error("Failed to toggle server:", error);
-      alert("Failed to toggle server: " + error.message);
-      this.loading = false;
-      // Restart status check on error
-      setTimeout(() => this.startStatusCheck(), 2000);
+      console.error("Failed to refresh MCP server status:", error);
     }
   },
 
-  async stopStatusCheck() {
+  stopStatusCheck() {
     this.statusCheck = false;
   },
 
-  async applyNow() {
-    if (this.loading) return;
-    this.loading = true;
+  async toggleServer(name) {
+    const normalizedName = normalizeName(name);
+
     try {
-      scrollModal("mcp-servers-status");
-      const resp = await API.callJsonApi("mcp_servers_apply", {
-        mcp_servers: this.getEditorValue(),
-      });
-      if (resp.success) {
-        this.servers = resp.status;
+      const currentValue = this.getEditorValue();
+      const parsed = currentValue ? JSON.parse(currentValue) : {};
+
+      if (!applyToggleToConfig(parsed, normalizedName)) {
+        console.error(`Server ${name} not found in configuration`);
+        return;
+      }
+
+      const formatted = JSON.stringify(parsed, null, 2);
+      this.setEditorValue(formatted);
+      this.pendingConfig = formatted;
+      this.pendingToggles.add(normalizedName);
+
+      if (this.batchTimer) {
+        clearTimeout(this.batchTimer);
+      }
+      this.batchTimer = setTimeout(() => this.flushPending(), BATCH_DELAY_MS);
+    } catch (error) {
+      console.error("Failed to toggle server:", error);
+      alert("Failed to toggle server: " + error.message);
+    }
+  },
+
+  async flushPending() {
+    if (!this.pendingConfig) return;
+
+    const configToApply = this.pendingConfig;
+    const toggles = Array.from(this.pendingToggles);
+
+    this.pendingConfig = null;
+    this.pendingToggles.clear();
+    this.batchTimer = null;
+
+    await this.applyConfig(configToApply, toggles);
+  },
+
+  async applyConfig(config, toggledServers = []) {
+    if (!config) return;
+
+    this.applyInFlight = true;
+    this.loading = true;
+    this.stopStatusCheck();
+    scrollModal("mcp-servers-status");
+
+    try {
+      let response = null;
+      if (toggledServers.length === 1) {
+        response = await API.callJsonApi("mcp_servers_toggle", {
+          mcp_servers: config,
+          server_name: toggledServers[0],
+        });
+      } else {
+        response = await API.callJsonApi("mcp_servers_apply", {
+          mcp_servers: config,
+        });
+      }
+
+      if (response && response.success) {
+        this.servers = response.status;
         this.servers.sort((a, b) => a.name.localeCompare(b.name));
       }
-      this.loading = false;
-      await sleep(100); // wait for ui and scroll
-      scrollModal("mcp-servers-status");
     } catch (error) {
       console.error("Failed to apply MCP servers:", error);
+      alert("Failed to apply MCP servers: " + error.message);
+    } finally {
+      this.applyInFlight = false;
+      this.loading = false;
+      await sleep(150);
+      scrollModal("mcp-servers-status");
+      this.scheduleStatusRestart();
     }
-    this.loading = false;
+  },
+
+  scheduleStatusRestart() {
+    if (this.statusTimer) {
+      clearTimeout(this.statusTimer);
+    }
+    this.statusTimer = setTimeout(() => this.startStatusCheck(), 2000);
+  },
+
+  async applyNow() {
+    if (this.applyInFlight || this.loading) return;
+
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+      this.batchTimer = null;
+    }
+
+    const config = this.pendingConfig || this.getEditorValue();
+    const toggles = Array.from(this.pendingToggles);
+    this.pendingConfig = null;
+    this.pendingToggles.clear();
+
+    await this.applyConfig(config, toggles);
   },
 
   async getServerLog(serverName) {
