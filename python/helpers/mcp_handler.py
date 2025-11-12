@@ -392,96 +392,107 @@ class MCPConfig(BaseModel):
     @classmethod
     def update(cls, config_str: str) -> Any:
         with cls.__lock:
-            servers_data: List[Dict[str, Any]] = []  # Default to empty list
-
-            if (
-                config_str and config_str.strip()
-            ):  # Only parse if non-empty and not just whitespace
-                try:
-                    # Try with standard json.loads first, as it should handle escaped strings correctly
-                    parsed_value = dirty_json.try_parse(config_str)
-                    normalized = cls.normalize_config(parsed_value)
-
-                    if isinstance(normalized, list):
-                        valid_servers = []
-                        for item in normalized:
-                            if isinstance(item, dict):
-                                valid_servers.append(item)
-                            else:
-                                PrintStyle(
-                                    background_color="yellow",
-                                    font_color="black",
-                                    padding=True,
-                                ).print(
-                                    f"Warning: MCP config item (from json.loads) was not a dictionary and was ignored: {item}"
-                                )
-                        servers_data = valid_servers
-                    else:
-                        PrintStyle(
-                            background_color="red", font_color="white", padding=True
-                        ).print(
-                            f"Error: Parsed MCP config (from json.loads) top-level structure is not a list. Config string was: '{config_str}'"
-                        )
-                        # servers_data remains empty
-                except (
-                    Exception
-                ) as e_json:  # Catch json.JSONDecodeError specifically if possible, or general Exception
-                    PrintStyle.error(
-                        f"Error parsing MCP config string: {e_json}. Config string was: '{config_str}'"
-                    )
-
-                    # # Fallback to DirtyJson or log error if standard json.loads fails
-                    # PrintStyle(background_color="orange", font_color="black", padding=True).print(
-                    #     f"Standard json.loads failed for MCP config: {e_json}. Attempting DirtyJson as fallback."
-                    # )
-                    # try:
-                    #     parsed_value = DirtyJson.parse_string(config_str)
-                    #     if isinstance(parsed_value, list):
-                    #         valid_servers = []
-                    #         for item in parsed_value:
-                    #             if isinstance(item, dict):
-                    #                 valid_servers.append(item)
-                    #             else:
-                    #                 PrintStyle(background_color="yellow", font_color="black", padding=True).print(
-                    #                     f"Warning: MCP config item (from DirtyJson) was not a dictionary and was ignored: {item}"
-                    #                 )
-                    #         servers_data = valid_servers
-                    #     else:
-                    #         PrintStyle(background_color="red", font_color="white", padding=True).print(
-                    #             f"Error: Parsed MCP config (from DirtyJson) top-level structure is not a list. Config string was: '{config_str}'"
-                    #         )
-                    #         # servers_data remains empty
-                    # except Exception as e_dirty:
-                    #     PrintStyle(background_color="red", font_color="white", padding=True).print(
-                    #         f"Error parsing MCP config string with DirtyJson as well: {e_dirty}. Config string was: '{config_str}'"
-                    #     )
-                    #     # servers_data remains empty, allowing graceful degradation
-
-            # Initialize/update the singleton instance with the (potentially empty) list of server data
+            servers_data = cls._parse_config(config_str)
             instance = cls.get_instance()
-            # Directly update the servers attribute of the existing instance or re-initialize carefully
-            # For simplicity and to ensure __init__ logic runs if needed for setup:
-            new_instance_data = {
-                "servers": servers_data
-            }  # Prepare data for re-initialization or update
-
-            # Option 1: Re-initialize the existing instance (if __init__ is idempotent for other fields)
             instance.__init__(servers_list=servers_data)
+            cls.__initialized = True
+            return instance
 
-            # Option 2: Or, if __init__ has side effects we don't want to repeat,
-            # and 'servers' is the primary thing 'update' changes:
-            # instance.servers = [] # Clear existing servers first
-            # for server_item_data in servers_data:
-            #     try:
-            #         if server_item_data.get("url", None):
-            #             instance.servers.append(MCPServerRemote(server_item_data))
-            #         else:
-            #             instance.servers.append(MCPServerLocal(server_item_data))
-            #     except Exception as e_init:
-            #         PrintStyle(background_color="grey", font_color="red", padding=True).print(
-            #             f"MCPConfig.update: Failed to create MCPServer from item '{server_item_data.get('name', 'Unknown')}': {e_init}"
-            #         )
+    @classmethod
+    def _parse_config(cls, config_str: str) -> list[dict[str, Any]]:
+        servers_data: list[dict[str, Any]] = []
 
+        if config_str and config_str.strip():
+            try:
+                parsed_value = dirty_json.try_parse(config_str)
+                normalized = cls.normalize_config(parsed_value)
+
+                if isinstance(normalized, list):
+                    for item in normalized:
+                        if isinstance(item, dict):
+                            servers_data.append(item)
+                        else:
+                            PrintStyle(
+                                background_color="yellow",
+                                font_color="black",
+                                padding=True,
+                            ).print(
+                                f"Warning: MCP config item was not a dictionary and was ignored: {item}"
+                            )
+                else:
+                    PrintStyle(
+                        background_color="red", font_color="white", padding=True
+                    ).print(
+                        f"Error: Parsed MCP config top-level structure is not a list. Config string was: '{config_str}'"
+                    )
+            except Exception as exc:
+                PrintStyle.error(
+                    f"Error parsing MCP config string: {exc}. Config string was: '{config_str}'"
+                )
+
+        return servers_data
+
+    @classmethod
+    def apply_single_server(cls, config_str: str, server_name: str) -> Any:
+        normalized_name = normalize_name(server_name)
+        servers_data = cls._parse_config(config_str)
+
+        target_config: dict[str, Any] | None = None
+        for item in servers_data:
+            item_name = item.get("name") or normalized_name
+            if normalize_name(str(item_name)) == normalized_name:
+                target_config = item
+                break
+
+        with cls.__lock:
+            instance = cls.get_instance()
+
+            existing_server: MCPServer | None = None
+            remaining_servers: list[MCPServer] = []
+            for server in instance.servers:
+                if server.name == normalized_name:
+                    existing_server = server
+                else:
+                    remaining_servers.append(server)
+            instance.servers = remaining_servers
+
+            instance.disconnected_servers = [
+                entry
+                for entry in instance.disconnected_servers
+                if entry.get("name") != normalized_name
+            ]
+
+            def _record_disconnected(config: dict[str, Any], error: str):
+                instance.disconnected_servers.append(
+                    {
+                        "config": config,
+                        "error": error,
+                        "name": normalized_name,
+                    }
+                )
+
+            if not target_config:
+                _record_disconnected({"name": normalized_name}, "Server not found in config")
+            elif target_config.get("disabled", False):
+                _record_disconnected(target_config, "Disabled in config")
+            else:
+                try:
+                    if target_config.get("url") or target_config.get("serverUrl"):
+                        if existing_server and isinstance(existing_server, MCPServerRemote):
+                            existing_server.update(target_config)
+                            instance.servers.append(existing_server)
+                        else:
+                            instance.servers.append(MCPServerRemote(target_config))
+                    else:
+                        if existing_server and isinstance(existing_server, MCPServerLocal):
+                            existing_server.update(target_config)
+                            instance.servers.append(existing_server)
+                        else:
+                            instance.servers.append(MCPServerLocal(target_config))
+                except Exception as exc:
+                    _record_disconnected(target_config, str(exc))
+
+            instance.servers.sort(key=lambda srv: srv.name)
             cls.__initialized = True
             return instance
 
@@ -647,16 +658,11 @@ class MCPConfig(BaseModel):
                         "error": error,
                         "tool_count": tool_count,
                         "has_log": has_log,
-                        "disabled": False,
                     }
                 )
 
             # add failed servers
             for disconnected in self.disconnected_servers:
-                disabled = False
-                config = disconnected.get("config")
-                if isinstance(config, dict):
-                    disabled = bool(config.get("disabled", False))
                 result.append(
                     {
                         "name": disconnected["name"],
@@ -664,7 +670,6 @@ class MCPConfig(BaseModel):
                         "error": disconnected["error"],
                         "tool_count": 0,
                         "has_log": False,
-                        "disabled": disabled,
                     }
                 )
 

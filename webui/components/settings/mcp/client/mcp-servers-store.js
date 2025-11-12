@@ -3,63 +3,111 @@ import { scrollModal } from "/js/modals.js";
 import sleep from "/js/sleep.js";
 import * as API from "/js/api.js";
 
-const normalizeName = (name) => (name || "").toLowerCase().replace(/[\-_]/g, "");
+function normalizeServerName(name) {
+  if (!name) return "";
+  return name
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[\W]/gu, "_");
+}
+
+function toggleDisabledFlag(serverConfig) {
+  if (!serverConfig || typeof serverConfig !== "object") return null;
+  const currentlyDisabled = Boolean(serverConfig.disabled);
+  const nextDisabled = !currentlyDisabled;
+  serverConfig.disabled = nextDisabled;
+  return nextDisabled;
+}
+
+function tryToggleInCollection(collection, targetName) {
+  if (!collection) return null;
+
+  const evaluateMatch = (serverItem, keyName) => {
+    const candidates = [];
+    if (keyName) candidates.push(normalizeServerName(keyName));
+    if (serverItem && typeof serverItem === "object") {
+      if (serverItem.name) candidates.push(normalizeServerName(serverItem.name));
+      if (serverItem.displayName)
+        candidates.push(normalizeServerName(serverItem.displayName));
+      if (serverItem.id) candidates.push(normalizeServerName(serverItem.id));
+    }
+    return candidates.filter(Boolean).includes(targetName);
+  };
+
+  if (Array.isArray(collection)) {
+    for (const server of collection) {
+      if (evaluateMatch(server)) {
+        const toggled = toggleDisabledFlag(server);
+        if (toggled !== null) return toggled;
+      }
+    }
+    return null;
+  }
+
+  if (typeof collection === "object") {
+    for (const [key, server] of Object.entries(collection)) {
+      if (evaluateMatch(server, key)) {
+        const toggled = toggleDisabledFlag(server);
+        if (toggled !== null) return toggled;
+      }
+    }
+  }
+
+  return null;
+}
 
 const model = {
   editor: null,
   servers: [],
   loading: true,
   statusCheck: false,
-  statusInProgress: false,
-  statusReqId: 0,
-  applyInProgress: false,
-  applyQueued: false,
-  applyTimer: null,
   serverLog: "",
-  // remember last known disabled states so toggles stay stable
-  lastDisabledByServer: {},
+  pendingApplyTimer: null,
+  statusRestartTimer: null,
+  pendingConfigString: null,
+  pendingToggles: new Set(),
+  isApplying: false,
+  lastAppliedConfig: null,
+  applyDelayMs: 350,
 
   async initialize() {
+    // Initialize the JSON Viewer after the modal is rendered
     const container = document.getElementById("mcp-servers-config-json");
     if (container) {
       const editor = ace.edit("mcp-servers-config-json");
+
       const dark = localStorage.getItem("darkMode");
-      editor.setTheme(dark != "false" ? "ace/theme/github_dark" : "ace/theme/tomorrow");
+      if (dark != "false") {
+        editor.setTheme("ace/theme/github_dark");
+      } else {
+        editor.setTheme("ace/theme/tomorrow");
+      }
+
       editor.session.setMode("ace/mode/json");
       const json = this.getSettingsFieldConfigJson().value;
       editor.setValue(json);
       editor.clearSelection();
       this.editor = editor;
     }
-    this.startStatusCheck();
-  },
 
-  _ensureDisabledDefaults(cfg, preferFromStatus = true) {
-    if (!cfg || typeof cfg !== "object") return cfg;
-    if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") return cfg;
-    const map = cfg.mcpServers;
-    for (const key of Object.keys(map)) {
-      const entry = map[key];
-      if (entry && typeof entry === "object" && !Object.prototype.hasOwnProperty.call(entry, "disabled")) {
-        let def = true;
-        if (preferFromStatus) {
-          const remembered = this.lastDisabledByServer[normalizeName(key)];
-          if (typeof remembered === "boolean") def = remembered;
-        }
-        entry.disabled = !!def;
-      }
-    }
-    return cfg;
+    this.startStatusCheck();
   },
 
   formatJson() {
     try {
-      const parsed = JSON.parse(this.editor.getValue());
-      // Add missing disabled to only those entries lacking it
-      this._ensureDisabledDefaults(parsed, true);
+      // get current content
+      const currentContent = this.editor.getValue();
+
+      // parse and format with 2 spaces indentation
+      const parsed = JSON.parse(currentContent);
       const formatted = JSON.stringify(parsed, null, 2);
+
+      // update editor content
       this.editor.setValue(formatted);
       this.editor.clearSelection();
+
+      // move cursor to start
       this.editor.navigateFileStart();
     } catch (error) {
       console.error("Failed to format JSON:", error);
@@ -67,7 +115,9 @@ const model = {
     }
   },
 
-  getEditorValue() { return this.editor.getValue(); },
+  getEditorValue() {
+    return this.editor.getValue();
+  },
 
   getSettingsFieldConfigJson() {
     return settingsModalProxy.settings.sections
@@ -79,161 +129,245 @@ const model = {
     const val = this.getEditorValue();
     this.getSettingsFieldConfigJson().value = val;
     this.stopStatusCheck();
-    this.serverLog = "";
-  },
-
-  _resolveServerKey(serverName, serversMap) {
-    if (!serversMap || typeof serversMap !== "object") return null;
-    const direct = [serverName, serverName.replace(/_/g, "-"), serverName.replace(/-/g, "_")];
-    for (const cand of direct) {
-      if (Object.prototype.hasOwnProperty.call(serversMap, cand)) return cand;
-    }
-    const target = normalizeName(serverName);
-    for (const key of Object.keys(serversMap)) {
-      if (normalizeName(key) === target) return key;
-    }
-    return null;
   },
 
   async startStatusCheck() {
     if (this.statusCheck) return;
     this.statusCheck = true;
     let firstLoad = true;
+
     while (this.statusCheck) {
-      if (!this.applyInProgress) {
-        await this._statusCheck();
-        if (firstLoad) { this.loading = false; firstLoad = false; }
-      } else {
-        await sleep(200);
+      await this._statusCheck();
+      if (firstLoad) {
+        this.loading = false;
+        firstLoad = false;
       }
       await sleep(3000);
     }
   },
 
-  _mergeDisabled(serverName, cfgDisabled, backendDisabled) {
-    const key = normalizeName(serverName);
-    // Prefer backend>config>remembered; when all missing, default to disabled
-    if (typeof backendDisabled === "boolean") {
-      this.lastDisabledByServer[key] = backendDisabled; return backendDisabled;
-    }
-    if (typeof cfgDisabled === "boolean") {
-      this.lastDisabledByServer[key] = cfgDisabled; return cfgDisabled;
-    }
-    const remembered = this.lastDisabledByServer[key];
-    if (typeof remembered === "boolean") return remembered;
-    this.lastDisabledByServer[key] = true; // default
-    return true;
-  },
-
   async _statusCheck() {
-    this.statusInProgress = true;
-    const reqId = ++this.statusReqId;
-    try {
-      const resp = await API.callJsonApi("mcp_servers_status", null);
-      if (reqId !== this.statusReqId) return;
-      if (resp.success) {
-        let cfg = {};
-        try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) {}
-        const serversMap = (cfg && cfg.mcpServers) || {};
-        this.servers = (resp.status || []).map((s) => {
-          const key = this._resolveServerKey(s.name, serversMap);
-          const cfgDisabled = key && serversMap[key] ? serversMap[key].disabled : undefined;
-          const merged = this._mergeDisabled(s.name, cfgDisabled, s.disabled);
-          return { ...s, disabled: merged };
-        }).sort((a, b) => a.name.localeCompare(b.name));
-      }
-    } catch (e) {
-      console.error("Status check failed:", e);
-    } finally {
-      this.statusInProgress = false;
+    const resp = await API.callJsonApi("mcp_servers_status", null);
+    if (resp.success) {
+      this.servers = resp.status;
+      this.servers.sort((a, b) => a.name.localeCompare(b.name));
     }
   },
 
-  scheduleApply(delayMs = 300) {
-    if (this.applyTimer) clearTimeout(this.applyTimer);
-    this.applyTimer = setTimeout(() => { this.applyTimer = null; this.applyNow(); }, delayMs);
+  _clearPendingApply() {
+    if (this.pendingApplyTimer) {
+      clearTimeout(this.pendingApplyTimer);
+      this.pendingApplyTimer = null;
+    }
   },
 
-  async toggleServerEnabled(name, enabled) {
+  _scheduleStatusRestart(delayMs = 2000) {
+    if (this.statusRestartTimer) {
+      clearTimeout(this.statusRestartTimer);
+    }
+    this.statusRestartTimer = setTimeout(() => {
+      this.statusRestartTimer = null;
+      this.startStatusCheck();
+    }, delayMs);
+  },
+
+  _applyToggleLocally(name) {
+    const currentRaw = this.getEditorValue();
+    const normalizedTarget = normalizeServerName(name);
+
+    let current;
     try {
-      let cfg = {};
-      try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) { cfg = {}; }
-      if (!cfg.mcpServers || typeof cfg.mcpServers !== "object") cfg.mcpServers = {};
+      current = currentRaw ? JSON.parse(currentRaw) : {};
+    } catch (error) {
+      throw new Error("Invalid MCP configuration JSON");
+    }
 
-      const key = this._resolveServerKey(name, cfg.mcpServers);
-      if (!key) { alert("Cannot find this MCP in the configuration JSON. Please ensure it exists."); return; }
+    let updated = null;
 
-      if (!cfg.mcpServers[key] || typeof cfg.mcpServers[key] !== "object") cfg.mcpServers[key] = {};
-      cfg.mcpServers[key].disabled = !enabled;
+    if (Array.isArray(current)) {
+      updated = tryToggleInCollection(current, normalizedTarget);
+    }
 
-      const formatted = JSON.stringify(cfg, null, 2);
-      this.editor.setValue(formatted);
-      this.editor.clearSelection();
+    if (updated === null && current && typeof current === "object") {
+      if (current.mcpServers) {
+        updated = tryToggleInCollection(current.mcpServers, normalizedTarget);
+      }
 
-      // remember immediately so UI stays stable before next status refresh
-      this.lastDisabledByServer[normalizeName(name)] = !enabled;
-      this.scheduleApply(350);
+      if (updated === null && current.servers) {
+        updated = tryToggleInCollection(current.servers, normalizedTarget);
+      }
+
+      if (updated === null) {
+        updated = tryToggleInCollection(current, normalizedTarget);
+      }
+    }
+
+    if (updated === null) {
+      throw new Error(`Server '${name}' not found in configuration`);
+    }
+
+    const formatted = JSON.stringify(current, null, 2);
+    this.editor.setValue(formatted);
+    this.editor.clearSelection();
+    this.getSettingsFieldConfigJson().value = formatted;
+    this.pendingConfigString = formatted;
+    this._reflectToggleInStatus(normalizedTarget, updated);
+    return { formatted, normalizedTarget, disabled: updated };
+  },
+
+  _reflectToggleInStatus(normalizedName, disabled) {
+    const normalizedTarget = normalizeServerName(normalizedName);
+    this.servers = this.servers.map((server) => {
+      if (normalizeServerName(server.name) === normalizedTarget) {
+        return {
+          ...server,
+          disabled,
+          connected: disabled ? false : server.connected,
+        };
+      }
+      return server;
+    });
+  },
+
+  _deriveDisabled(server) {
+    if (Object.prototype.hasOwnProperty.call(server, "disabled")) {
+      return Boolean(server.disabled);
+    }
+    if (typeof server.error === "string") {
+      const lower = server.error.toLowerCase();
+      return lower.includes("disabled") || lower.includes("not enabled");
+    }
+    return false;
+  },
+
+  _scheduleApply() {
+    this._clearPendingApply();
+
+    const attemptApply = async () => {
+      if (this.isApplying) {
+        this.pendingApplyTimer = setTimeout(attemptApply, this.applyDelayMs);
+        return;
+      }
+
+      const configToApply =
+        this.pendingConfigString !== null
+          ? this.pendingConfigString
+          : this.getEditorValue();
+
+      const toggledServers = Array.from(this.pendingToggles);
+      this.pendingToggles = new Set();
+      this.pendingConfigString = null;
+
+      await this._applyConfig(configToApply, toggledServers);
+    };
+
+    this.pendingApplyTimer = setTimeout(attemptApply, this.applyDelayMs);
+  },
+
+  async toggleServer(name) {
+    try {
+      this.stopStatusCheck();
+      const { normalizedTarget } = this._applyToggleLocally(name);
+      this.pendingToggles.add(normalizedTarget);
+      this._scheduleApply();
     } catch (error) {
       console.error("Failed to toggle server:", error);
-      alert("Failed to toggle server: " + (error?.message || error));
+      alert("Failed to toggle server: " + error.message);
+      this.loading = false;
+      this._scheduleStatusRestart();
     }
   },
 
-  async stopStatusCheck() { this.statusCheck = false; },
+  async stopStatusCheck() {
+    this.statusCheck = false;
+  },
 
-  async _waitForStatusIdle(timeoutMs = 4000) {
-    const start = Date.now();
-    while (this.statusInProgress) { if (Date.now() - start > timeoutMs) break; await sleep(50); }
+  async _applyConfig(configString, toggledServers = []) {
+    if (!configString) return;
+
+    const showFullLoading = toggledServers.length === 0;
+    this.stopStatusCheck();
+    this.isApplying = true;
+    this.loading = showFullLoading;
+    if (showFullLoading) {
+      scrollModal("mcp-servers-status");
+    }
+
+    try {
+      let response = null;
+
+      if (toggledServers.length === 0) {
+        response = await API.callJsonApi("mcp_servers_apply", {
+          mcp_servers: configString,
+        });
+      } else {
+        for (const serverName of toggledServers) {
+          response = await API.callJsonApi("mcp_servers_toggle", {
+            mcp_servers: configString,
+            server_name: serverName,
+          });
+          if (!response?.success) {
+            break;
+          }
+        }
+      }
+
+      if (response?.success) {
+        this.servers = response.status
+          .map((server) => ({
+            ...server,
+            disabled: this._deriveDisabled(server),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        this.lastAppliedConfig = configString;
+      }
+
+      if (showFullLoading) {
+        this.loading = false;
+        await sleep(100);
+        scrollModal("mcp-servers-status");
+      }
+    } catch (error) {
+      console.error("Failed to apply MCP servers:", error);
+      alert("Failed to apply MCP servers: " + error.message);
+    } finally {
+      if (!showFullLoading) {
+        this.loading = false;
+      }
+      this.isApplying = false;
+      this._scheduleStatusRestart();
+    }
   },
 
   async applyNow() {
-    if (this.applyInProgress) { this.applyQueued = true; return; }
-    if (this.applyTimer) { clearTimeout(this.applyTimer); this.applyTimer = null; }
-
-    this.applyInProgress = true;
-    const prevLoading = this.loading; this.loading = true;
-    const prevStatusCheck = this.statusCheck; this.statusCheck = false; await this._waitForStatusIdle();
-
-    try {
-      scrollModal("mcp-servers-status");
-      // send RAW editor JSON unchanged
-      const payloadJson = this.getEditorValue();
-      const resp = await API.callJsonApi("mcp_servers_apply", { mcp_servers: payloadJson });
-      if (resp.success && Array.isArray(resp.status)) {
-        let cfg = {}; try { cfg = JSON.parse(this.getEditorValue() || "{}"); } catch (_) {}
-        const serversMap = (cfg && cfg.mcpServers) || {};
-        this.servers = resp.status.map((s) => {
-          const key = this._resolveServerKey(s.name, serversMap);
-          const cfgDisabled = key && serversMap[key] ? serversMap[key].disabled : undefined;
-          const merged = this._mergeDisabled(s.name, cfgDisabled, s.disabled);
-          return { ...s, disabled: merged };
-        }).sort((a, b) => a.name.localeCompare(b.name));
-      }
-      await sleep(100); scrollModal("mcp-servers-status");
-    } catch (error) {
-      console.error("Failed to apply MCP servers:", error);
-      alert("Failed to apply MCP servers: " + (error?.message || error));
-    } finally {
-      this.applyInProgress = false; this.loading = prevLoading && false ? prevLoading : false;
-      if (prevStatusCheck) this.startStatusCheck(); else this.statusCheck = false;
-    }
-    if (this.applyQueued) { this.applyQueued = false; await this.applyNow(); }
+    if (this.loading) return;
+    this._clearPendingApply();
+    this.pendingToggles = new Set();
+    await this._applyConfig(this.getEditorValue(), []);
   },
 
   async getServerLog(serverName) {
-    this.serverLog = "Loading…"; openModal("settings/mcp/client/mcp-servers-log.html");
-    try {
-      const resp = await API.callJsonApi("mcp_server_get_log", { server_name: serverName });
-      if (resp.success) { this.serverLog = resp.log && resp.log.trim() ? resp.log : "Log empty"; }
-      else { this.serverLog = "Failed to load log."; }
-    } catch (e) { this.serverLog = "Failed to load log: " + (e?.message || e); }
+    this.serverLog = "";
+    const resp = await API.callJsonApi("mcp_server_get_log", {
+      server_name: serverName,
+    });
+    if (resp.success) {
+      this.serverLog = resp.log;
+      openModal("settings/mcp/client/mcp-servers-log.html");
+    }
   },
 
   async onToolCountClick(serverName) {
-    const resp = await API.callJsonApi("mcp_server_get_detail", { server_name: serverName });
-    if (resp.success) { this.serverDetail = resp.detail; openModal("settings/mcp/client/mcp-server-tools.html"); }
+    const resp = await API.callJsonApi("mcp_server_get_detail", {
+      server_name: serverName,
+    });
+    if (resp.success) {
+      this.serverDetail = resp.detail;
+      openModal("settings/mcp/client/mcp-server-tools.html");
+    }
   },
 };
 
 const store = createStore("mcpServersStore", model);
+
 export { store };
