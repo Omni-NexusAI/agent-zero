@@ -30,28 +30,40 @@
                     <template x-for="server in $store.mcpServersStore.servers" :key="server.name">
                         <div class="server-item">
                             <div class="server-main-row">
-                                <!-- Status indicator -->
-                                <div class="status-dot" x-data="{ connected: server.connected }">
-                                    <svg viewBox="0 0 16 16" width="12" height="12">
-                                        <circle cx="8" cy="8" r="6" x-bind:fill="server.connected 
-                                                ? (server.error ? '#e40138' : (server.tool_count > 0 ? '#00c340' : '#e40138')) 
-                                                : 'none'" x-bind:opacity="server.connected ? 1 : 0" />
-                                        <circle cx="8" cy="8" r="6" fill="none" stroke="#e40138" stroke-width="2"
-                                            x-bind:opacity="server.connected ? 0 : 1" />
-                                    </svg>
+                                <div class="server-meta">
+                                    <!-- Status indicator -->
+                                    <div class="status-dot" x-data="{ connected: server.connected }">
+                                        <svg viewBox="0 0 16 16" width="12" height="12">
+                                            <circle cx="8" cy="8" r="6" x-bind:fill="server.connected 
+                                                    ? (server.error ? '#e40138' : (server.tool_count > 0 ? '#00c340' : '#e40138')) 
+                                                    : 'none'" x-bind:opacity="server.connected ? 1 : 0" />
+                                            <circle cx="8" cy="8" r="6" fill="none" stroke="#e40138" stroke-width="2"
+                                                x-bind:opacity="server.connected ? 0 : 1" />
+                                        </svg>
+                                    </div>
+
+                                    <!-- Server name -->
+                                    <span class="server-name" x-text="server.name"></span>
                                 </div>
 
-                                <!-- Server name -->
-                                <span class="server-name" x-text="server.name"></span>
+                                <div class="server-actions">
+                                    <label class="switch server-toggle"
+                                        x-bind:class="{'is-disabled': server.disabled}">
+                                        <input type="checkbox" x-bind:checked="!server.disabled"
+                                            x-bind:disabled="$store.mcpServersStore.isApplying"
+                                            @change.stop="$store.mcpServersStore.toggleServer(server.name)">
+                                        <span class="slider"></span>
+                                    </label>
 
-                                <!-- Tool count (clickable if > 0, only for connected servers without errors) -->
-                                <span class="tool-count" x-show="server.tool_count > 0"
-                                    @click="$store.mcpServersStore.onToolCountClick && $store.mcpServersStore.onToolCountClick(server.name)"
-                                    x-text="server.tool_count + ' tools'"></span>
+                                    <!-- Tool count (clickable if > 0, only for connected servers without errors) -->
+                                    <span class="tool-count" x-show="server.tool_count > 0"
+                                        @click="$store.mcpServersStore.onToolCountClick && $store.mcpServersStore.onToolCountClick(server.name)"
+                                        x-text="server.tool_count + ' tools'"></span>
 
-                                <!-- Log button (only shown if has_log is true) -->
-                                <span class="log-btn" x-show="server.has_log"
-                                    @click="$store.mcpServersStore.getServerLog(server.name)">Log</span>
+                                    <!-- Log button (only shown if has_log is true) -->
+                                    <span class="log-btn" x-show="server.has_log"
+                                        @click.stop="$store.mcpServersStore.getServerLog(server.name)">Log</span>
+                                </div>
                             </div>
 
                             <!-- Error message (if any) -->
@@ -113,8 +125,15 @@
         .server-main-row {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 0.8em;
             width: 100%;
+        }
+
+        .server-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.8em;
         }
 
         .status-dot {
@@ -126,6 +145,25 @@
         .server-name {
             font-weight: 600;
             min-width: 12em;
+        }
+
+        .server-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.6em;
+            margin-left: auto;
+        }
+
+        .server-toggle {
+            width: 38px;
+            height: 19px;
+        }
+        .server-toggle.is-disabled .slider {
+            opacity: 0.6;
+        }
+        .server-toggle input:disabled + .slider {
+            cursor: not-allowed;
+            opacity: 0.5;
         }
 
         .tool-count {
