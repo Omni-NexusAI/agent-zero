@@ -12,6 +12,55 @@ function normalizeServerName(name) {
     .replace(/[\W]/gu, "_");
 }
 
+function ensureDisabledOnServerMap(serverMap) {
+  if (!serverMap || typeof serverMap !== "object") return;
+  for (const key of Object.keys(serverMap)) {
+    const entry = serverMap[key];
+    if (entry && typeof entry === "object" && !("disabled" in entry)) {
+      entry.disabled = false;
+    }
+  }
+}
+
+function ensureDisabledEverywhere(configRoot) {
+  if (!configRoot) return configRoot;
+  // Top-level array of servers
+  if (Array.isArray(configRoot)) {
+    for (const entry of configRoot) {
+      if (entry && typeof entry === "object" && !("disabled" in entry)) {
+        entry.disabled = false;
+      }
+    }
+    return configRoot;
+  }
+  // Object shapes
+  if (typeof configRoot === "object") {
+    // { mcpServers: { name: {..}, ... } } or { mcpServers: [ {..}, ... ] }
+    if (configRoot.mcpServers) {
+      if (Array.isArray(configRoot.mcpServers)) {
+        for (const entry of configRoot.mcpServers) {
+          if (entry && typeof entry === "object" && !("disabled" in entry)) {
+            entry.disabled = false;
+          }
+        }
+      } else {
+        ensureDisabledOnServerMap(configRoot.mcpServers);
+      }
+    }
+    // { servers: [...] }
+    if (configRoot.servers && Array.isArray(configRoot.servers)) {
+      for (const entry of configRoot.servers) {
+        if (entry && typeof entry === "object" && !("disabled" in entry)) {
+          entry.disabled = false;
+        }
+      }
+    }
+    // Or a flat object-as-map of servers
+    ensureDisabledOnServerMap(configRoot);
+  }
+  return configRoot;
+}
+
 function toggleDisabledFlag(serverConfig) {
   if (!serverConfig || typeof serverConfig !== "object") return null;
   const currentlyDisabled = Boolean(serverConfig.disabled);
@@ -101,6 +150,8 @@ const model = {
 
       // parse and format with 2 spaces indentation
       const parsed = JSON.parse(currentContent);
+      // Add missing "disabled" fields so toggles always work
+      ensureDisabledEverywhere(parsed);
       const formatted = JSON.stringify(parsed, null, 2);
 
       // update editor content
@@ -109,6 +160,9 @@ const model = {
 
       // move cursor to start
       this.editor.navigateFileStart();
+      // also sync the hidden field backing settings
+      this.getSettingsFieldConfigJson().value = formatted;
+      this.pendingConfigString = formatted;
     } catch (error) {
       console.error("Failed to format JSON:", error);
       alert("Invalid JSON: " + error.message);
@@ -149,8 +203,19 @@ const model = {
   async _statusCheck() {
     const resp = await API.callJsonApi("mcp_servers_status", null);
     if (resp.success) {
-      this.servers = resp.status;
-      this.servers.sort((a, b) => a.name.localeCompare(b.name));
+      // Always derive disabled state from the current editor value (or pending)
+      const baseline = this.pendingConfigString || this.getEditorValue();
+      this.servers = resp.status
+        .map((server) => {
+          const disabledFromCfg = this._getDisabledFromConfig(
+            baseline,
+            normalizeServerName(server.name)
+          );
+          const disabled =
+            disabledFromCfg !== null ? disabledFromCfg : this._deriveDisabled(server);
+          return { ...server, disabled };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
     }
   },
 
@@ -240,6 +305,53 @@ const model = {
     return false;
   },
 
+  _getDisabledFromConfig(configString, normalizedName) {
+    try {
+      const parsed = configString ? JSON.parse(configString) : {};
+      const target = normalizedName;
+      const readFromCollection = (collection) => {
+        if (!collection) return null;
+        if (Array.isArray(collection)) {
+          for (const server of collection) {
+            const nameCand =
+              (server && (server.name || server.displayName || server.id || "")) + "";
+            if (normalizeServerName(nameCand) === target) {
+              return server && typeof server === "object" && "disabled" in server
+                ? Boolean(server.disabled)
+                : null;
+            }
+          }
+        } else if (typeof collection === "object") {
+          for (const [key, server] of Object.entries(collection)) {
+            const keyNorm = normalizeServerName(key);
+            const nameCand =
+              (server && (server.name || server.displayName || server.id || "")) + "";
+            if (keyNorm === target || normalizeServerName(nameCand) === target) {
+              return server && typeof server === "object" && "disabled" in server
+                ? Boolean(server.disabled)
+                : null;
+            }
+          }
+        }
+        return null;
+      };
+
+      // check various shapes
+      let found = null;
+      if (Array.isArray(parsed)) {
+        found = readFromCollection(parsed);
+      }
+      if (found === null && parsed && typeof parsed === "object") {
+        if (parsed.mcpServers) found = readFromCollection(parsed.mcpServers);
+        if (found === null && parsed.servers) found = readFromCollection(parsed.servers);
+        if (found === null) found = readFromCollection(parsed);
+      }
+      return found;
+    } catch {
+      return null;
+    }
+  },
+
   _scheduleApply() {
     this._clearPendingApply();
 
@@ -295,15 +407,31 @@ const model = {
 
     try {
       let response = null;
+      // Normalize config to ensure every server has "disabled" for togglability
+      let toSend = configString;
+      try {
+        const parsedForSend = JSON.parse(configString);
+        ensureDisabledEverywhere(parsedForSend);
+        toSend = JSON.stringify(parsedForSend, null, 2);
+        // If normalization changed content, reflect it in the editor and settings field
+        if (toSend !== configString) {
+          this.editor.setValue(toSend);
+          this.editor.clearSelection();
+          this.getSettingsFieldConfigJson().value = toSend;
+          this.pendingConfigString = toSend;
+        }
+      } catch {
+        // if JSON parse fails here, upstream catch will notify the user
+      }
 
       if (toggledServers.length === 0) {
         response = await API.callJsonApi("mcp_servers_apply", {
-          mcp_servers: configString,
+          mcp_servers: toSend,
         });
       } else {
         for (const serverName of toggledServers) {
           response = await API.callJsonApi("mcp_servers_toggle", {
-            mcp_servers: configString,
+            mcp_servers: toSend,
             server_name: serverName,
           });
           if (!response?.success) {
@@ -313,11 +441,25 @@ const model = {
       }
 
       if (response?.success) {
+        // Compute disabled state from the config we just applied (authoritative)
+        const overrides = new Map();
+        const sourceCfg = toSend || this.pendingConfigString || this.getEditorValue();
+        for (const name of toggledServers) {
+          const norm = normalizeServerName(name);
+          const val = this._getDisabledFromConfig(sourceCfg, norm);
+          if (val !== null) overrides.set(norm, val);
+        }
+
         this.servers = response.status
-          .map((server) => ({
-            ...server,
-            disabled: this._deriveDisabled(server),
-          }))
+          .map((server) => {
+            const norm = normalizeServerName(server.name);
+            const disabled =
+              overrides.has(norm)
+                ? overrides.get(norm)
+                : this._getDisabledFromConfig(sourceCfg, norm) ??
+                  this._deriveDisabled(server);
+            return { ...server, disabled };
+          })
           .sort((a, b) => a.name.localeCompare(b.name));
         this.lastAppliedConfig = configString;
       }
