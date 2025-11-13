@@ -22,6 +22,24 @@ function isLikelyServerEntry(entry) {
   );
 }
 
+function parseConfigString(raw) {
+  if (!raw || !raw.trim()) return {};
+  try {
+    return JSON.parse(raw);
+  } catch (jsonError) {
+    try {
+      // eslint-disable-next-line no-new-func
+      const result = Function(`"use strict"; return (${raw});`)();
+      if (result && (typeof result === "object" || Array.isArray(result))) {
+        return result;
+      }
+      throw funcError;
+    } catch (funcError) {
+      throw funcError;
+    }
+  }
+}
+
 function collectServerEntries(root) {
   const seen = new WeakSet();
   const entries = [];
@@ -243,7 +261,7 @@ const model = {
 
     let current;
     try {
-      current = currentRaw ? JSON.parse(currentRaw) : {};
+      current = parseConfigString(currentRaw || "{}");
     } catch (error) {
       throw new Error("Invalid MCP configuration JSON");
     }
@@ -308,7 +326,7 @@ const model = {
 
   _getDisabledFromConfig(configString, normalizedName) {
     try {
-      const parsed = JSON.parse(configString);
+      const parsed = parseConfigString(configString);
       return readDisabledFromConfig(parsed, normalizedName);
     } catch {
       return null;
@@ -316,7 +334,7 @@ const model = {
   },
 
   _normalizeConfigString(raw) {
-    const parsed = JSON.parse(raw);
+    const parsed = parseConfigString(raw);
     ensureDisabledEverywhere(parsed);
     return JSON.stringify(parsed, null, 2);
   },
