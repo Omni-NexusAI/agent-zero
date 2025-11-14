@@ -58,10 +58,33 @@ source /opt/venv-a0/bin/activate
 pip install --no-cache-dir --upgrade pip
 
 # Install some packages in specific variants
+PYTORCH_VARIANT="${PYTORCH_VARIANT:-cpu}"
+TORCH_VERSION="${PYTORCH_VERSION:-2.4.0}"
+TORCHVISION_VERSION="${PYTORCHVISION_VERSION:-0.19.0}"
+
+echo "====================PYTORCH (${PYTORCH_VARIANT}) ===================="
+
+TORCH_INDEX_URL="https://download.pytorch.org/whl/cpu"
+case "$PYTORCH_VARIANT" in
+    cpu)
+        TORCH_INDEX_URL="https://download.pytorch.org/whl/cpu"
+        ;;
+    cuda|cu124|cuda12|cuda12.4)
+        TORCH_INDEX_URL="https://download.pytorch.org/whl/cu124"
+        ;;
+    cu121|cuda11)
+        TORCH_INDEX_URL="https://download.pytorch.org/whl/cu121"
+        ;;
+    *)
+        echo "Unknown PYTORCH_VARIANT '$PYTORCH_VARIANT', defaulting to CPU wheels."
+        TORCH_INDEX_URL="https://download.pytorch.org/whl/cpu"
+        ;;
+esac
+
 pip install --no-cache-dir \
-    torch==2.4.0 \
-    torchvision==0.19.0 \
-    --index-url https://download.pytorch.org/whl/cpu
+    torch=="${TORCH_VERSION}" \
+    torchvision=="${TORCHVISION_VERSION}" \
+    --index-url "${TORCH_INDEX_URL}"
 
 echo "====================PYTHON UV ===================="
 

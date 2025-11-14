@@ -75,6 +75,19 @@ docker compose -f docker/run/docker-compose.yml up -d
 python scripts/validate_manifest.py
 ```
 
+### GPU acceleration for Kokoro & Whisper
+
+- Dev images now install CUDA-enabled PyTorch by default. Pass `--build-arg PYTORCH_VARIANT=cpu` if you need a CPU-only build.
+- To expose your local NVIDIA GPU when using Compose:
+  ```bash
+  docker compose \
+    -f docker-compose-dev.yml \
+    -f docker/compose.gpu.override.yml \
+    up --build
+  ```
+  or set `COMPOSE_FILE=docker-compose-dev.yml:docker/compose.gpu.override.yml` before running `docker compose up`.
+- Docker Desktop installations that support it can replace the `deploy.resources` block in the override with the shorthand `gpus: all`.
+
 **Important**: The `development` branch always contains:
 - `fastmcp==2.3.0` in `requirements.txt` (prevents Pydantic TypeError)
 - Latest `mcp_server.py` with `create_streamable_http_app` compatibility

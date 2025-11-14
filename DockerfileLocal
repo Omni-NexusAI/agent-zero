@@ -6,10 +6,17 @@ FROM agent0ai/agent-zero-base:latest
 ARG BRANCH=local
 ENV BRANCH=$BRANCH
 
+# Allow selecting CPU vs CUDA PyTorch wheels during build
+ARG PYTORCH_VARIANT=cuda
+ENV PYTORCH_VARIANT=$PYTORCH_VARIANT
+
 # Copy filesystem files to root
 COPY ./docker/run/fs/ /
 # Copy current development files to git, they will only be used in "local" branch
 COPY ./ /git/agent-zero
+
+# If we're not building local, let install_A0 clone a clean tree
+RUN if [ "$BRANCH" != "local" ]; then rm -rf /git/agent-zero && mkdir -p /git; fi
 
 # pre installation steps
 RUN bash /ins/pre_install.sh $BRANCH
@@ -26,6 +33,26 @@ RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $BRANCH
 
 # post installation steps
 RUN bash /ins/post_install.sh $BRANCH
+
+# ensure PyTorch variant matches build args inside venv
+RUN set -eux; \
+    . /opt/venv-a0/bin/activate; \
+    TORCH_VERSION="${PYTORCH_VERSION:-2.4.0}"; \
+    TORCHVISION_VERSION="${PYTORCHVISION_VERSION:-0.19.0}"; \
+    case "$PYTORCH_VARIANT" in \
+        cuda|cu124|cuda12|cuda12.4) TORCH_INDEX_URL="https://download.pytorch.org/whl/cu124" ;; \
+        cu121|cuda11) TORCH_INDEX_URL="https://download.pytorch.org/whl/cu121" ;; \
+        cpu|*) TORCH_INDEX_URL="https://download.pytorch.org/whl/cpu" ;; \
+    esac; \
+    pip install --no-cache-dir --upgrade --force-reinstall \
+        torch=="${TORCH_VERSION}" \
+        torchvision=="${TORCHVISION_VERSION}" \
+        --index-url "${TORCH_INDEX_URL}"; \
+    pip install --no-cache-dir numpy==1.26.4; \
+    python - <<'PY'
+import torch
+print(f"PyTorch {torch.__version__} CUDA available: {torch.cuda.is_available()}")
+PY
 
 # Expose ports
 EXPOSE 22 80 9000-9009

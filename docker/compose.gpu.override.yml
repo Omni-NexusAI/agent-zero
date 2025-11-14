@@ -1,3 +1,14 @@
+services:
+  agent-zero-dev:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Docker Compose v2 shorthand (if supported):
+    # gpus: all
 # GPU override for Agent Zero (Kokoro TTS acceleration)
 # Merge with your primary compose file via COMPOSE_FILE or `-f` flags.
 
