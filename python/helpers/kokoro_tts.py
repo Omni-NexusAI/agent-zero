@@ -7,6 +7,7 @@ import asyncio
 import numpy as np
 import soundfile as sf
 import threading
+import torch
 from python.helpers.print_style import PrintStyle
 from python.helpers import settings as settings_helper
 from python.helpers.device_utils import resolve_device, log_device_resolution
@@ -252,37 +253,30 @@ async def _synthesize_sentences(
             if not text:
                 continue
 
-            segments1 = _pipeline(
+            primary_voice = voice or _voice
+            if blend_voice:
+                try:
+                    v1 = _pipeline.load_single_voice(primary_voice)
+                    v2 = _pipeline.load_single_voice(blend_voice)
+                    use_voice = torch.mean(torch.stack([v1, v2]), dim=0)
+                except Exception as e:
+                    PrintStyle.error(f"Failed to blend voices: {e}")
+                    use_voice = primary_voice
+            else:
+                use_voice = primary_voice
+
+            segments = _pipeline(
                 text,
-                voice=voice or _voice,
+                voice=use_voice,
                 speed=_speed,
             )  # type: ignore
-            audio1: list[float] = []
-            for seg in list(segments1):
+            audio_chunk: list[float] = []
+            for seg in list(segments):
                 audio_tensor = seg.audio
                 audio_numpy = audio_tensor.detach().cpu().numpy()  # type: ignore
-                audio1.extend(audio_numpy)
+                audio_chunk.extend(audio_numpy)
 
-            if blend_voice:
-                segments2 = _pipeline(
-                    text,
-                    voice=blend_voice,
-                    speed=_speed,
-                )  # type: ignore
-                audio2: list[float] = []
-                for seg in list(segments2):
-                    audio_tensor = seg.audio
-                    audio_numpy = audio_tensor.detach().cpu().numpy()  # type: ignore
-                    audio2.extend(audio_numpy)
-
-                min_len = min(len(audio1), len(audio2))
-                if min_len > 0:
-                    mixed = (np.array(audio1[:min_len]) + np.array(audio2[:min_len])) / 2.0
-                    combined_audio.extend(mixed.tolist())
-                else:
-                    combined_audio.extend(audio1)
-            else:
-                combined_audio.extend(audio1)
+            combined_audio.extend(audio_chunk)
 
         # Convert combined audio to bytes
         buffer = io.BytesIO()
