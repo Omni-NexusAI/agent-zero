@@ -96,13 +96,6 @@ class Settings(TypedDict):
     stt_waiting_timeout: int
 
     tts_kokoro: bool
-    tts_device: str
-    tts_kokoro_remote_url: str
-    tts_kokoro_remote_token: str
-    tts_kokoro_remote_timeout: float
-    tts_kokoro_voice: str
-    tts_kokoro_voice_secondary: str
-    tts_kokoro_speed: float
 
     mcp_servers: str
     mcp_client_init_timeout: int
@@ -1070,12 +1063,10 @@ def convert_out(settings: Settings) -> SettingsOutput:
                     "value": f"cuda:{d['index']}",
                     "label": f"CUDA: GPU {d['index']} – {d['name']} ({d['memory_total']})",
                 })
-        device_options.append({"value": "remote", "label": "Remote GPU worker"})
     except Exception:
         device_options = [
             {"value": "auto", "label": "Auto (recommended)"},
             {"value": "cpu", "label": "CPU"},
-            {"value": "remote", "label": "Remote GPU worker"},
         ]
 
     tts_fields.append(
@@ -1088,39 +1079,6 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "options": device_options,
             "readonly": not settings["tts_kokoro"],
         }
-    )
-
-    tts_fields.append(
-        {
-            "id": "tts_kokoro_remote_url",
-            "title": "Remote worker URL",
-            "description": "Base URL of the Kokoro GPU worker (example: http://kokoro-gpu-worker:8891).",
-            "type": "text",
-            "value": settings.get("tts_kokoro_remote_url", ""),
-            "readonly": not settings["tts_kokoro"],
-        }
-    )
-
-    tts_fields.append(
-        {
-            "id": "tts_kokoro_remote_token",
-            "title": "Remote worker token (optional)",
-            "description": "Bearer token passed to the remote Kokoro worker for authentication.",
-            "type": "text",
-            "value": settings.get("tts_kokoro_remote_token", ""),
-            "readonly": not settings["tts_kokoro"],
-        }
-    )
-
-    tts_fields.append(
-            {
-                "id": "tts_kokoro_remote_timeout",
-                "title": "Remote worker timeout (seconds)",
-                "description": "Request timeout used when contacting the remote Kokoro worker.",
-                "type": "number",
-                "value": settings.get("tts_kokoro_remote_timeout", 60),
-                "readonly": not settings["tts_kokoro"],
-            }
     )
 
     # Voice lists (US/UK only)
@@ -1656,9 +1614,6 @@ def get_default_settings() -> Settings:
         stt_waiting_timeout=2000,
         tts_kokoro=True,
         tts_device="auto",
-        tts_kokoro_remote_url="http://kokoro-gpu-worker:8891",
-        tts_kokoro_remote_token="",
-        tts_kokoro_remote_timeout=60,
         tts_kokoro_voice="am_michael",
         tts_kokoro_voice_secondary="",
         tts_kokoro_speed=1.1,
@@ -1785,43 +1740,19 @@ def _apply_settings(previous: Settings | None):
             try:
                 from python.helpers import kokoro_tts
                 
-                current_policy = _settings.get("tts_device", "auto")
-                previous_policy = previous.get("tts_device") if previous else None
-                policy_changed = (previous is None) or (current_policy != previous_policy)
-                remote_selected = kokoro_tts.is_remote_policy(current_policy)
-                remote_props_changed = (
-                    not previous
-                    or _settings.get("tts_kokoro_remote_url") != previous.get("tts_kokoro_remote_url")
-                    or _settings.get("tts_kokoro_remote_token") != previous.get("tts_kokoro_remote_token")
-                    or _settings.get("tts_kokoro_remote_timeout") != previous.get("tts_kokoro_remote_timeout")
-                )
-
-                if remote_selected:
-                    device_changed = policy_changed
-
-                    if policy_changed or remote_props_changed:
-
-                        async def verify_remote():
-                            await kokoro_tts.verify_remote_worker(
-                                _settings.get("tts_kokoro_remote_url", ""),
-                                _settings.get("tts_kokoro_remote_token", ""),
-                                float(_settings.get("tts_kokoro_remote_timeout", 60)),
-                                notify=True,
-                            )
-
-                        defer.DeferredTask().start_task(verify_remote)
-
+                # Device change detection and reload
+                if not previous or _settings.get("tts_device") != previous.get("tts_device"):
+                    device_changed = True
+                    new_device = _settings.get("tts_device", "auto")
+                    
+                    async def reload_kokoro_device(device: str):
+                        await kokoro_tts.reload_model(device)
+                    
+                    task5 = defer.DeferredTask().start_task(
+                        reload_kokoro_device, new_device
+                    )
                 else:
-                    if policy_changed:
-                        device_changed = True
-                        new_device = current_policy
-
-                        async def reload_kokoro_device(device: str):
-                            await kokoro_tts.reload_model(device)
-
-                        defer.DeferredTask().start_task(reload_kokoro_device, new_device)
-                    else:
-                        device_changed = False
+                    device_changed = False
                 
                 # Voice change detection and notification
                 voice_changed = False
