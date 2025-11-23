@@ -4,6 +4,7 @@ import base64
 import io
 import warnings
 import asyncio
+import aiohttp
 import numpy as np
 import soundfile as sf
 import threading
@@ -22,6 +23,7 @@ _device_policy = "auto"
 _current_device = None
 is_updating_model = False
 _reload_lock = threading.Lock()
+DEFAULT_REMOTE_TIMEOUT = 60.0
 
 
 async def preload():
@@ -45,8 +47,15 @@ async def _preload():
             try:
                 current_settings = settings_helper.get_settings()
                 _device_policy = current_settings.get("tts_device", "auto")
+                _apply_runtime_defaults(current_settings)
             except Exception:
                 _device_policy = "auto"
+                current_settings = {}
+
+            if _is_remote_policy(_device_policy):
+                _current_device = "remote"
+                return
+
             torch_device, meta = resolve_device(_device_policy)
             
             # Notify user of initial load (toast)
@@ -80,11 +89,7 @@ async def _preload():
             )
             PrintStyle.standard(f"Kokoro TTS model loaded on {torch_device} successfully.")
             
-            # Cache defaults from settings
-            try:
-                _apply_runtime_defaults(current_settings)
-            except Exception:
-                pass
+            # Cache defaults from settings (already applied above when available)
     finally:
         is_updating_model = False
 
@@ -149,6 +154,12 @@ async def _reload_model(device_policy: str):
     global _pipeline, _device_policy, _current_device, is_updating_model, _reload_lock
     
     with _reload_lock:
+        if _is_remote_policy(device_policy):
+            _pipeline = None
+            _device_policy = device_policy
+            _current_device = "remote"
+            return True
+
         # Check if device actually changed
         new_device, meta = resolve_device(device_policy)
         if _current_device == new_device and _pipeline is not None:
@@ -242,6 +253,16 @@ async def _synthesize_sentences(
     voice: str | None = None,
     blend_voice: str | None = None,
 ):
+    current_settings = settings_helper.get_settings()
+    policy = current_settings.get("tts_device", "auto")
+    if _is_remote_policy(policy):
+        return await _synthesize_remote(
+            sentences,
+            voice,
+            blend_voice,
+            current_settings,
+        )
+
     await _preload()
 
     combined_audio: list[float] = []
@@ -252,37 +273,26 @@ async def _synthesize_sentences(
             if not text:
                 continue
 
-            segments1 = _pipeline(
+            primary_voice = voice or _voice
+            if blend_voice:
+                # Use Kokoro's native voice blending (50/50 split)
+                use_voice = f"{primary_voice}:50,{blend_voice}:50"
+            else:
+                use_voice = primary_voice
+
+            segments = _pipeline(
                 text,
-                voice=voice or _voice,
+                voice=use_voice,
                 speed=_speed,
             )  # type: ignore
-            audio1: list[float] = []
-            for seg in list(segments1):
+            
+            audio_chunk: list[float] = []
+            for seg in list(segments):
                 audio_tensor = seg.audio
                 audio_numpy = audio_tensor.detach().cpu().numpy()  # type: ignore
-                audio1.extend(audio_numpy)
+                audio_chunk.extend(audio_numpy)
 
-            if blend_voice:
-                segments2 = _pipeline(
-                    text,
-                    voice=blend_voice,
-                    speed=_speed,
-                )  # type: ignore
-                audio2: list[float] = []
-                for seg in list(segments2):
-                    audio_tensor = seg.audio
-                    audio_numpy = audio_tensor.detach().cpu().numpy()  # type: ignore
-                    audio2.extend(audio_numpy)
-
-                min_len = min(len(audio1), len(audio2))
-                if min_len > 0:
-                    mixed = (np.array(audio1[:min_len]) + np.array(audio2[:min_len])) / 2.0
-                    combined_audio.extend(mixed.tolist())
-                else:
-                    combined_audio.extend(audio1)
-            else:
-                combined_audio.extend(audio1)
+            combined_audio.extend(audio_chunk)
 
         # Convert combined audio to bytes
         buffer = io.BytesIO()
@@ -295,3 +305,111 @@ async def _synthesize_sentences(
     except Exception as e:
         PrintStyle.error(f"Error in Kokoro TTS synthesis: {e}")
         raise    
+
+
+def _is_remote_policy(policy: str | None) -> bool:
+    return bool(policy and policy.lower().startswith("remote"))
+
+
+def is_remote_policy(policy: str | None) -> bool:
+    return _is_remote_policy(policy)
+
+
+async def _synthesize_remote(
+    sentences: list[str],
+    voice: str | None,
+    blend_voice: str | None,
+    settings: dict,
+) -> str:
+    remote_url = (settings.get("tts_kokoro_remote_url") or "").rstrip("/")
+    if not remote_url:
+        raise RuntimeError("Remote Kokoro worker URL is not configured.")
+
+    token = settings.get("tts_kokoro_remote_token") or ""
+    timeout_sec = float(settings.get("tts_kokoro_remote_timeout", DEFAULT_REMOTE_TIMEOUT))
+    payload = {
+        "sentences": sentences,
+        "voice": voice or _voice,
+        "voice2": blend_voice or settings.get("tts_kokoro_voice_secondary") or "",
+        "speed": float(settings.get("tts_kokoro_speed", _speed)),
+    }
+
+    async with aiohttp.ClientSession(
+        timeout=aiohttp.ClientTimeout(total=timeout_sec)
+    ) as session:
+        async with session.post(
+            f"{remote_url}/synthesize",
+            json=payload,
+            headers=_remote_headers(token),
+        ) as resp:
+            resp.raise_for_status()
+            data = await resp.json()
+            if not data.get("success"):
+                raise RuntimeError(data.get("error") or "Remote worker error")
+            return data["audio"]
+
+
+def _remote_headers(token: str | None):
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token.strip()}"
+    return headers
+
+
+async def verify_remote_worker(
+    url: str,
+    token: str | None = None,
+    timeout: float | None = None,
+    *,
+    notify: bool = False,
+) -> bool:
+    if not url:
+        if notify:
+            NotificationManager.send_notification(
+                NotificationType.ERROR,
+                NotificationPriority.HIGH,
+                message="Remote Kokoro worker URL is not configured.",
+                title="Kokoro TTS",
+                display_time=5,
+                group="kokoro-remote",
+            )
+        return False
+
+    remote_url = url.rstrip("/")
+    timeout_sec = timeout or DEFAULT_REMOTE_TIMEOUT
+
+    try:
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=timeout_sec)
+        ) as session:
+            async with session.get(
+                f"{remote_url}/health",
+                headers=_remote_headers(token),
+            ) as resp:
+                resp.raise_for_status()
+                data = await resp.json()
+                if not data.get("success"):
+                    raise RuntimeError(data.get("error") or "Remote worker reported failure")
+
+        if notify:
+            NotificationManager.send_notification(
+                NotificationType.SUCCESS,
+                NotificationPriority.NORMAL,
+                message=f"Connected to remote Kokoro worker at {remote_url}",
+                title="Kokoro TTS",
+                display_time=3,
+                group="kokoro-remote",
+            )
+        return True
+    except Exception as exc:
+        PrintStyle.error(f"Remote Kokoro worker check failed: {exc}")
+        if notify:
+            NotificationManager.send_notification(
+                NotificationType.ERROR,
+                NotificationPriority.HIGH,
+                message=f"Failed to reach remote Kokoro worker: {exc}",
+                title="Kokoro TTS",
+                display_time=5,
+                group="kokoro-remote",
+            )
+        return False
