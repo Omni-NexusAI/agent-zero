@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import shlex
 import time
 from python.helpers.tool import Tool, Response
-from python.helpers import files, rfc_exchange
+from python.helpers import files, rfc_exchange, projects, runtime
 from python.helpers.print_style import PrintStyle
 from python.helpers.shell_local import LocalInteractiveSession
 from python.helpers.shell_ssh import SSHInteractiveSession
@@ -11,7 +11,6 @@ from python.helpers.docker import DockerContainerManager
 from python.helpers.strings import truncate_text as truncate_text_string
 from python.helpers.messages import truncate_text as truncate_text_agent
 import re
-
 
 # Timeouts for python, nodejs, and terminal runtimes.
 CODE_EXEC_TIMEOUTS: dict[str, int] = {
@@ -48,6 +47,7 @@ class CodeExecution(Tool):
         re.compile(r"\\(venv\\).+[$#] ?$"),  # (venv) ...$ or (venv) ...#
         re.compile(r"root@[^:]+:[^#]+# ?$"),  # root@container:~#
         re.compile(r"[a-zA-Z0-9_.-]+@[^:]+:[^$#]+[$#] ?$"),  # user@host:~$
+        re.compile(r"\(?.*\)?\s*PS\s+[^>]+> ?$"),  # PowerShell prompt like (base) PS C:\...>
     ]
     # potential dialog detection
     dialog_patterns = [
@@ -146,9 +146,10 @@ class CodeExecution(Tool):
                     self.agent.config.code_exec_ssh_port,
                     self.agent.config.code_exec_ssh_user,
                     pswd,
+                    cwd=self.get_cwd(),
                 )
             else:
-                shell = LocalInteractiveSession()
+                shell = LocalInteractiveSession(cwd=self.get_cwd())
 
             shells[session] = ShellWrap(id=session, session=shell, running=False)
             await shell.connect()
@@ -172,7 +173,7 @@ class CodeExecution(Tool):
     async def execute_terminal_command(
         self, session: int, command: str, reset: bool = False
     ):
-        prefix = "bash> " + self.format_command_for_output(command) + "\n\n"
+        prefix = ("bash>" if not runtime.is_windows() or self.agent.config.code_exec_ssh_enabled else "PS>") + self.format_command_for_output(command) + "\n\n"
         return await self.terminal_session(session, command, reset, prefix)
 
     async def terminal_session(
@@ -277,6 +278,7 @@ class CodeExecution(Tool):
                 PrintStyle(font_color="#85C1E9").stream(partial_output)
                 # full_output += partial_output # Append new output
                 truncated_output = self.fix_full_output(full_output)
+                self.set_progress(truncated_output)
                 heading = self.get_heading_from_output(truncated_output, 0)
                 self.log.update(content=prefix + truncated_output, heading=heading)
                 last_output_time = now
@@ -383,6 +385,7 @@ class CodeExecution(Tool):
             timeout=1, reset_full_output=reset_full_output
         )
         truncated_output = self.fix_full_output(full_output)
+        self.set_progress(truncated_output)
         heading = self.get_heading_from_output(truncated_output, 0)
 
         last_lines = (
@@ -464,6 +467,17 @@ class CodeExecution(Tool):
         # remove any single byte \xXX escapes
         output = re.sub(r"(?<!\\)\\x[0-9A-Fa-f]{2}", "", output)
         # Strip every line of output before truncation
-        output = "\n".join(line.strip() for line in output.splitlines())
+        # output = "\n".join(line.strip() for line in output.splitlines())
         output = truncate_text_agent(agent=self.agent, output=output, threshold=1000000) # ~1MB, larger outputs should be dumped to file, not read from terminal
         return output
+
+    def get_cwd(self):
+        project_name = projects.get_context_project_name(self.agent.context)
+        if not project_name:
+            return None
+        project_path = projects.get_project_folder(project_name)
+        normalized = files.normalize_a0_path(project_path)
+        return normalized
+        
+
+        
