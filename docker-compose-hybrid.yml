@@ -1,0 +1,41 @@
+name: a0-hybrid-custom
+
+services:
+  a0-hybrid:
+    container_name: A0-hybrid
+    build:
+      context: ./docker/run
+      dockerfile: Dockerfile
+      args:
+        GIT_REF: v0.9.8-custom-pre
+        CACHE_DATE: ${CACHE_DATE:-none}
+    ports:
+      - "8890:80"
+    environment:
+      - A0_TTS_REMOTE_WORKER=true
+      # Optional banner override; normally set from build info inside the image
+      # - A0_BUILD_VERSION=Version D hybridGPU v0.9.8-custom-pre ${A0_BUILD_TIMESTAMP:-unknown}
+    restart: unless-stopped
+    depends_on:
+      - kokoro-gpu-worker
+
+  kokoro-gpu-worker:
+    container_name: Kokoro-GPU-worker
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.kokoro
+    working_dir: /app
+    environment:
+      - KOKORO_DEVICE=cuda:auto
+      - KOKORO_HOST=0.0.0.0
+      - KOKORO_PORT=8891
+    ports:
+      - "8891:8891"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
