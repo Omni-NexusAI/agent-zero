@@ -5,7 +5,7 @@ services:
       context: ./docker/run
       dockerfile: Dockerfile
       args:
-        GIT_REF: v0.9.7-custom  # Pre-release tag with all custom features
+        GIT_REF: v0.9.8-custom-pre  # Pre-release tag with all custom features
         CACHE_DATE: ${CACHE_DATE:-none}
     volumes:
       - ./docker/run/fs/per:/per
