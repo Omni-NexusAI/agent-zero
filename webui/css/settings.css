@@ -144,8 +144,6 @@ select {
   cursor: pointer;
 }
 
-<<<<<<< HEAD
-=======
 /* Model Picker Dropdown Styles (matching Kokoro voice selector) */
 .model-dropdown-item {
   padding: 8px 12px;
@@ -155,8 +153,6 @@ select {
 .model-dropdown-item:hover {
   background: var(--color-panel);
 }
-
->>>>>>> origin/development
 /* Custom Kokoro Voice Select */
 .voice-select { position: relative; width: 100%; }
 .voice-select-btn {
@@ -207,14 +203,9 @@ select {
   letter-spacing: 0.5px;
 }
 
-/* Native select sizing for voice fields */
-.voice-select-native {
-  font-size: 0.90em;
-}
-.voice-select-native option {
-  color: var(--color-text);
-  font-weight: 600; /* Bold to increase contrast per request */
-}
+/* Native select (use default text styling) */
+.voice-select-native {}
+.voice-select-native option {}
 /* Gender/Lang at entry size */
 .voice-meta { color: var(--color-text); font-weight: 500; }
 /* Voice name slightly emphasized */
