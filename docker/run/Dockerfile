@@ -7,6 +7,11 @@ ARG BRANCH
 RUN if [ -z "$BRANCH" ]; then echo "ERROR: BRANCH is not set!" >&2; exit 1; fi
 ENV BRANCH=$BRANCH
 
+# Recreate venv on Python 3.11 via uv (whisper wheels not available for 3.13)
+RUN rm -rf /opt/venv && uv venv --python 3.11 /opt/venv \
+    && /opt/venv/bin/python -m ensurepip \
+    && /opt/venv/bin/pip3 install --upgrade pip
+
 # Copy filesystem files to root
 COPY ./fs/ /
 
