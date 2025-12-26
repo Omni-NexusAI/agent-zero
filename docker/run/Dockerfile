@@ -10,6 +10,11 @@ ENV GIT_REF=$GIT_REF
 # Backward compatibility: also set BRANCH for scripts that still use it
 ENV BRANCH=$GIT_REF
 
+# Recreate venv on Python 3.11 via uv (whisper wheels not available for 3.13)
+RUN rm -rf /opt/venv && uv venv --python 3.11 /opt/venv \
+    && /opt/venv/bin/python -m ensurepip \
+    && /opt/venv/bin/pip3 install --upgrade pip
+
 # Copy filesystem files to root
 COPY ./fs/ /
 
