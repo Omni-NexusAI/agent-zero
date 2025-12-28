@@ -7,12 +7,13 @@ services:
       context: ./docker/run
       dockerfile: Dockerfile
       args:
-        GIT_REF: v0.9.8-custom-pre
+        GIT_REF: development
         CACHE_DATE: ${CACHE_DATE:-none}
     ports:
-      - "8890:80"
+      - "8892:80"
     environment:
       - A0_TTS_REMOTE_WORKER=true
+      - A0_BUILD_VERSION=Version D hybridGPU 0.9.8-custom-pre 2025-12-20 00:26:00
       # Optional banner override; normally set from build info inside the image
       # - A0_BUILD_VERSION=Version D hybridGPU v0.9.8-custom-pre ${A0_BUILD_TIMESTAMP:-unknown}
     restart: unless-stopped
@@ -30,7 +31,7 @@ services:
       - KOKORO_HOST=0.0.0.0
       - KOKORO_PORT=8891
     ports:
-      - "8891:8891"
+      - "8893:8891"
     deploy:
       resources:
         reservations:
@@ -38,4 +39,5 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
 
