@@ -38,19 +38,26 @@ else
     GIT_TIMESTAMP="unknown"
 fi
 
+# Check for build variant (hybridGPU, fullGPU, or empty for CPU-only)
+# This can be set via environment variable BUILD_VARIANT
+VARIANT_PREFIX=""
+if [ -n "$BUILD_VARIANT" ]; then
+    VARIANT_PREFIX="${BUILD_VARIANT} "
+fi
+
 # Determine version string
 if [ -n "$GIT_TAG" ]; then
     # If on a tag, use the tag name
     # Remove 'v' prefix if present for display
     VERSION_ID="${GIT_TAG#v}"
-    # Format: Version D <tag>-custom <timestamp>
+    # Format: Version D [variant] <tag>-custom <timestamp>
     # Remove any existing -custom suffix to avoid duplication
     VERSION_ID="${VERSION_ID%-custom}"
-    DISPLAY_VERSION="Version D ${VERSION_ID}-custom ${GIT_TIMESTAMP}"
+    DISPLAY_VERSION="Version D ${VARIANT_PREFIX}${VERSION_ID}-custom ${GIT_TIMESTAMP}"
 else
     # If not on a tag, use commit hash
-    # Format: Version D dev-<commit>-custom <timestamp>
-    DISPLAY_VERSION="Version D dev-${GIT_COMMIT}-custom ${GIT_TIMESTAMP}"
+    # Format: Version D [variant] dev-<commit>-custom <timestamp>
+    DISPLAY_VERSION="Version D ${VARIANT_PREFIX}dev-${GIT_COMMIT}-custom ${GIT_TIMESTAMP}"
 fi
 
 # Export for use in Docker build

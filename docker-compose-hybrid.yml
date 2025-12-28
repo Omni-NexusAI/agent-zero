@@ -8,14 +8,13 @@ services:
       dockerfile: Dockerfile
       args:
         GIT_REF: development
+        BUILD_VARIANT: hybridGPU
         CACHE_DATE: ${CACHE_DATE:-none}
     ports:
       - "8892:80"
     environment:
       - A0_TTS_REMOTE_WORKER=true
-      - A0_BUILD_VERSION=Version D hybridGPU 0.9.8-custom-pre 2025-12-20 00:26:00
-      # Optional banner override; normally set from build info inside the image
-      # - A0_BUILD_VERSION=Version D hybridGPU v0.9.8-custom-pre ${A0_BUILD_TIMESTAMP:-unknown}
+      # Version is baked into image via compute_build_version.sh with BUILD_VARIANT
     restart: unless-stopped
     depends_on:
       - kokoro-gpu-worker

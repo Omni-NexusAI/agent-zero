@@ -10,6 +10,10 @@ ENV GIT_REF=$GIT_REF
 # Backward compatibility: also set BRANCH for scripts that still use it
 ENV BRANCH=$GIT_REF
 
+# Build variant for version banner: hybridGPU, fullGPU, or empty for CPU-only
+ARG BUILD_VARIANT=""
+ENV BUILD_VARIANT=$BUILD_VARIANT
+
 # Recreate venv on Python 3.11 via uv (whisper wheels not available for 3.13)
 RUN rm -rf /opt/venv && uv venv --python 3.11 /opt/venv \
     && /opt/venv/bin/python -m ensurepip \
@@ -47,8 +51,9 @@ ARG CACHE_DATE=none
 RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $GIT_REF
 
 # Recompute version after install_A02.sh (in case repo was re-cloned)
+# Pass BUILD_VARIANT to include in version string (hybridGPU, fullGPU, or empty)
 RUN if [ -d /git/agent-zero/.git ]; then \
-        BUILD_VERSION=$(bash /ins/compute_build_version.sh /git/agent-zero | tr -d '\n\r'); \
+        BUILD_VERSION=$(BUILD_VARIANT="$BUILD_VARIANT" bash /ins/compute_build_version.sh /git/agent-zero | tr -d '\n\r'); \
         echo "Final build version: $BUILD_VERSION"; \
         echo "$BUILD_VERSION" > /a0_build_version.txt; \
         chmod 644 /a0_build_version.txt; \
