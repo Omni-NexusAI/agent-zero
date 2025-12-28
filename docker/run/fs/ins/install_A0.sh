@@ -23,24 +23,16 @@ if [ "$GIT_REF" = "local" ]; then
     # List all files recursively in the target directory
     # echo "All files in /git/agent-zero (recursive):"
     # find "/git/agent-zero" -type f | sort
-elif [ "$GIT_REF" = "development" ] || [ "$IS_TAG" = true ]; then
-    # For development branch OR tags, use Omni-NexusAI fork (contains validated features and fixes)
-    if [ "$IS_TAG" = true ]; then
-        echo "Cloning tag $GIT_REF from Omni-NexusAI repository..."
-        git clone --branch "$GIT_REF" "https://github.com/Omni-NexusAI/agent-zero" "/git/agent-zero" || {
-            echo "CRITICAL ERROR: Failed to clone tag. Tag: $GIT_REF from Omni-NexusAI"
-            exit 1
-        }
-    else
-        echo "Cloning development branch from Omni-NexusAI repository..."
-        git clone -b "$GIT_REF" "https://github.com/Omni-NexusAI/agent-zero" "/git/agent-zero" || {
-            echo "CRITICAL ERROR: Failed to clone repository. Branch: $GIT_REF from Omni-NexusAI"
-            exit 1
-        }
-    fi
+elif [ "$GIT_REF" = "development" ] || [ "$IS_TAG" = true ] || [[ "$GIT_REF" == feature/hybrid-* ]]; then
+    # For development branch, tags, or hybrid feature branches, use Omni-NexusAI fork (validated custom features)
+    echo "Cloning $GIT_REF from Omni-NexusAI repository..."
+    git clone -b "$GIT_REF" "https://github.com/Omni-NexusAI/agent-zero" "/git/agent-zero" || {
+        echo "CRITICAL ERROR: Failed to clone $GIT_REF from Omni-NexusAI"
+        exit 1
+    }
 else
-    # For other branches, clone from main agent0ai repository
-    echo "Cloning repository from branch $GIT_REF..."
+    # For other branches, clone from main agent0ai repository (fallback)
+    echo "Cloning repository from branch $GIT_REF (agent0ai upstream)..."
     git clone -b "$GIT_REF" "https://github.com/agent0ai/agent-zero" "/git/agent-zero" || {
         echo "CRITICAL ERROR: Failed to clone repository. Branch: $GIT_REF"
         exit 1
