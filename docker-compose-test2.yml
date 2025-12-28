@@ -1,0 +1,22 @@
+services:
+  a0-dev-test2:
+    container_name: A0-dev-test2
+    build:
+      context: .
+      dockerfile: DockerfileLocal
+    volumes:
+      - ./:/a0
+    ports:
+      - "8891:80"
+    environment:
+      - A0_BUILD_VERSION=Version D 0.9.7-custom 2025-11-04 18:06:16
+    restart: unless-stopped
+
+
+
+
+
+
+
+
+

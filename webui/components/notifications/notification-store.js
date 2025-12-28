@@ -646,7 +646,7 @@ const model = {
         console.log("Backend disconnected, showing as frontend-only toast");
       }
     }
-
+    
     // Fallback to frontend-only toast
     return this.addFrontendToastOnly(
       type,
