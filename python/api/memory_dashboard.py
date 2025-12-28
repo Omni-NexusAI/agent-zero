@@ -1,8 +1,9 @@
 from python.helpers.api import ApiHandler, Request, Response
-from python.helpers.memory import Memory
+from python.helpers.memory import Memory, get_existing_memory_subdirs, get_context_memory_subdir
 from python.helpers import files
 from models import ModelConfig, ModelType
 from langchain_core.documents import Document
+from agent import AgentContext
 
 
 class MemoryDashboard(ApiHandler):
@@ -113,20 +114,12 @@ class MemoryDashboard(ApiHandler):
                 # Fallback to default if no context available
                 return {"success": True, "memory_subdir": "default"}
 
-            # Import AgentContext here to avoid circular imports
-            from agent import AgentContext
-
-            # Get the context and extract memory subdirectory
-            context = AgentContext.get(context_id)
-            if (
-                context
-                and hasattr(context, "config")
-                and hasattr(context.config, "memory_subdir")
-            ):
-                memory_subdir = context.config.memory_subdir or "default"
-                return {"success": True, "memory_subdir": memory_subdir}
-            else:
+            context = AgentContext.use(context_id)
+            if not context:
                 return {"success": True, "memory_subdir": "default"}
+
+            memory_subdir = get_context_memory_subdir(context)
+            return {"success": True, "memory_subdir": memory_subdir or "default"}
 
         except Exception:
             return {
@@ -138,12 +131,7 @@ class MemoryDashboard(ApiHandler):
         """Get available memory subdirectories."""
         try:
             # Get subdirectories from memory folder
-            subdirs = files.get_subdirectories("memory")
-
-            # Ensure 'default' is always available
-            if "default" not in subdirs:
-                subdirs.insert(0, "default")
-
+            subdirs = get_existing_memory_subdirs()
             return {"success": True, "subdirs": subdirs}
         except Exception as e:
             return {
@@ -229,8 +217,8 @@ class MemoryDashboard(ApiHandler):
             "id": metadata.get("id", "unknown"),
             "area": metadata.get("area", "unknown"),
             "timestamp": metadata.get("timestamp", "unknown"),
-            "content_preview": m.page_content[:200]
-            + ("..." if len(m.page_content) > 200 else ""),
+            # "content_preview": m.page_content[:200]
+            # + ("..." if len(m.page_content) > 200 else ""),
             "content_full": m.page_content,
             "knowledge_source": metadata.get("knowledge_source", False),
             "source_file": metadata.get("source_file", ""),

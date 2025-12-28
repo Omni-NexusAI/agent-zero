@@ -128,24 +128,11 @@ input:checked + .toggler:before {
   transform: translateX(26px);
 }
 
-/* Range Input Styles */
-input[type="range"] {
-  width: 100%;
-  cursor: grab;
-}
-
-.range-value {
-  min-width: 3em;
-  text-align: right;
-}
-
 /* Select Styles */
 select {
   cursor: pointer;
 }
 
-<<<<<<< HEAD
-=======
 /* Model Picker Dropdown Styles (matching Kokoro voice selector) */
 .model-dropdown-item {
   padding: 8px 12px;
@@ -156,7 +143,6 @@ select {
   background: var(--color-panel);
 }
 
->>>>>>> origin/development
 /* Custom Kokoro Voice Select */
 .voice-select { position: relative; width: 100%; }
 .voice-select-btn {

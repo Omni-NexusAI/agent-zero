@@ -1,7 +1,7 @@
 from git import Repo
 from datetime import datetime
 import os
-from python.helpers import files, build_info
+from python.helpers import files
 
 def get_git_info():
     # Get the current working directory (assuming the repo is in the same folder as the script)
@@ -35,28 +35,23 @@ def get_git_info():
     except:
         tag = ""
 
-    metadata = build_info.get_version_metadata()
-    version_id = metadata.get("version_id") or ""
-    timestamp = metadata.get("timestamp")
-
-    if version_id:
-        version = build_info.friendly_version_label(version_id)
-    else:
-        version = branch[0].upper() + " " + ( short_tag or commit_hash[:7] )
-
-    if timestamp:
-        commit_time_fmt = build_info.format_timestamp(timestamp)
-    else:
-        commit_time_fmt = datetime.fromtimestamp(repo.head.commit.committed_date).strftime('%Y-%m-%d %H:%M:%S')
+    version = branch[0].upper() + " " + ( short_tag or commit_hash[:7] )
 
     # Create the dictionary with collected information
     git_info = {
         "branch": branch,
         "commit_hash": commit_hash,
-        "commit_time": commit_time_fmt,
+        "commit_time": commit_time,
         "tag": tag,
         "short_tag": short_tag,
         "version": version
     }
 
     return git_info
+
+def get_version():
+    try:
+        git_info = get_git_info()
+        return str(git_info.get("short_tag", "")).strip() or "unknown"
+    except Exception:
+        return "unknown"
