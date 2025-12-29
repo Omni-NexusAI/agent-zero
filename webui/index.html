@@ -164,8 +164,12 @@
                 <!-- Notification Toggle positioned next to time-date -->
                 <x-component path="notifications/notification-icons.html"></x-component>
             </div>
+            <!-- Welcome Screen Component -->
+            <div x-data x-show="$store.welcomeStore && $store.welcomeStore.isVisible">
+                <x-component path="welcome/welcome-screen.html"></x-component>
+            </div>
             <!-- Message History (actual messages) -->
-            <div id="chat-history">
+            <div id="chat-history" x-data x-show="!$store.welcomeStore || !$store.welcomeStore.isVisible">
             </div>
 
             <!-- NEW: Toast Stack Component -->
@@ -182,10 +186,13 @@
                 <button class="toast__copy" style="display: none;">Copy</button>
                 <button class="toast__close">Close</button>
             </div>
-            <!-- Progress Bar -->
-            <x-component path="chat/input/progress.html"></x-component>
-            <!-- Input Section -->
-            <x-component path="chat/input/chat-bar.html"></x-component>
+            <!-- Chat Input Area -->
+            <div x-show="!$store.welcomeStore || !$store.welcomeStore.isVisible">
+                <!-- Progress Bar -->
+                <x-component path="chat/input/progress.html"></x-component>
+                <!-- Input Section -->
+                <x-component path="chat/input/chat-bar.html"></x-component>
+            </div>
         </div>
     </div>
     <div id="settingsModal" x-data="settingsModalProxy">
