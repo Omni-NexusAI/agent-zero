@@ -28,7 +28,8 @@ RUN pip install --no-cache-dir \
     soundfile==0.13.1 \
     numpy==1.26.4 \
     webcolors==24.6.0 \
-    python-dotenv==1.1.0
+    python-dotenv==1.1.0 \
+    simpleeval==1.0.3
 
 # Copy the python package structure
 # We copy the whole python directory to ensure helpers/utils are available
@@ -48,5 +49,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Run the worker
 CMD ["python", "python/services/kokoro_gpu_worker.py"]
+
 
 

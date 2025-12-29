@@ -50,10 +50,13 @@ if [ -n "$GIT_TAG" ]; then
     # If on a tag, use the tag name
     # Remove 'v' prefix if present for display
     VERSION_ID="${GIT_TAG#v}"
-    # Format: Version D [variant] <tag>-custom <timestamp>
-    # Remove any existing -custom suffix to avoid duplication
-    VERSION_ID="${VERSION_ID%-custom}"
-    DISPLAY_VERSION="Version D ${VARIANT_PREFIX}${VERSION_ID}-custom ${GIT_TIMESTAMP}"
+    # Format: Version D [variant] <tag> <timestamp>
+    # If tag already contains -custom, use as-is; otherwise add -custom
+    if [[ "$VERSION_ID" == *"-custom"* ]]; then
+        DISPLAY_VERSION="Version D ${VARIANT_PREFIX}${VERSION_ID} ${GIT_TIMESTAMP}"
+    else
+        DISPLAY_VERSION="Version D ${VARIANT_PREFIX}${VERSION_ID}-custom ${GIT_TIMESTAMP}"
+    fi
 else
     # If not on a tag, use commit hash
     # Format: Version D [variant] dev-<commit>-custom <timestamp>
