@@ -302,6 +302,9 @@ class DynamicMcpProxy:
 
         # Create new MCP apps with updated settings
         with self._lock:
+            # Get additional routes if they exist
+            additional_routes = getattr(mcp_server, "_additional_http_routes", None)
+            
             self.sse_app = create_sse_app(
                 server=mcp_server,
                 message_path=mcp_server.settings.message_path,
@@ -309,6 +312,7 @@ class DynamicMcpProxy:
                 auth_server_provider=mcp_server._auth_server_provider,
                 auth_settings=mcp_server.settings.auth,
                 debug=mcp_server.settings.debug,
+                additional_routes=additional_routes,
             )
             self.sse_app.add_middleware(BaseHTTPMiddleware, dispatch=mcp_middleware)
 
@@ -321,6 +325,7 @@ class DynamicMcpProxy:
                 json_response=True,
                 stateless_http=False,
                 debug=mcp_server.settings.debug,
+                additional_routes=additional_routes,
             )
             self.http_app.add_middleware(BaseHTTPMiddleware, dispatch=mcp_middleware)
 
