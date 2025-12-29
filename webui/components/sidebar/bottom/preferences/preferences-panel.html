@@ -18,8 +18,9 @@
               <path d="M8 4l8 8-8 8" />
             </svg>
           </h3>
-          <ul class="config-list collapse" id="preferences-collapse"
-              x-effect="(() => { const c = bootstrap.Collapse.getOrCreateInstance($el, { toggle: false }); $store.sidebar.isSectionOpen('preferences') ? c.show() : c.hide(); })()">
+          <ul class="config-list" id="preferences-collapse"
+              x-show="$store.sidebar.isSectionOpen('preferences')"
+              x-collapse>
             <li x-data>
               <span>Autoscroll</span>
               <label class="switch">
