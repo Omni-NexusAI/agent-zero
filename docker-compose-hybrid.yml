@@ -7,7 +7,7 @@ services:
       context: ./docker/run
       dockerfile: Dockerfile
       args:
-        GIT_REF: development
+        GIT_REF: v0.9.8-custom-pre
         BUILD_VARIANT: hybridGPU
         CACHE_DATE: ${CACHE_DATE:-none}
     ports:
