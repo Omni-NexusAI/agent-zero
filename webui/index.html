@@ -187,7 +187,7 @@
                 <button class="toast__close">Close</button>
             </div>
             <!-- Chat Input Area -->
-            <div x-show="!$store.welcomeStore || !$store.welcomeStore.isVisible">
+            <div x-data x-show="!$store.welcomeStore || !$store.welcomeStore.isVisible">
                 <!-- Progress Bar -->
                 <x-component path="chat/input/progress.html"></x-component>
                 <!-- Input Section -->
