@@ -1,0 +1,19 @@
+name: a0-fullgpu-custom
+
+services:
+  a0-fullgpu:
+    container_name: A0-fullgpu
+    image: ghcr.io/omni-nexusai/agent-zero:v0.9.8-custom-pre-fullgpu
+    ports:
+      - "8892:80"
+    environment:
+      - PYTORCH_VARIANT=cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+

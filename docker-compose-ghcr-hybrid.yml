@@ -1,0 +1,33 @@
+name: a0-hybrid-custom
+
+services:
+  a0-hybrid:
+    container_name: A0-hybrid
+    image: ghcr.io/omni-nexusai/agent-zero:v0.9.8-custom-pre-hybrid-gpu
+    ports:
+      - "8893:80"
+    environment:
+      - A0_TTS_REMOTE_WORKER=true
+      # Version is baked into image via compute_build_version.sh with BUILD_VARIANT
+    restart: unless-stopped
+    depends_on:
+      - kokoro-gpu-worker
+
+  kokoro-gpu-worker:
+    container_name: Kokoro-GPU-worker
+    image: ghcr.io/omni-nexusai/agent-zero-kokoro-worker:v0.9.8-custom-pre
+    working_dir: /app
+    environment:
+      - KOKORO_DEVICE=cuda:auto
+      - KOKORO_HOST=0.0.0.0
+      - KOKORO_PORT=8891
+    ports:
+      - "8894:8891"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+

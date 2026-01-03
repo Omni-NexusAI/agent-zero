@@ -1,0 +1,10 @@
+name: a0-cpu-custom
+
+services:
+  a0-cpu:
+    container_name: A0-cpu
+    image: ghcr.io/omni-nexusai/agent-zero:v0.9.8-custom-pre-cpu
+    ports:
+      - "8891:80"
+    restart: unless-stopped
+
