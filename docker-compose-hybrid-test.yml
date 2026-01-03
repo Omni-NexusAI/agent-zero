@@ -1,0 +1,40 @@
+name: a0-hybrid-test
+
+services:
+  a0-hybrid-test:
+    container_name: A0-hybrid-test
+    build:
+      context: ./docker/run
+      dockerfile: Dockerfile
+      args:
+        GIT_REF: v0.9.8-custom-pre-hybrid-gpu
+        BUILD_VARIANT: hybridGPU
+        CACHE_DATE: ${CACHE_DATE:-none}
+    ports:
+      - "8894:80"
+    environment:
+      - A0_TTS_REMOTE_WORKER=true
+      # Version is baked into image via compute_build_version.sh with BUILD_VARIANT
+    restart: unless-stopped
+    depends_on:
+      - kokoro-gpu-worker-test
+
+  kokoro-gpu-worker-test:
+    container_name: Kokoro-GPU-worker-test
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.kokoro
+    working_dir: /app
+    environment:
+      - KOKORO_DEVICE=cuda:auto
+      - KOKORO_HOST=0.0.0.0
+      - KOKORO_PORT=8891
+    ports:
+      - "8895:8891"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
