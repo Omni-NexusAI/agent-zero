@@ -7,4 +7,3 @@ services:
     ports:
       - "8891:80"
     restart: unless-stopped
-

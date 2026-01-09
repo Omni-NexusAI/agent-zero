@@ -5,9 +5,10 @@
 # Large / generated data
 memory/**
 
-# Logs & tmp
+# Logs & tmp (IMPORTANT: tmp/ contains settings.json with API keys and MCP configs)
 logs/*
 tmp/*
+tmp/settings.json
 
 # Knowledge directory – keep only default/
 knowledge/**
