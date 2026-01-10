@@ -302,7 +302,7 @@ class DynamicMcpProxy:
 
         # Create new MCP apps with updated settings
         with self._lock:
-            # Get custom routes if they exist (fastmcp 2.3.0 uses 'routes' param)
+            # Get custom routes if they exist (fastmcp 2.3.0 uses 'additional_routes' param)
             custom_routes = getattr(mcp_server, "_additional_http_routes", None)
             
             self.sse_app = create_sse_app(
@@ -312,7 +312,7 @@ class DynamicMcpProxy:
                 auth_server_provider=mcp_server._auth_server_provider,
                 auth_settings=mcp_server.settings.auth,
                 debug=mcp_server.settings.debug,
-                routes=custom_routes,
+                additional_routes=custom_routes,
             )
             self.sse_app.add_middleware(BaseHTTPMiddleware, dispatch=mcp_middleware)
 
@@ -325,7 +325,7 @@ class DynamicMcpProxy:
                 json_response=True,
                 stateless_http=False,
                 debug=mcp_server.settings.debug,
-                routes=custom_routes,
+                additional_routes=custom_routes,
             )
             self.http_app.add_middleware(BaseHTTPMiddleware, dispatch=mcp_middleware)
 
