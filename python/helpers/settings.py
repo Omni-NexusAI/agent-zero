@@ -13,6 +13,15 @@ from python.helpers.print_style import PrintStyle
 from python.helpers.providers import get_providers
 from python.helpers.secrets import SecretsManager
 from python.helpers import dirty_json
+from python.helpers.build_type import (
+    BuildType,
+    get_build_type,
+    get_tts_device_options,
+    get_tts_defaults,
+    is_setting_visible,
+    get_tts_description,
+    get_tts_device_description,
+)
 
 
 class Settings(TypedDict):
@@ -1044,70 +1053,30 @@ def convert_out(settings: Settings) -> SettingsOutput:
     # TTS fields
     tts_fields: list[SettingsField] = []
 
-    # Detect build type for conditional UI rendering
-    def _get_build_type() -> tuple[str, bool]:
-        pytorch_variant = os.getenv("PYTORCH_VARIANT", "cpu").lower()
-        is_remote_worker_build = os.getenv("A0_TTS_REMOTE_WORKER", "false").lower() == "true"
-        return pytorch_variant, is_remote_worker_build
+    # Get build type from centralized module
+    current_build_type = get_build_type()
+    is_hybrid_build = current_build_type == BuildType.HYBRID_GPU
+    is_full_gpu_build = current_build_type == BuildType.FULL_GPU
 
-    pytorch_variant, is_remote_worker_build = _get_build_type()
-    is_full_gpu_build = pytorch_variant == "cuda" and not is_remote_worker_build
-    is_hybrid_build = is_remote_worker_build
-    is_vanilla_cpu_build = pytorch_variant == "cpu" and not is_remote_worker_build
-
-    # Master toggle
-    tts_description = "Enable higher quality server-side AI text-to-speech."
-    if is_hybrid_build:
-        tts_description += " This build supports extending A0's TTS capabilities with any TTS model that supports endpoint APIs via the remote worker option. Kokoro is the default TTS model."
-    elif is_full_gpu_build:
-        tts_description += " This build has GPU acceleration enabled in the main container for Kokoro TTS (default model)."
-    else:  # Vanilla CPU
-        tts_description += " Kokoro is the default TTS model."
-
+    # Master toggle with build-type-aware description
     tts_fields.append(
         {
             "id": "tts_kokoro",
             "title": "Enable Server-Side TTS",
-            "description": tts_description,
+            "description": get_tts_description(current_build_type),
             "type": "switch",
             "value": settings["tts_kokoro"],
         }
     )
 
-    # Device selection (Auto/CPU/CUDA/Remote)
-    device_options: list[FieldOption] = [
-        {"value": "auto", "label": "Auto (recommended)"},
-        {"value": "cpu", "label": "CPU"},
-    ]
-
-    if is_full_gpu_build:
-        try:
-            from python.helpers.device_utils import enumerate_devices
-            devices = enumerate_devices()
-            if devices.get("cuda", {}).get("available"):
-                device_options.append({"value": "cuda:auto", "label": "CUDA: Auto"})
-                for d in devices.get("cuda", {}).get("devices", []):
-                    device_options.append({
-                        "value": f"cuda:{d['index']}",
-                        "label": f"CUDA: GPU {d['index']} – {d['name']} ({d['memory_total']})",
-                    })
-        except Exception:
-            pass  # Fallback to CPU only if CUDA detection fails
-
-    if is_hybrid_build:
-        device_options.append({"value": "remote", "label": "Remote GPU (worker) - Extend with any TTS endpoint"})
-
-    tts_device_description = "Select the device used for TTS synthesis."
-    if is_hybrid_build:
-        tts_device_description += " Use 'Remote GPU (worker)' to extend A0 with any TTS model that supports endpoint APIs."
-    elif is_full_gpu_build:
-        tts_device_description += " This build has GPU acceleration enabled in the main container."
+    # Device selection with build-type-aware options
+    device_options = cast(list[FieldOption], get_tts_device_options(current_build_type))
 
     tts_fields.append(
         {
             "id": "tts_device",
             "title": "Compute device",
-            "description": tts_device_description,
+            "description": get_tts_device_description(current_build_type),
             "type": "select",
             "value": settings.get("tts_device", "auto"),
             "options": device_options,
@@ -1115,8 +1084,8 @@ def convert_out(settings: Settings) -> SettingsOutput:
         }
     )
 
-    # Remote worker settings (only for hybrid builds)
-    if is_hybrid_build:
+    # Remote worker settings (only visible for hybrid builds)
+    if is_setting_visible("tts_kokoro_remote_url", current_build_type):
         tts_fields.append(
             {
                 "id": "tts_kokoro_remote_url",
@@ -1128,6 +1097,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             }
         )
 
+    if is_setting_visible("tts_kokoro_remote_token", current_build_type):
         tts_fields.append(
             {
                 "id": "tts_kokoro_remote_token",
@@ -1139,6 +1109,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             }
         )
 
+    if is_setting_visible("tts_kokoro_remote_timeout", current_build_type):
         tts_fields.append(
             {
                 "id": "tts_kokoro_remote_timeout",
@@ -1613,6 +1584,9 @@ def _write_sensitive_settings(settings: Settings):
 
 
 def get_default_settings() -> Settings:
+    # Get build-type-aware TTS defaults
+    tts_defaults = get_tts_defaults()
+    
     return Settings(
         version=_get_version(),
         chat_model_provider="openrouter",
@@ -1681,14 +1655,15 @@ def get_default_settings() -> Settings:
         stt_silence_threshold=0.3,
         stt_silence_duration=1000,
         stt_waiting_timeout=2000,
-        tts_kokoro=True,
-        tts_device="auto",
-        tts_kokoro_voice="am_michael",
-        tts_kokoro_voice_secondary="",
-        tts_kokoro_speed=1.1,
-        tts_kokoro_remote_url="http://kokoro-gpu-worker:8891",
-        tts_kokoro_remote_token="",
-        tts_kokoro_remote_timeout=20,
+        # TTS settings from build-type-aware defaults
+        tts_kokoro=tts_defaults.get("tts_kokoro", True),
+        tts_device=tts_defaults.get("tts_device", "auto"),
+        tts_kokoro_voice=tts_defaults.get("tts_kokoro_voice", "am_michael"),
+        tts_kokoro_voice_secondary=tts_defaults.get("tts_kokoro_voice_secondary", ""),
+        tts_kokoro_speed=tts_defaults.get("tts_kokoro_speed", 1.1),
+        tts_kokoro_remote_url=tts_defaults.get("tts_kokoro_remote_url", "http://kokoro-gpu-worker:8891"),
+        tts_kokoro_remote_token=tts_defaults.get("tts_kokoro_remote_token", ""),
+        tts_kokoro_remote_timeout=tts_defaults.get("tts_kokoro_remote_timeout", 20),
         mcp_servers='{\n    "mcpServers": {}\n}',
         mcp_client_init_timeout=10,
         mcp_client_tool_timeout=120,

@@ -10,9 +10,12 @@ ENV GIT_REF=$GIT_REF
 # Backward compatibility: also set BRANCH for scripts that still use it
 ENV BRANCH=$GIT_REF
 
-# Build variant for version banner: hybridGPU, fullGPU, or empty for CPU-only
+# Build variant for version banner and settings: hybridGPU, fullGPU, or empty for CPU-only
 ARG BUILD_VARIANT=""
 ENV BUILD_VARIANT=$BUILD_VARIANT
+
+# Bake BUILD_VARIANT into /etc/environment so it persists at runtime for settings detection
+RUN echo "BUILD_VARIANT=\"$BUILD_VARIANT\"" >> /etc/environment
 
 # Recreate venv on Python 3.11 via uv (whisper wheels not available for 3.13)
 RUN rm -rf /opt/venv && uv venv --python 3.11 /opt/venv \

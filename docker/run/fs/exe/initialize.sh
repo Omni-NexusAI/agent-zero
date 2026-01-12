@@ -21,6 +21,13 @@ else
     echo "WARNING: /a0_build_version.txt not found, A0_BUILD_VERSION not set"
 fi
 
+# Ensure BUILD_VARIANT is exported for Python settings detection
+# This is baked in during Docker build but we export it explicitly here
+if [ -n "$BUILD_VARIANT" ]; then
+    export BUILD_VARIANT
+    echo "BUILD_VARIANT set to: $BUILD_VARIANT"
+fi
+
 # Copy all contents from persistent /per to root directory (/) without overwriting
 cp -r --no-preserve=ownership,mode /per/* /
 
