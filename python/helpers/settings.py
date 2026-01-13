@@ -1168,7 +1168,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     voice_options: list[FieldOption] = us_female + us_male + uk_female + uk_male
 
-    # Primary voice
+    # Primary voice (always editable when TTS is enabled)
     tts_fields.append(
         {
             "id": "tts_kokoro_voice",
@@ -1177,11 +1177,11 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "type": "select",
             "value": settings.get("tts_kokoro_voice", "am_michael"),
             "options": voice_options,
-            "readonly": not settings["tts_kokoro"],
+            "readonly": False,  # Voice settings remain editable
         }
     )
 
-    # Secondary voice (optional)
+    # Secondary voice (optional) (always editable when TTS is enabled)
     tts_fields.append(
         {
             "id": "tts_kokoro_voice_secondary",
@@ -1190,11 +1190,11 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "type": "select",
             "value": settings.get("tts_kokoro_voice_secondary", ""),
             "options": ([{"value": "", "label": "None"}] + voice_options),
-            "readonly": not settings["tts_kokoro"],
+            "readonly": False,  # Voice settings remain editable
         }
     )
 
-    # Speed
+    # Speed (always editable when TTS is enabled)
     tts_fields.append(
         {
             "id": "tts_kokoro_speed",
@@ -1202,7 +1202,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "description": "Playback speed multiplier (1.0 = normal).",
             "type": "number",
             "value": settings.get("tts_kokoro_speed", 1.1),
-            "readonly": not settings["tts_kokoro"],
+            "readonly": False,  # Speed setting remains editable
         }
     )
 

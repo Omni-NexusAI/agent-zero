@@ -265,7 +265,7 @@
                                                 <!-- Input field -->
                                                 <template x-if="field.type === 'text' && !field.id.endsWith('_model_name')">
                                                     <input type="text" :class="field.classes" :value="field.value"
-                                                        :readonly="field.readonly === true"
+                                                        :disabled="(field.id === 'tts_kokoro_remote_url' || field.id === 'tts_kokoro_remote_token') ? (section.fields.find(f => f.id === 'tts_kokoro')?.value === false) : (field.readonly === true)"
                                                         @input="field.value = $event.target.value">
                                                 </template>
 
@@ -304,7 +304,7 @@
                                                 <!-- Number field -->
                                                 <template x-if="field.type === 'number'">
                                                     <input type="number" :class="field.classes" :value="field.value"
-                                                        :readonly="field.readonly === true"
+                                                        :disabled="field.id === 'tts_kokoro_remote_timeout' ? (section.fields.find(f => f.id === 'tts_kokoro')?.value === false) : (field.id === 'tts_kokoro_speed' ? false : (field.readonly === true))"
                                                         @input="field.value = $event.target.value" :min="field.min"
                                                         :max="field.max" :step="field.step">
                                                 </template>
@@ -313,14 +313,14 @@
                                                 <!-- Password field -->
                                                 <template x-if="field.type === 'password'">
                                                     <input type="password" :class="field.classes" :value="field.value"
-                                                        :readonly="field.readonly === true" :id="field.id"
+                                                        :disabled="field.readonly === true" :id="field.id"
                                                         autocomplete="off" @input="field.value = $event.target.value">
                                                 </template>
 
                                                 <!-- Textarea field -->
                                                 <template x-if="field.type === 'textarea'">
                                                     <textarea :class="field.classes" :value="field.value"
-                                                        :readonly="field.readonly === true"
+                                                        :disabled="field.readonly === true"
                                                         @input="field.value = $event.target.value"
                                                         :style="field.style"></textarea>
                                                 </template>
@@ -357,7 +357,7 @@
                                                 <!-- Kokoro Voice Select (custom styled dropdown) -->
                                                 <template x-if="field.type === 'select' && (field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
                                                     <div class="voice-select" x-data="{ open: false }" @click.outside="open=false">
-                                                        <button type="button" class="voice-select-btn" :disabled="field.readonly === true" @click="!field.readonly && (open = !open)">
+                                                        <button type="button" class="voice-select-btn" :disabled="false" @click="open = !open">
                                                             <template x-if="field.options.find(o => o.value===field.value)?.label">
                                                                 <div>
                                                                     <span class="voice-region" x-text="(field.options.find(o => o.value===field.value)?.label || '').split(' • ')[0]"></span>
@@ -373,7 +373,7 @@
                                                                 <span>Select voice...</span>
                                                             </template>
                                                         </button>
-                                                        <div class="voice-select-list" x-show="open && !field.readonly" x-transition>
+                                                        <div class="voice-select-list" x-show="open" x-transition>
                                                             <template x-for="option in field.options" :key="option.value">
                                                                 <div class="voice-option" @click="field.value = option.value; open=false" x-data="{ parts: option.label ? option.label.split(' • ') : ['', '', '', ''] }">
                                                                     <template x-if="option.label && parts.length >= 4">
@@ -399,7 +399,7 @@
                                                 <!-- Default select rendering -->
                                                 <template x-if="field.type === 'select' && !(field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
                                                     <select :class="field.classes" x-model="field.value"
-                                                        :disabled="field.readonly === true">
+                                                        :disabled="field.id === 'tts_device' ? (section.fields.find(f => f.id === 'tts_kokoro')?.value === false) : (field.readonly === true)">
                                                         <template x-for="option in field.options" :key="option.value">
                                                             <option :value="option.value" x-text="option.label"
                                                                 :selected="option.value === field.value"></option>
