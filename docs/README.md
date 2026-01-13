@@ -1,35 +1,48 @@
-![Agent Zero Logo](res/header.png)
-# Agent Zero Documentation
-To begin with Agent Zero, follow the links below for detailed guides on various topics:
+![AgentSpine Logo](res/header.png)
+# AgentSpine Documentation
+## (based on AgentZero)
 
-- **[Installation](installation.md):** Set up (or [update](installation.md#how-to-update-agent-zero)) Agent Zero on your system.
+To begin with AgentSpine, follow the links below for detailed guides on various topics:
+
+- **[Installation](installation.md):** Set up (or [update](installation.md#how-to-update-agent-zero)) AgentSpine on your system.
 - **[Usage Guide](usage.md):** Explore GUI features and usage scenarios.
-- **[Development](development.md):** Set up a development environment for Agent Zero.
-- **[Extensibility](extensibility.md):** Learn how to create custom extensions for Agent Zero.
-- **[Connectivity](connectivity.md):** Learn how to connect to Agent Zero from other applications.
+- **[Development](development.md):** Set up a development environment for AgentSpine.
+- **[Extensibility](extensibility.md):** Learn how to create custom extensions for AgentSpine.
+- **[Connectivity](connectivity.md):** Learn how to connect to AgentSpine from other applications.
 - **[Architecture Overview](architecture.md):** Understand the internal workings of the framework.
-- **[Contributing](contribution.md):** Learn how to contribute to the Agent Zero project.
+- **[Contributing](contribution.md):** Learn how to contribute to the AgentSpine project.
 - **[Troubleshooting and FAQ](troubleshooting.md):** Find answers to common issues and questions.
 
-### Your experience with Agent Zero starts now!
+### Your experience with AgentSpine starts now!
 
-- **Download Agent Zero:** Follow the [installation guide](installation.md) to download and run Agent Zero.
+- **Download AgentSpine:** Follow the [installation guide](installation.md) to download and run AgentSpine.
 - **Join the Community:** Join the Agent Zero [Skool](https://www.skool.com/agent-zero) or [Discord](https://discord.gg/B8KZKNsPpj) community to discuss ideas, ask questions, and collaborate with other contributors.
-- **Share your Work:** Share your Agent Zero creations, workflows and discoverings on our [Show and Tell](https://github.com/agent0ai/agent-zero/discussions/categories/show-and-tell) area on GitHub.
-- **Report Issues:** Use the [GitHub issue tracker](https://github.com/agent0ai/agent-zero/issues) to report framework-relative bugs or suggest new features.
+- **Share your Work:** Share your AgentSpine creations, workflows and discoverings on our [Show and Tell](https://github.com/Omni-NexusAI/agent-zero/discussions/categories/show-and-tell) area on GitHub.
+- **Report Issues:** Use the [GitHub issue tracker](https://github.com/Omni-NexusAI/agent-zero/issues) to report framework-relative bugs or suggest new features.
+
+## About This Fork
+
+AgentSpine is a customized fork of [Agent Zero](https://github.com/agent0ai/agent-zero) with enhanced features and multiple build variants. This fork is maintained by Omni-NexusAI and includes:
+
+- Enhanced Model Picker UI with improved dropdown and history management
+- MCP Toggle Panel for easy server management
+- Enhanced Kokoro TTS settings with compute/device selection
+- Multiple build variants (CPU-only, Full GPU, Hybrid GPU)
+- Pre-release tags with validated custom features
 
 ## Table of Contents
 
-- [Welcome to the Agent Zero Documentation](#agent-zero-documentation)
-  - [Your Experience with Agent Zero](#your-experience-with-agent-zero-starts-now)
+- [Welcome to the AgentSpine Documentation](#agentspine-documentation)
+  - [Your Experience with AgentSpine](#your-experience-with-agentspine-starts-now)
+  - [About This Fork](#about-this-fork)
   - [Table of Contents](#table-of-contents)
 - [Installation Guide](installation.md)
   - [Windows, macOS and Linux Setup](installation.md#windows-macos-and-linux-setup-guide)
   - [Settings Configuration](installation.md#settings-configuration)
   - [Choosing Your LLMs](installation.md#choosing-your-llms)
   - [Installing and Using Ollama](installation.md#installing-and-using-ollama-local-models)
-  - [Using Agent Zero on Mobile](installation.md#using-agent-zero-on-your-mobile-device)
-  - [How to Update Agent Zero](installation.md#how-to-update-agent-zero)
+  - [Using AgentSpine on Mobile](installation.md#using-agent-zero-on-your-mobile-device)
+  - [How to Update AgentSpine](installation.md#how-to-update-agent-zero)
   - [Full Binaries Installation](installation.md#in-depth-guide-for-full-binaries-installation)
 - [Usage Guide](usage.md)
   - [Basic Operations](usage.md#basic-operations)

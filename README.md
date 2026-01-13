@@ -1,9 +1,10 @@
 <div align="center">
 
-# `Agent Zero`
+# `AgentSpine`
+## (based on AgentZero)
 
 
-[![Agent Zero Website](https://img.shields.io/badge/Website-agent--zero.ai-0A192F?style=for-the-badge&logo=vercel&logoColor=white)](https://agent-zero.ai) [![Thanks to Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Thanks%20to%20Sponsors-FF69B4?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/agent0ai) [![Follow on X](https://img.shields.io/badge/X-Follow-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/Agent0ai) [![Join our Discord](https://img.shields.io/badge/Discord-Join%20our%20server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/B8KZKNsPpj) [![Subscribe on YouTube](https://img.shields.io/badge/YouTube-Subscribe-red?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/@AgentZeroFW) [![Connect on LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/jan-tomasek/) [![Follow on Warpcast](https://img.shields.io/badge/Warpcast-Follow-5A32F3?style=for-the-badge)](https://warpcast.com/agent-zero) 
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Omni--NexusAI%2Fagent--zero-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Omni-NexusAI/agent-zero) [![Docker Hub](https://img.shields.io/badge/Docker-GHCR-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/Omni-NexusAI/agent-zero/pkgs/container/agent-zero)
 
 
 ## Documentation:
@@ -11,29 +12,28 @@
 [Introduction](#a-personal-organic-agentic-framework-that-grows-and-learns-with-you) •
 [Installation](./docs/installation.md) •
 [Development](./docs/development.md) •
-**[Development Build Setup](./SETUP.md)** • 
 [Extensibility](./docs/extensibility.md) •
 [Connectivity](./docs/connectivity.md) •
 [How to update](./docs/installation.md#how-to-update-agent-zero) •
 [Documentation](./docs/README.md) •
 [Usage](./docs/usage.md)
 
-Or see DeepWiki generated documentation:
-
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/agent0ai/agent-zero)
-
 </div>
 
 
 <div align="center">
 
-> ### 🚨 **IMPORTANT ANNOUNCEMENT** 🚨
-
-The original GitHub and DockerHub repositories for Agent Zero have been transferred to a new namespace:
-
-- **GitHub & DockerHub:** `agent0ai/agent-zero`
-
-From now on, please use this name for both `git clone` and `docker pull` commands.
+> ### ℹ️ **About This Fork**
+>
+> **AgentSpine** is a customized fork of Agent Zero with enhanced features and build variants. This repository is maintained by Omni-NexusAI and includes:
+>
+> - Enhanced Model Picker UI with improved dropdown and history management
+> - MCP Toggle Panel for easy server management
+> - Enhanced Kokoro TTS settings with compute/device selection
+> - Multiple build variants (CPU-only, Full GPU, Hybrid GPU)
+> - Pre-release tags with validated custom features
+>
+> For the original Agent Zero project, visit [agent0ai/agent-zero](https://github.com/agent0ai/agent-zero).
 
 </div>
 
@@ -47,27 +47,27 @@ From now on, please use this name for both `git clone` and `docker pull` command
 
 
 
-- Agent Zero is not a predefined agentic framework. It is designed to be dynamic, organically growing, and learning as you use it.
-- Agent Zero is fully transparent, readable, comprehensible, customizable, and interactive.
-- Agent Zero uses the computer as a tool to accomplish its (your) tasks.
+- AgentSpine (based on AgentZero) is not a predefined agentic framework. It is designed to be dynamic, organically growing, and learning as you use it.
+- AgentSpine is fully transparent, readable, comprehensible, customizable, and interactive.
+- AgentSpine uses the computer as a tool to accomplish its (your) tasks.
 
 # 💡 Key Features
 
 1. **General-purpose Assistant**
 
-- Agent Zero is not pre-programmed for specific tasks (but can be). It is meant to be a general-purpose personal assistant. Give it a task, and it will gather information, execute commands and code, cooperate with other agent instances, and do its best to accomplish it.
+- AgentSpine is not pre-programmed for specific tasks (but can be). It is meant to be a general-purpose personal assistant. Give it a task, and it will gather information, execute commands and code, cooperate with other agent instances, and do its best to accomplish it.
 - It has a persistent memory, allowing it to memorize previous solutions, code, facts, instructions, etc., to solve tasks faster and more reliably in the future.
 
 ![Agent 0 Working](/docs/res/ui-screen-2.png)
 
 2. **Computer as a Tool**
 
-- Agent Zero uses the operating system as a tool to accomplish its tasks. It has no single-purpose tools pre-programmed. Instead, it can write its own code and use the terminal to create and use its own tools as needed.
+- AgentSpine uses the operating system as a tool to accomplish its tasks. It has no single-purpose tools pre-programmed. Instead, it can write its own code and use the terminal to create and use its own tools as needed.
 - The only default tools in its arsenal are online search, memory features, communication (with the user and other agents), and code/terminal execution. Everything else is created by the agent itself or can be extended by the user.
 - Tool usage functionality has been developed from scratch to be the most compatible and reliable, even with very small models.
-- **Default Tools:** Agent Zero includes tools like knowledge, code execution, and communication.
-- **Creating Custom Tools:** Extend Agent Zero's functionality by creating your own custom tools.
-- **Instruments:** Instruments are a new type of tool that allow you to create custom functions and procedures that can be called by Agent Zero.
+- **Default Tools:** AgentSpine includes tools like knowledge, code execution, and communication.
+- **Creating Custom Tools:** Extend AgentSpine's functionality by creating your own custom tools.
+- **Instruments:** Instruments are a new type of tool that allow you to create custom functions and procedures that can be called by AgentSpine.
 
 3. **Multi-agent Cooperation**
 
@@ -95,7 +95,7 @@ From now on, please use this name for both `git clone` and `docker pull` command
 - The terminal interface is real-time streamed and interactive. You can stop and intervene at any point. If you see your agent heading in the wrong direction, just stop and tell it right away.
 - There is a lot of freedom in this framework. You can instruct your agents to regularly report back to superiors asking for permission to continue. You can instruct them to use point-scoring systems when deciding when to delegate subtasks. Superiors can double-check subordinates' results and dispute. The possibilities are endless.
 
-## 🚀 Things you can build with Agent Zero
+## 🚀 Things you can build with AgentSpine
 
 - **Development Projects** - `"Create a React dashboard with real-time data visualization"`
 
@@ -119,20 +119,67 @@ A detailed setup guide for Windows, macOS, and Linux with a video can be found i
 
 ### ⚡ Quick Start
 
-```bash
-# Pull and run with Docker
+#### Using Pre-built Docker Images (Recommended)
 
-docker pull agent0ai/agent-zero
-docker run -p 50001:80 agent0ai/agent-zero
+AgentSpine provides multiple build variants to suit different hardware configurations:
+
+**CPU-only Variant:**
+```bash
+# Pull and run CPU-only image
+docker pull ghcr.io/omni-nexusai/agent-zero:v0.9.8-custom-pre-cpu
+docker run -p 50001:80 ghcr.io/omni-nexusai/agent-zero:v0.9.8-custom-pre-cpu
 
 # Visit http://localhost:50001 to start
 ```
+
+**Full GPU Variant (NVIDIA GPU required):**
+```bash
+# Pull and run Full GPU image
+docker pull ghcr.io/omni-nexusai/agent-zero:v0.9.8-custom-pre-fullgpu
+docker run --gpus all -p 50001:80 ghcr.io/omni-nexusai/agent-zero:v0.9.8-custom-pre-fullgpu
+
+# Visit http://localhost:50001 to start
+```
+
+**Hybrid GPU Variant (Separate Kokoro TTS worker):**
+```bash
+# Pull main image and Kokoro worker
+docker pull ghcr.io/omni-nexusai/agent-zero:v0.9.8-custom-pre-hybrid-gpu
+docker pull ghcr.io/omni-nexusai/agent-zero-kokoro-worker:v0.9.8-custom-pre-hybrid-gpu
+
+# Run Kokoro worker (in one terminal)
+docker run --gpus all -p 8001:8001 ghcr.io/omni-nexusai/agent-zero-kokoro-worker:v0.9.8-custom-pre-hybrid-gpu
+
+# Run main application (in another terminal)
+docker run -p 50001:80 -e TTS_KOKORO_REMOTE_URL=http://host.docker.internal:8001 ghcr.io/omni-nexusai/agent-zero:v0.9.8-custom-pre-hybrid-gpu
+
+# Visit http://localhost:50001 to start
+```
+
+#### Building from Source
+
+To build from the latest development branch or a specific pre-release tag:
+
+```bash
+# Clone the repository
+git clone -b development https://github.com/Omni-NexusAI/agent-zero.git
+cd agent-zero
+
+# Build using docker-compose (see docker-compose-prerelease.yml for tag-based builds)
+docker compose -f docker-compose-prerelease.yml build --no-cache
+docker compose -f docker-compose-prerelease.yml up -d
+```
+
+> **Note:** All pre-release tags (e.g., `v0.9.8-custom-pre`) include validated custom features: Model Picker UI, MCP Toggle Panel, and Enhanced Kokoro Settings.
 
 ## 🐳 Fully Dockerized, with Speech-to-Text and TTS
 
 ![Settings](docs/res/settings-page-ui.png)
 
 - Customizable settings allow users to tailor the agent's behavior and responses to their needs.
+- Enhanced Model Picker UI with dropdown, history management, and remove buttons.
+- MCP Toggle Panel for easy enable/disable of MCP servers.
+- Enhanced Kokoro TTS settings with compute/device selection, voice selection, and speed controls.
 - The Web UI output is very clean, fluid, colorful, readable, and interactive; nothing is hidden.
 - You can load or save chats directly within the Web UI.
 - The same output you see in the terminal is automatically saved to an HTML file in **logs/** folder for every session.
@@ -145,11 +192,11 @@ docker run -p 50001:80 agent0ai/agent-zero
 
 ## 👀 Keep in Mind
 
-1. **Agent Zero Can Be Dangerous!**
+1. **AgentSpine Can Be Dangerous!**
 
-- With proper instruction, Agent Zero is capable of many things, even potentially dangerous actions concerning your computer, data, or accounts. Always run Agent Zero in an isolated environment (like Docker) and be careful what you wish for.
+- With proper instruction, AgentSpine is capable of many things, even potentially dangerous actions concerning your computer, data, or accounts. Always run AgentSpine in an isolated environment (like Docker) and be careful what you wish for.
 
-2. **Agent Zero Is Prompt-based.**
+2. **AgentSpine Is Prompt-based.**
 
 - The whole framework is guided by the **prompts/** folder. Agent guidelines, tool instructions, messages, utility AI functions, it's all there.
 
@@ -161,7 +208,7 @@ docker run -p 50001:80 agent0ai/agent-zero
 | [Installation](./docs/installation.md) | Installation, setup and configuration |
 | [Usage](./docs/usage.md) | Basic and advanced usage |
 | [Development](./docs/development.md) | Development and customization |
-| [Extensibility](./docs/extensibility.md) | Extending Agent Zero |
+| [Extensibility](./docs/extensibility.md) | Extending AgentSpine |
 | [Connectivity](./docs/connectivity.md) | External API endpoints, MCP server connections, A2A protocol |
 | [Architecture](./docs/architecture.md) | System design and components |
 | [Contributing](./docs/contribution.md) | How to contribute |
@@ -169,6 +216,23 @@ docker run -p 50001:80 agent0ai/agent-zero
 
 
 ## 🎯 Changelog
+
+### v0.9.8-custom-pre - Custom Features & Build Variants
+- **Model Picker UI Enhancements**: Improved dropdown with click-outside detection, staged history management, and remove buttons
+- **MCP Toggle Panel**: Dedicated modal for managing MCP servers with enable/disable toggles and status feed
+- **Enhanced Kokoro TTS Settings**: Compute/device selection, primary/blend voice selection, and voice speed controls
+- **Build Variant Support**: CPU-only, Full GPU, and Hybrid GPU build variants available
+- **Pre-release Tags**: All custom features validated and included in pre-release tags
+
+### v0.9.7-custom - Baseline Custom Features
+- Model Picker UI with latest dropdown and history features
+- MCP Toggle Panel implementation
+- Kokoro Enhanced Settings integration
+- Automatic version banner from git
+
+---
+
+### Original Agent Zero Releases
 
 ### v0.9.5 - Secrets
 [Release video](https://www.youtube.com/watch?v=VqxUdt7pjd8)
@@ -330,4 +394,4 @@ Default models set to gpt-4.1
 
 - [Join our Discord](https://discord.gg/B8KZKNsPpj) for live discussions or [visit our Skool Community](https://www.skool.com/agent-zero).
 - [Follow our YouTube channel](https://www.youtube.com/@AgentZeroFW) for hands-on explanations and tutorials
-- [Report Issues](https://github.com/agent0ai/agent-zero/issues) for bug fixes and features
+- [Report Issues](https://github.com/Omni-NexusAI/agent-zero/issues) for bug fixes and features
