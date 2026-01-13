@@ -1,0 +1,17 @@
+name: a0-cpu-custom
+
+services:
+  a0-cpu:
+    container_name: A0-cpu
+    build:
+      context: ./docker/run
+      dockerfile: Dockerfile
+      args:
+        GIT_REF: v0.9.8-custom-pre-cpu
+        BUILD_VARIANT: cpu
+        CACHE_DATE: ${CACHE_DATE:-none}
+    ports:
+      - "8891:80"
+    environment:
+      - BUILD_VARIANT=cpu
+    restart: unless-stopped

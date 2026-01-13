@@ -114,6 +114,13 @@ def get_tts_device_options(build_type: Optional[BuildType] = None) -> List[Dict[
             "label": "Remote GPU (worker) - Extend with any TTS endpoint"
         })
     
+    elif build_type == BuildType.CPU_ONLY:
+        # CPU-only build: add remote worker option for flexibility
+        options.append({
+            "value": "remote",
+            "label": "Remote GPU (worker) - Extend with any TTS endpoint"
+        })
+    
     return options
 
 
@@ -180,8 +187,8 @@ def is_setting_visible(setting_id: str, build_type: Optional[BuildType] = None) 
     if build_type is None:
         build_type = get_build_type()
     
-    # Settings that are only visible for Hybrid GPU builds
-    hybrid_only_settings = {
+    # Settings that are visible for Hybrid GPU and CPU-only builds
+    remote_worker_settings = {
         "tts_kokoro_remote_url",
         "tts_kokoro_remote_token",
         "tts_kokoro_remote_timeout",
@@ -192,8 +199,9 @@ def is_setting_visible(setting_id: str, build_type: Optional[BuildType] = None) 
         # Currently none - CUDA device selector is part of tts_device dropdown
     }
     
-    if setting_id in hybrid_only_settings:
-        return build_type == BuildType.HYBRID_GPU
+    if setting_id in remote_worker_settings:
+        # Remote worker settings visible for Hybrid GPU and CPU-only builds
+        return build_type == BuildType.HYBRID_GPU or build_type == BuildType.CPU_ONLY
     
     if setting_id in fullgpu_only_settings:
         return build_type == BuildType.FULL_GPU
@@ -229,7 +237,12 @@ def get_tts_description(build_type: Optional[BuildType] = None) -> str:
             "container for Kokoro TTS (default model)."
         )
     else:
-        return f"{base_description} Kokoro is the default TTS model."
+        # CPU-only build: mention remote worker capability
+        return (
+            f"{base_description} This build supports extending A0's TTS capabilities "
+            "with any TTS model that supports endpoint APIs via the remote worker option. "
+            "Kokoro is the default TTS model."
+        )
 
 
 def get_tts_device_description(build_type: Optional[BuildType] = None) -> str:
@@ -255,7 +268,11 @@ def get_tts_device_description(build_type: Optional[BuildType] = None) -> str:
     elif build_type == BuildType.FULL_GPU:
         return f"{base_description} This build has GPU acceleration enabled in the main container."
     else:
-        return base_description
+        # CPU-only build: mention remote worker option
+        return (
+            f"{base_description} Use 'Remote GPU (worker)' to extend A0 with any "
+            "TTS model that supports endpoint APIs."
+        )
 
 
 # Port configuration for Docker deployments
