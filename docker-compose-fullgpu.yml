@@ -9,6 +9,7 @@ services:
       args:
         GIT_REF: v0.9.8-custom-pre-fullgpu
         BUILD_VARIANT: fullGPU
+        PYTORCH_VARIANT: cuda
         CACHE_DATE: ${CACHE_DATE:-none}
     ports:
       - "8892:80"

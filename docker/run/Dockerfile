@@ -14,8 +14,27 @@ ENV BRANCH=$GIT_REF
 ARG BUILD_VARIANT=""
 ENV BUILD_VARIANT=$BUILD_VARIANT
 
-# Bake BUILD_VARIANT into /etc/environment so it persists at runtime for settings detection
-RUN echo "BUILD_VARIANT=\"$BUILD_VARIANT\"" >> /etc/environment
+# PyTorch variant: cpu or cuda (used to install correct PyTorch version)
+ARG PYTORCH_VARIANT=cpu
+ENV PYTORCH_VARIANT=$PYTORCH_VARIANT
+
+# Bake BUILD_VARIANT and PYTORCH_VARIANT into /etc/environment so they persist at runtime
+RUN echo "BUILD_VARIANT=\"$BUILD_VARIANT\"" >> /etc/environment && \
+    echo "PYTORCH_VARIANT=\"$PYTORCH_VARIANT\"" >> /etc/environment
+
+# Install PyTorch with CUDA support for FullGPU builds
+# This replaces the CPU-only PyTorch from the base image
+RUN if [ "$BUILD_VARIANT" = "fullGPU" ] || [ "$PYTORCH_VARIANT" = "cuda" ]; then \
+        echo "Installing PyTorch with CUDA support for FullGPU build..."; \
+        /opt/venv-a0/bin/pip install --no-cache-dir \
+            torch==2.4.0+cu124 \
+            torchvision==0.19.0+cu124 \
+            torchaudio==2.4.0+cu124 \
+            --index-url https://download.pytorch.org/whl/cu124; \
+        echo "PyTorch CUDA installation complete"; \
+    else \
+        echo "Skipping CUDA PyTorch (BUILD_VARIANT=$BUILD_VARIANT, PYTORCH_VARIANT=$PYTORCH_VARIANT)"; \
+    fi
 
 # Recreate venv on Python 3.11 via uv (whisper wheels not available for 3.13)
 RUN rm -rf /opt/venv && uv venv --python 3.11 /opt/venv \
