@@ -126,7 +126,8 @@ const settingsModalProxy = {
                         "classes": "btn btn-cancel"
                     }
                 ],
-                "sections": set.settings.sections
+                "sections": set.settings.sections,
+                "models_history": set.settings.models_history || {}
             }
 
             // Initialize model picker dropdown flags before wiring to modal
@@ -135,6 +136,9 @@ const settingsModalProxy = {
             // Update modal data
             modalAD.isOpen = true;
             modalAD.settings = settings;
+
+            // Migrate old localStorage history to server settings
+            this.migrateModelHistory();
 
             // Now set the active tab after the modal is open
             // This ensures Alpine reactivity works as expected
@@ -230,12 +234,13 @@ const settingsModalProxy = {
             const modalEl = document.getElementById('settingsModal');
             const modalAD = Alpine.$data(modalEl);
             try {
-                // Persist any staged model names to localStorage before saving
+                // Persist any staged model names before saving
                 try {
-                    cacheAllModelNames(modalAD.settings.sections);
+                    this.cacheAllModelNames(modalAD.settings.sections);
                 } catch (cacheErr) {
                     console.warn('cacheAllModelNames failed:', cacheErr);
                 }
+                // Send the entire settings object, which now includes models_history
                 resp = await window.sendJsonData("/settings_set", modalAD.settings);
             } catch (e) {
                 window.toastFetchError("Error saving settings", e)
@@ -317,20 +322,235 @@ const settingsModalProxy = {
         } else if (field.id === "memory_dashboard") {
             openModal("settings/memory/memory-dashboard.html");
         }
+    },
+
+    // --- Model Picker Methods ---
+
+    // Helper to find the provider field associated with a model name field
+    getProviderField(field, section) {
+        if (!field.id) return null;
+        let providerId = field.id.replace('_name', '_provider');
+
+        if (section && section.fields) {
+            return section.fields.find(f => f.id === providerId);
+        }
+        return null;
+    },
+
+    // Migrate old localStorage history to server-side settings
+    migrateModelHistory() {
+        if (!this.settings || !this.settings.sections) return;
+
+        let migratedCount = 0;
+
+        this.settings.sections.forEach(section => {
+            if (!section.fields) return;
+            section.fields.forEach(field => {
+                if (field.type === 'text' && (
+                    field.id && (field.id.endsWith('_model_name') ||
+                    field.id === 'chat_model_name' ||
+                    field.id === 'util_model_name' ||
+                    field.id === 'browser_model_name' ||
+                    field.id === 'embed_model_name'))
+                ) {
+                    const key = `model_history_${field.id}`;
+                    const cached = localStorage.getItem(key);
+                    if (cached) {
+                        try {
+                            const history = JSON.parse(cached);
+                            if (Array.isArray(history) && history.length > 0) {
+                                // Find provider
+                                const providerField = this.getProviderField(field, section);
+                                const provider = providerField ? providerField.value : 'unknown';
+
+                                // Initialize structure
+                                if (!this.settings.models_history) this.settings.models_history = {};
+                                if (!this.settings.models_history[field.id]) this.settings.models_history[field.id] = {};
+                                if (!this.settings.models_history[field.id][provider]) this.settings.models_history[field.id][provider] = [];
+
+                                // Merge unique
+                                const currentList = this.settings.models_history[field.id][provider];
+                                history.forEach(name => {
+                                    if (!currentList.includes(name)) {
+                                        currentList.unshift(name); // Add to beginning
+                                    }
+                                });
+
+                                // Limit to 20
+                                this.settings.models_history[field.id][provider] = this.settings.models_history[field.id][provider].slice(0, 20);
+
+                                migratedCount++;
+                            }
+                            localStorage.removeItem(key);
+                        } catch (e) {
+                            console.error("Error migrating history for " + field.id, e);
+                        }
+                    }
+                }
+            });
+        });
+
+        if (migratedCount > 0) {
+            console.log(`Migrated model history for ${migratedCount} fields.`);
+        }
+    },
+
+    getCachedModelNames(field, section) {
+        // Read reactive nonce
+        // eslint-disable-next-line no-unused-vars
+        const _nonce = field?.historyNonce;
+
+        // Get temp models (staged in this session)
+        const temp = field?._tempModels || [];
+
+        // Get history from settings based on provider
+        let history = [];
+        if (this.settings && this.settings.models_history && field.id) {
+            const providerField = this.getProviderField(field, section);
+            const provider = providerField ? providerField.value : 'unknown';
+
+            if (this.settings.models_history[field.id] && this.settings.models_history[field.id][provider]) {
+                history = this.settings.models_history[field.id][provider];
+            }
+        }
+
+        return [...new Set([...temp, ...history])];
+    },
+
+    cacheModelName(field, section, value) {
+        const val = value || field.value?.trim();
+        if (!val) return;
+
+        if (!this.settings.models_history) this.settings.models_history = {};
+        if (!this.settings.models_history[field.id]) this.settings.models_history[field.id] = {};
+
+        const providerField = this.getProviderField(field, section);
+        const provider = providerField ? providerField.value : 'unknown';
+
+        if (!this.settings.models_history[field.id][provider]) this.settings.models_history[field.id][provider] = [];
+
+        const currentList = this.settings.models_history[field.id][provider];
+
+        // Remove if exists
+        const filtered = currentList.filter(name => name !== val);
+
+        // Add to beginning
+        filtered.unshift(val);
+
+        // Limit
+        this.settings.models_history[field.id][provider] = filtered.slice(0, 20);
+    },
+
+    saveModelName(field, section) {
+        const value = field.value?.trim();
+        if (!value) return;
+
+        if (!field._tempModels) field._tempModels = [];
+        if (!field._tempModels.includes(value)) {
+            field._tempModels.unshift(value);
+        }
+
+        // Also persist to settings immediately if desired, or wait for Save button.
+        // User requested "saved save per provider".
+        // If I update `models_history` here, it will be saved when user clicks Save.
+        // But the dropdown should update immediately.
+        // The dropdown calls `getCachedModelNames` which reads from `models_history`.
+        // So I should update `models_history` here too?
+        // Actually, if I update `models_history` here, it is "staged" for save.
+
+        // Let's call cacheModelName to update the history structure in memory
+        this.cacheModelName(field, section, value);
+
+        field.historyNonce = (field.historyNonce || 0) + 1;
+        field.value = '';
+        if (field.showDropdown) field.showDropdown = false;
+    },
+
+    removeModelName(field, section, modelName) {
+        const targetValue = modelName;
+        if (!targetValue) return;
+
+        // Remove from temp
+        if (field._tempModels) {
+            field._tempModels = field._tempModels.filter(name => name !== targetValue);
+        }
+
+        // Remove from settings history
+        if (this.settings && this.settings.models_history && field.id) {
+            const providerField = this.getProviderField(field, section);
+            const provider = providerField ? providerField.value : 'unknown';
+
+            if (this.settings.models_history[field.id] && this.settings.models_history[field.id][provider]) {
+                const list = this.settings.models_history[field.id][provider];
+                this.settings.models_history[field.id][provider] = list.filter(name => name !== targetValue);
+            }
+        }
+
+        field.historyNonce = (field.historyNonce || 0) + 1;
+
+        // Clear field if matches
+        if (field.value === targetValue) {
+            field.value = '';
+            // Propagate event if needed? Alpine model should handle it if bound.
+        }
+    },
+
+    toggleModelDropdown(field) {
+        // Close all other dropdowns
+        if (this.settings && this.settings.sections) {
+            this.settings.sections.forEach(section => {
+                if (section.fields) {
+                    section.fields.forEach(f => {
+                         if (f !== field && typeof f.showDropdown !== 'undefined') {
+                             f.showDropdown = false;
+                         }
+                    });
+                }
+            });
+        }
+
+        field.showDropdown = !field.showDropdown;
+    },
+
+    selectModelName(field, modelName) {
+        field.value = modelName;
+        field.showDropdown = false;
+    },
+
+    handleFieldInput(field, value) {
+        field.value = value;
+    },
+
+    cacheAllModelNames(sections) {
+        if (!sections) return;
+        sections.forEach(section => {
+            if (!section.fields) return;
+            section.fields.forEach(field => {
+                if (field.type === 'text' && (
+                    field.id && (field.id.endsWith('_model_name') ||
+                    field.id === 'chat_model_name' ||
+                    field.id === 'util_model_name' ||
+                    field.id === 'browser_model_name' ||
+                    field.id === 'embed_model_name'))
+                ) {
+                    // Cache temp models
+                    if (field._tempModels && field._tempModels.length > 0) {
+                        field._tempModels.forEach(val => {
+                            this.cacheModelName(field, section, val);
+                        });
+                        field._tempModels = [];
+                    }
+                    // Cache current value if valid
+                    if (field.value && field.value.trim()) {
+                        this.cacheModelName(field, section, field.value.trim());
+                    }
+
+                    field.historyNonce = (field.historyNonce || 0) + 1;
+                }
+            });
+        });
     }
 };
-
-
-// function initSettingsModal() {
-
-//     window.openSettings = function () {
-//         proxy.openModal().then(result => {
-//             console.log(result);  // This will log the result when the modal is closed
-//         });
-//     }
-
-//     return proxy
-// }
 
 
 // document.addEventListener('alpine:init', () => {
@@ -622,163 +842,6 @@ document.addEventListener('alpine:init', function () {
         };
     });
 });
-
-// Model name caching functions for Model Picker feature
-// Get temp models that were staged via Enter but not yet saved
-function getTempModels(field) {
-    return field?._tempModels || [];
-}
-
-// Get local model history from localStorage
-function getLocalModelHistory(field) {
-    const key = `model_history_${field.id}`;
-    const cached = localStorage.getItem(key);
-    return cached ? JSON.parse(cached) : [];
-}
-
-// Get all cached model names (local history + temp staged models)
-function getCachedModelNames(field) {
-    // Read reactive nonce to make Alpine re-evaluate when it changes
-    // eslint-disable-next-line no-unused-vars
-    const _nonce = field?.historyNonce;
-    const local = getLocalModelHistory(field);
-    const temp = getTempModels(field);
-    return [...new Set([...temp, ...local])];
-}
-
-function cacheModelName(field) {
-    const value = field.value?.trim();
-    if (!value) return;
-    
-    const key = `model_history_${field.id}`;
-    const cached = getLocalModelHistory(field);
-    
-    // Remove if already exists to avoid duplicates
-    const filtered = cached.filter(name => name !== value);
-    
-    // Add to beginning of list
-    filtered.unshift(value);
-    
-    // Keep only last 20 models
-    const limited = filtered.slice(0, 20);
-    
-    localStorage.setItem(key, JSON.stringify(limited));
-}
-
-function removeModelName(field, modelName) {
-    // Prefer explicit id; if missing, try infer from active input
-    let fieldId = field?.id;
-    if (!fieldId) {
-        try {
-            const wrapper = document.activeElement?.closest?.('.model-name-wrapper');
-            const input = wrapper ? wrapper.querySelector('input') : null;
-            fieldId = input?.id || fieldId;
-        } catch {}
-    }
-    if (!fieldId) return;
-
-    const currentValue = field?.value?.trim();
-    const targetValue = modelName || currentValue;
-
-    // Remove from temp staged models
-    if (field._tempModels) {
-        field._tempModels = field._tempModels.filter(name => name !== targetValue);
-    }
-
-    // Remove from localStorage history immediately
-    const key = `model_history_${fieldId}`;
-    const cached = JSON.parse(localStorage.getItem(key) || '[]');
-    const filtered = cached.filter(name => name !== targetValue);
-    localStorage.setItem(key, JSON.stringify(filtered));
-
-    // Trigger reactive refresh
-    try {
-        field.historyNonce = (field.historyNonce || 0) + 1;
-    } catch {}
-
-    // Clear the field if it matches removed value and propagate input
-    if (field && currentValue === targetValue) {
-        field.value = '';
-        const inputElement = document.getElementById(fieldId);
-        if (inputElement) {
-            inputElement.value = '';
-            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-    }
-}
-
-function handleFieldInput(field, value) {
-    // Just update; staging/persisting handled on Enter/Save
-    field.value = value;
-}
-
-function toggleModelDropdown(field) {
-    // Close all other dropdowns first
-    document.querySelectorAll('.model-dropdown').forEach(dropdown => {
-        const wrapper = dropdown.closest('.model-name-wrapper');
-        if (wrapper) {
-            const input = wrapper.querySelector('input');
-            if (input && input.id !== field.id) {
-                const fieldData = Alpine.$data(input);
-                if (fieldData) {
-                    fieldData.showDropdown = false;
-                }
-            }
-        }
-    });
-    
-    // Toggle current dropdown
-    field.showDropdown = !field.showDropdown;
-}
-
-function selectModelName(field, modelName) {
-    field.value = modelName;
-    field.showDropdown = false;
-    // Do not cache here; caching occurs on Save
-}
-
-function saveModelName(field) {
-    const value = field.value?.trim();
-    if (!value) return;
-    if (!field._tempModels) field._tempModels = [];
-    if (!field._tempModels.includes(value)) {
-        field._tempModels.unshift(value);
-    }
-    field.historyNonce = (field.historyNonce || 0) + 1;
-    field.value = '';
-    if (field.showDropdown) field.showDropdown = false;
-}
-
-// Persist all model names from all fields to localStorage
-function cacheAllModelNames(sections) {
-    if (!sections) return;
-    sections.forEach(section => {
-        if (!section.fields) return;
-        section.fields.forEach(field => {
-            if (field.type === 'text' && (
-                field.id && (field.id.endsWith('_model_name') ||
-                field.id === 'chat_model_name' ||
-                field.id === 'util_model_name' ||
-                field.id === 'browser_model_name' ||
-                field.id === 'embed_model_name'))
-            ) {
-                const valuesToCache = [];
-                if (field._tempModels && field._tempModels.length > 0) {
-                    valuesToCache.push(...field._tempModels);
-                }
-                if (field.value && field.value.trim()) {
-                    valuesToCache.push(field.value.trim());
-                }
-                valuesToCache.forEach(val => {
-                    if (!val) return;
-                    cacheModelName({ id: field.id, value: val });
-                });
-                field._tempModels = [];
-                field.historyNonce = (field.historyNonce || 0) + 1;
-            }
-        });
-    });
-}
 
 // Show toast notification - now uses new notification system
 function showToast(message, type = 'info') {

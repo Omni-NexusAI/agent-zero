@@ -127,6 +127,8 @@ class Settings(TypedDict):
     # LiteLLM global kwargs applied to all model calls
     litellm_global_kwargs: dict[str, Any]
 
+    models_history: dict[str, dict[str, list[str]]]
+
 class PartialSettings(Settings, total=False):
     pass
 
@@ -170,6 +172,7 @@ class SettingsSection(TypedDict, total=False):
 
 class SettingsOutput(TypedDict):
     sections: list[SettingsSection]
+    models_history: dict[str, dict[str, list[str]]]
 
 
 PASSWORD_PLACEHOLDER = "****PSWD****"
@@ -1433,6 +1436,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             # code_exec_section,
         ]
     }
+    result["models_history"] = settings.get("models_history", {})
     return result
 
 
@@ -1466,6 +1470,10 @@ def convert_in(settings: dict) -> Settings:
                         current["api_keys"][field["id"]] = field["value"]
                     else:
                         current[field["id"]] = field["value"]
+
+    if "models_history" in settings:
+        current["models_history"] = settings["models_history"]
+
     return current
 
 def get_settings() -> Settings:
@@ -1673,6 +1681,7 @@ def get_default_settings() -> Settings:
         variables="",
         secrets="",
         litellm_global_kwargs={},
+        models_history={},
     )
 
 
