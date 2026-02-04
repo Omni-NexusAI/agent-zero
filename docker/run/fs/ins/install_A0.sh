@@ -23,8 +23,8 @@ if [ "$GIT_REF" = "local" ]; then
     # List all files recursively in the target directory
     # echo "All files in /git/agent-zero (recursive):"
     # find "/git/agent-zero" -type f | sort
-elif [ "$GIT_REF" = "development" ] || [ "$IS_TAG" = true ] || [[ "$GIT_REF" == feature/hybrid-* ]]; then
-    # For development branch, tags, or hybrid feature branches, use Omni-NexusAI fork (validated custom features)
+elif [ "$GIT_REF" = "development" ] || [ "$IS_TAG" = true ] || [[ "$GIT_REF" == feature/* ]] || [[ "$GIT_REF" == fix/* ]]; then
+    # For development branch, tags, feature branches, or fix branches, use Omni-NexusAI fork
     echo "Cloning $GIT_REF from Omni-NexusAI repository..."
     git clone -b "$GIT_REF" "https://github.com/Omni-NexusAI/agent-zero" "/git/agent-zero" || {
         echo "CRITICAL ERROR: Failed to clone $GIT_REF from Omni-NexusAI"
