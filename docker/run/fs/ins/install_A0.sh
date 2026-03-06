@@ -55,19 +55,10 @@ echo "$BUILD_VERSION" > /tmp/A0_BUILD_VERSION.txt
 # # Install some packages in specific variants
 # pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-# Ensure tooling compatibility (whisper build on Python 3.13)
-pip install "setuptools<81" wheel
-
-# Patch whisper requirement for py3.11 compatibility
-sed -i 's/openai-whisper==20240930/openai-whisper==20231117/' /git/agent-zero/requirements.txt
-
-# Install dependencies with a whisper constraint for py3.13
-echo "openai-whisper==20231117" > /tmp/constraints.txt
-pip install -r /git/agent-zero/requirements.txt -c /tmp/constraints.txt
+# Install A0 python packages (use uv for speed, matching upstream approach)
+uv pip install -r /git/agent-zero/requirements.txt
 # override for packages that have unnecessarily strict dependencies
 uv pip install -r /git/agent-zero/requirements2.txt
-# Ensure key deps present
-pip install "litellm" "aiohttp==3.10.5"
 
 # install playwright
 bash /ins/install_playwright.sh "$@"
