@@ -7,8 +7,15 @@ set -e
 REPO_PATH="${1:-/git/agent-zero}"
 
 if [ ! -d "$REPO_PATH/.git" ]; then
-    echo "ERROR: Not a git repository: $REPO_PATH" >&2
-    exit 1
+    VARIANT_PREFIX=""
+    if [ -n "$BUILD_VARIANT" ]; then
+        VARIANT_PREFIX="${BUILD_VARIANT} "
+    fi
+    DISPLAY_VERSION="Version D ${VARIANT_PREFIX}local-dev-custom $(date +"%Y-%m-%d %H:%M:%S")"
+    echo "$DISPLAY_VERSION" > /tmp/A0_BUILD_VERSION.txt
+    echo "No git repo found, using local version: $DISPLAY_VERSION" >&2
+    echo "$DISPLAY_VERSION"
+    exit 0
 fi
 
 cd "$REPO_PATH"
