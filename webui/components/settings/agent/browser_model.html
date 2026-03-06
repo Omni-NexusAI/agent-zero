@@ -32,7 +32,29 @@
               <div class="field-description">Exact name of model from selected provider</div>
             </div>
             <div class="field-control">
-              <input type="text" x-model="$store.settings.settings.browser_model_name" />
+              <div class="model-name-wrapper"
+                   x-data="{ showDropdown: false }"
+                   @click.outside="showDropdown = false">
+                <input type="text"
+                       x-model="$store.settings.settings.browser_model_name"
+                       @keydown.enter="$store.settings.addToModelHistory('browser_model_name', $store.settings.settings.browser_model_name)"
+                       style="flex:1; padding-right:4.4em;" />
+                <button type="button" title="Remove from history"
+                        @click="$store.settings.removeFromModelHistory('browser_model_name', $store.settings.settings.browser_model_name)"
+                        class="model-remove-btn">&minus;</button>
+                <button type="button" aria-label="Toggle dropdown"
+                        @click="showDropdown = !showDropdown"
+                        class="model-dropdown-btn">&#x25BE;</button>
+                <div x-show="showDropdown" x-transition class="model-dropdown">
+                  <template x-for="name in $store.settings.getModelHistory('browser_model_name')" :key="name">
+                    <div class="model-dropdown-item"
+                         @click="$store.settings.settings.browser_model_name = name; showDropdown = false"
+                         x-text="name"></div>
+                  </template>
+                  <div x-show="$store.settings.getModelHistory('browser_model_name').length === 0"
+                       class="model-dropdown-empty">No saved models</div>
+                </div>
+              </div>
             </div>
           </div>
 

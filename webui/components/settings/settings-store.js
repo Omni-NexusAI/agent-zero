@@ -92,6 +92,40 @@ const model = {
     this.activeTab = tabName;
   },
 
+  // Model picker history (localStorage-backed)
+  getModelHistory(fieldId) {
+    try {
+      return JSON.parse(localStorage.getItem(`model_history_${fieldId}`) || "[]");
+    } catch { return []; }
+  },
+
+  addToModelHistory(fieldId, value) {
+    if (!value?.trim()) return;
+    const val = value.trim();
+    const history = this.getModelHistory(fieldId);
+    const filtered = history.filter(n => n !== val);
+    filtered.unshift(val);
+    localStorage.setItem(`model_history_${fieldId}`, JSON.stringify(filtered.slice(0, 20)));
+  },
+
+  removeFromModelHistory(fieldId, value) {
+    if (!value?.trim()) return;
+    const history = this.getModelHistory(fieldId);
+    localStorage.setItem(
+      `model_history_${fieldId}`,
+      JSON.stringify(history.filter(n => n !== value.trim()))
+    );
+  },
+
+  cacheAllModelNames() {
+    if (!this.settings) return;
+    const modelFields = ["chat_model_name", "util_model_name", "browser_model_name", "embed_model_name"];
+    modelFields.forEach(id => {
+      const v = this.settings[id];
+      if (v?.trim()) this.addToModelHistory(id, v);
+    });
+  },
+
 
 
   get apiKeyProviders() {
@@ -117,6 +151,7 @@ const model = {
       return false;
     }
 
+    this.cacheAllModelNames();
     this.isLoading = true;
     try {
       const response = await API.callJsonApi("settings_set", { settings: this.settings });

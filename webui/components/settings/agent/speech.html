@@ -91,6 +91,232 @@
               </label>
             </div>
           </div>
+
+          <!-- Kokoro Voice Selector (Primary) -->
+          <div class="field" x-data="{
+            open: false,
+            voices: [
+              {value:'af_alloy',label:'US \u2022 Female \u2022 American \u2022 af_alloy'},
+              {value:'af_aoede',label:'US \u2022 Female \u2022 American \u2022 af_aoede'},
+              {value:'af_bella',label:'US \u2022 Female \u2022 American \u2022 af_bella'},
+              {value:'af_heart',label:'US \u2022 Female \u2022 American \u2022 af_heart'},
+              {value:'af_jessica',label:'US \u2022 Female \u2022 American \u2022 af_jessica'},
+              {value:'af_kore',label:'US \u2022 Female \u2022 American \u2022 af_kore'},
+              {value:'af_nicole',label:'US \u2022 Female \u2022 American \u2022 af_nicole'},
+              {value:'af_nova',label:'US \u2022 Female \u2022 American \u2022 af_nova'},
+              {value:'af_river',label:'US \u2022 Female \u2022 American \u2022 af_river'},
+              {value:'af_sarah',label:'US \u2022 Female \u2022 American \u2022 af_sarah'},
+              {value:'af_sky',label:'US \u2022 Female \u2022 American \u2022 af_sky'},
+              {value:'am_adam',label:'US \u2022 Male \u2022 American \u2022 am_adam'},
+              {value:'am_echo',label:'US \u2022 Male \u2022 American \u2022 am_echo'},
+              {value:'am_eric',label:'US \u2022 Male \u2022 American \u2022 am_eric'},
+              {value:'am_fenrir',label:'US \u2022 Male \u2022 American \u2022 am_fenrir'},
+              {value:'am_liam',label:'US \u2022 Male \u2022 American \u2022 am_liam'},
+              {value:'am_michael',label:'US \u2022 Male \u2022 American \u2022 am_michael'},
+              {value:'am_onyx',label:'US \u2022 Male \u2022 American \u2022 am_onyx'},
+              {value:'am_puck',label:'US \u2022 Male \u2022 American \u2022 am_puck'},
+              {value:'bf_alice',label:'GB \u2022 Female \u2022 British \u2022 bf_alice'},
+              {value:'bf_emma',label:'GB \u2022 Female \u2022 British \u2022 bf_emma'},
+              {value:'bf_isabella',label:'GB \u2022 Female \u2022 British \u2022 bf_isabella'},
+              {value:'bf_lily',label:'GB \u2022 Female \u2022 British \u2022 bf_lily'},
+              {value:'bm_daniel',label:'GB \u2022 Male \u2022 British \u2022 bm_daniel'},
+              {value:'bm_fable',label:'GB \u2022 Male \u2022 British \u2022 bm_fable'},
+              {value:'bm_george',label:'GB \u2022 Male \u2022 British \u2022 bm_george'},
+              {value:'bm_lewis',label:'GB \u2022 Male \u2022 British \u2022 bm_lewis'}
+            ],
+            getParts(val) { return (this.voices.find(v=>v.value===val)?.label||'').split(' \u2022 '); },
+            getLabel(val) { return this.voices.find(v=>v.value===val)?.label; }
+          }" @click.outside="open=false">
+            <div class="field-label">
+              <div class="field-title">Primary voice</div>
+              <div class="field-description">Select an English (US/UK) Kokoro voice.</div>
+            </div>
+            <div class="field-control">
+              <div class="voice-select">
+                <button type="button" class="voice-select-btn"
+                        :disabled="!$store.settings.settings.tts_kokoro"
+                        @click="$store.settings.settings.tts_kokoro && (open = !open)">
+                  <template x-if="getLabel($store.settings.settings.tts_kokoro_voice)">
+                    <div>
+                      <span class="voice-region" x-text="getParts($store.settings.settings.tts_kokoro_voice)[0]"></span>
+                      <span class="voice-sep"> &bull; </span>
+                      <span class="voice-meta" x-text="getParts($store.settings.settings.tts_kokoro_voice)[1]"></span>
+                      <span class="voice-sep"> &bull; </span>
+                      <span class="voice-meta" x-text="getParts($store.settings.settings.tts_kokoro_voice)[2]"></span>
+                      <span class="voice-sep"> &bull; </span>
+                      <span class="voice-name" x-text="getParts($store.settings.settings.tts_kokoro_voice)[3]"></span>
+                    </div>
+                  </template>
+                  <template x-if="!getLabel($store.settings.settings.tts_kokoro_voice)">
+                    <span>Select voice...</span>
+                  </template>
+                </button>
+                <div class="voice-select-list" x-show="open && $store.settings.settings.tts_kokoro" x-transition>
+                  <template x-for="option in voices" :key="option.value">
+                    <div class="voice-option"
+                         @click="$store.settings.settings.tts_kokoro_voice = option.value; open=false"
+                         x-data="{ parts: option.label.split(' \u2022 ') }">
+                      <span class="voice-region" x-text="parts[0]"></span>
+                      <span class="voice-sep"> &bull; </span>
+                      <span class="voice-meta" x-text="parts[1]"></span>
+                      <span class="voice-sep"> &bull; </span>
+                      <span class="voice-meta" x-text="parts[2]"></span>
+                      <span class="voice-sep"> &bull; </span>
+                      <span class="voice-name" x-text="parts[3]"></span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kokoro Voice Selector (Secondary / Blend) -->
+          <div class="field" x-data="{
+            open: false,
+            voices: [
+              {value:'',label:'None'},
+              {value:'af_alloy',label:'US \u2022 Female \u2022 American \u2022 af_alloy'},
+              {value:'af_aoede',label:'US \u2022 Female \u2022 American \u2022 af_aoede'},
+              {value:'af_bella',label:'US \u2022 Female \u2022 American \u2022 af_bella'},
+              {value:'af_heart',label:'US \u2022 Female \u2022 American \u2022 af_heart'},
+              {value:'af_jessica',label:'US \u2022 Female \u2022 American \u2022 af_jessica'},
+              {value:'af_kore',label:'US \u2022 Female \u2022 American \u2022 af_kore'},
+              {value:'af_nicole',label:'US \u2022 Female \u2022 American \u2022 af_nicole'},
+              {value:'af_nova',label:'US \u2022 Female \u2022 American \u2022 af_nova'},
+              {value:'af_river',label:'US \u2022 Female \u2022 American \u2022 af_river'},
+              {value:'af_sarah',label:'US \u2022 Female \u2022 American \u2022 af_sarah'},
+              {value:'af_sky',label:'US \u2022 Female \u2022 American \u2022 af_sky'},
+              {value:'am_adam',label:'US \u2022 Male \u2022 American \u2022 am_adam'},
+              {value:'am_echo',label:'US \u2022 Male \u2022 American \u2022 am_echo'},
+              {value:'am_eric',label:'US \u2022 Male \u2022 American \u2022 am_eric'},
+              {value:'am_fenrir',label:'US \u2022 Male \u2022 American \u2022 am_fenrir'},
+              {value:'am_liam',label:'US \u2022 Male \u2022 American \u2022 am_liam'},
+              {value:'am_michael',label:'US \u2022 Male \u2022 American \u2022 am_michael'},
+              {value:'am_onyx',label:'US \u2022 Male \u2022 American \u2022 am_onyx'},
+              {value:'am_puck',label:'US \u2022 Male \u2022 American \u2022 am_puck'},
+              {value:'bf_alice',label:'GB \u2022 Female \u2022 British \u2022 bf_alice'},
+              {value:'bf_emma',label:'GB \u2022 Female \u2022 British \u2022 bf_emma'},
+              {value:'bf_isabella',label:'GB \u2022 Female \u2022 British \u2022 bf_isabella'},
+              {value:'bf_lily',label:'GB \u2022 Female \u2022 British \u2022 bf_lily'},
+              {value:'bm_daniel',label:'GB \u2022 Male \u2022 British \u2022 bm_daniel'},
+              {value:'bm_fable',label:'GB \u2022 Male \u2022 British \u2022 bm_fable'},
+              {value:'bm_george',label:'GB \u2022 Male \u2022 British \u2022 bm_george'},
+              {value:'bm_lewis',label:'GB \u2022 Male \u2022 British \u2022 bm_lewis'}
+            ],
+            getParts(val) { if(!val) return ['None']; return (this.voices.find(v=>v.value===val)?.label||'').split(' \u2022 '); },
+            getLabel(val) { if(!val) return 'None'; return this.voices.find(v=>v.value===val)?.label; }
+          }" @click.outside="open=false">
+            <div class="field-label">
+              <div class="field-title">Blend with (optional)</div>
+              <div class="field-description">Optional secondary voice to blend (50/50).</div>
+            </div>
+            <div class="field-control">
+              <div class="voice-select">
+                <button type="button" class="voice-select-btn"
+                        :disabled="!$store.settings.settings.tts_kokoro"
+                        @click="$store.settings.settings.tts_kokoro && (open = !open)">
+                  <template x-if="$store.settings.settings.tts_kokoro_voice_secondary && getLabel($store.settings.settings.tts_kokoro_voice_secondary)">
+                    <div>
+                      <span class="voice-region" x-text="getParts($store.settings.settings.tts_kokoro_voice_secondary)[0]"></span>
+                      <span class="voice-sep"> &bull; </span>
+                      <span class="voice-meta" x-text="getParts($store.settings.settings.tts_kokoro_voice_secondary)[1]"></span>
+                      <span class="voice-sep"> &bull; </span>
+                      <span class="voice-meta" x-text="getParts($store.settings.settings.tts_kokoro_voice_secondary)[2]"></span>
+                      <span class="voice-sep"> &bull; </span>
+                      <span class="voice-name" x-text="getParts($store.settings.settings.tts_kokoro_voice_secondary)[3]"></span>
+                    </div>
+                  </template>
+                  <template x-if="!$store.settings.settings.tts_kokoro_voice_secondary">
+                    <span>None</span>
+                  </template>
+                </button>
+                <div class="voice-select-list" x-show="open && $store.settings.settings.tts_kokoro" x-transition>
+                  <template x-for="option in voices" :key="'sec_'+option.value">
+                    <div class="voice-option"
+                         @click="$store.settings.settings.tts_kokoro_voice_secondary = option.value; open=false">
+                      <template x-if="option.value">
+                        <div x-data="{ parts: option.label.split(' \u2022 ') }">
+                          <span class="voice-region" x-text="parts[0]"></span>
+                          <span class="voice-sep"> &bull; </span>
+                          <span class="voice-meta" x-text="parts[1]"></span>
+                          <span class="voice-sep"> &bull; </span>
+                          <span class="voice-meta" x-text="parts[2]"></span>
+                          <span class="voice-sep"> &bull; </span>
+                          <span class="voice-name" x-text="parts[3]"></span>
+                        </div>
+                      </template>
+                      <template x-if="!option.value">
+                        <span>None</span>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kokoro Voice Speed -->
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">Voice speed</div>
+              <div class="field-description">Kokoro TTS playback speed multiplier.</div>
+            </div>
+            <div class="field-control">
+              <input type="number" step="0.1" min="0.5" max="2.0"
+                     x-model.number="$store.settings.settings.tts_kokoro_speed"
+                     :disabled="!$store.settings.settings.tts_kokoro" />
+            </div>
+          </div>
+
+          <!-- Kokoro TTS Device -->
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">TTS device</div>
+              <div class="field-description">Compute device for Kokoro TTS inference.</div>
+            </div>
+            <div class="field-control">
+              <input type="text" x-model="$store.settings.settings.tts_device"
+                     :disabled="!$store.settings.settings.tts_kokoro" />
+            </div>
+          </div>
+
+          <!-- Kokoro Remote URL -->
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">Remote Kokoro worker URL</div>
+              <div class="field-description">URL of the remote Kokoro GPU worker (for hybrid builds).</div>
+            </div>
+            <div class="field-control">
+              <input type="text" x-model="$store.settings.settings.tts_kokoro_remote_url"
+                     :disabled="!$store.settings.settings.tts_kokoro" />
+            </div>
+          </div>
+
+          <!-- Kokoro Remote Token -->
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">Remote Kokoro auth token</div>
+              <div class="field-description">Bearer token for authenticating with the remote Kokoro worker.</div>
+            </div>
+            <div class="field-control">
+              <input type="password" x-model="$store.settings.settings.tts_kokoro_remote_token"
+                     :disabled="!$store.settings.settings.tts_kokoro"
+                     autocomplete="off" />
+            </div>
+          </div>
+
+          <!-- Kokoro Remote Timeout -->
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">Remote Kokoro timeout (s)</div>
+              <div class="field-description">Timeout in seconds for remote Kokoro worker requests.</div>
+            </div>
+            <div class="field-control">
+              <input type="number" step="1" min="1"
+                     x-model.number="$store.settings.settings.tts_kokoro_remote_timeout"
+                     :disabled="!$store.settings.settings.tts_kokoro" />
+            </div>
+          </div>
         </div>
       </template>
     </div>
