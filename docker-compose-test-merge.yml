@@ -1,0 +1,17 @@
+name: a0-merge-test
+
+services:
+  a0-merge-test:
+    container_name: A0-merge-test
+    build:
+      context: .
+      dockerfile: DockerfileLocal
+      args:
+        BRANCH: local
+        CACHE_DATE: ${CACHE_DATE:-none}
+    ports:
+      - "8896:80"
+    environment:
+      - BUILD_VARIANT=fullGPU
+      - PYTORCH_VARIANT=cpu
+    restart: unless-stopped

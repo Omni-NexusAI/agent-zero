@@ -58,10 +58,6 @@ echo "$BUILD_VERSION" > /tmp/A0_BUILD_VERSION.txt
 # Ensure tooling compatibility (whisper build on Python 3.13)
 pip install "setuptools<81" wheel
 
-# Validate and fix critical dependencies (e.g., fastmcp==2.3.0)
-echo "Validating critical dependencies..."
-bash /ins/validate_dependencies.sh /git/agent-zero
-
 # Patch whisper requirement for py3.11 compatibility
 sed -i 's/openai-whisper==20240930/openai-whisper==20231117/' /git/agent-zero/requirements.txt
 
@@ -71,22 +67,7 @@ pip install -r /git/agent-zero/requirements.txt -c /tmp/constraints.txt
 # override for packages that have unnecessarily strict dependencies
 uv pip install -r /git/agent-zero/requirements2.txt
 # Ensure key deps present
-pip install "litellm==1.75.0" "aiohttp==3.10.5"
-
-# Safety check: explicitly ensure fastmcp==2.3.0 is installed (overrides if wrong version was installed)
-echo "Ensuring fastmcp==2.3.0 is correctly installed..."
-uv pip install --force-reinstall --no-cache-dir "fastmcp==2.3.0" || {
-    echo "ERROR: Failed to install fastmcp==2.3.0"
-    exit 1
-}
-
-# Verify fastmcp version
-INSTALLED_VERSION=$(python -c "import fastmcp; print(fastmcp.__version__)" 2>/dev/null || echo "not found")
-if [ "$INSTALLED_VERSION" != "2.3.0" ]; then
-    echo "ERROR: fastmcp version mismatch. Expected: 2.3.0, Got: $INSTALLED_VERSION"
-    exit 1
-fi
-echo "✓ Verified fastmcp==2.3.0 is installed"
+pip install "litellm" "aiohttp==3.10.5"
 
 # install playwright
 bash /ins/install_playwright.sh "$@"
