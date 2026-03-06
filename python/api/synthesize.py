@@ -8,6 +8,8 @@ class Synthesize(ApiHandler):
     async def process(self, input: dict, request: Request) -> dict | Response:
         text = input.get("text", "")
         ctxid = input.get("ctxid", "")
+        voice = input.get("voice")
+        voice2 = input.get("voice2")
         
         if ctxid:
             context = self.use_context(ctxid)
@@ -16,24 +18,13 @@ class Synthesize(ApiHandler):
         #     context.log.log(type="info", content="Kokoro TTS model is currently being initialized, please wait...")
 
         try:
-            # # Clean and chunk text for long responses
-            # cleaned_text = self._clean_text(text)
-            # chunks = self._chunk_text(cleaned_text)
-            
-            # if len(chunks) == 1:
-            #     # Single chunk - return as before
-            #     audio = await kokoro_tts.synthesize_sentences(chunks)
-            #     return {"audio": audio, "success": True}
-            # else:
-            #     # Multiple chunks - return as sequence
-            #     audio_parts = []
-            #     for chunk in chunks:
-            #         chunk_audio = await kokoro_tts.synthesize_sentences([chunk])
-            #         audio_parts.append(chunk_audio)
-            #     return {"audio_parts": audio_parts, "success": True}
+            if not voice or voice == "default":
+                voice = settings.get_settings().get("tts_kokoro_voice")
+            if not voice2 or voice2 == "default":
+                voice2 = settings.get_settings().get("tts_kokoro_voice_secondary") or None
 
             # audio is chunked on the frontend for better flow
-            audio = await kokoro_tts.synthesize_sentences([text])
+            audio = await kokoro_tts.synthesize_sentences([text], voice, voice2)
             return {"audio": audio, "success": True}
         except Exception as e:
             return {"error": str(e), "success": False}

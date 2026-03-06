@@ -671,11 +671,16 @@ class MCPConfig(BaseModel):
                         "error": error,
                         "tool_count": tool_count,
                         "has_log": has_log,
+                        "disabled": server.disabled,
                     }
                 )
 
             # add failed servers
             for disconnected in self.disconnected_servers:
+                disabled = False
+                config = disconnected.get("config")
+                if isinstance(config, dict):
+                    disabled = bool(config.get("disabled", False))
                 result.append(
                     {
                         "name": disconnected["name"],
@@ -683,6 +688,7 @@ class MCPConfig(BaseModel):
                         "error": disconnected["error"],
                         "tool_count": 0,
                         "has_log": False,
+                        "disabled": disabled,
                     }
                 )
 

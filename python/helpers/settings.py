@@ -14,6 +14,15 @@ from python.helpers.providers import get_providers, FieldOption as ProvidersFO
 from python.helpers.secrets import get_default_secrets_manager
 from python.helpers import dirty_json
 from python.helpers.notification import NotificationManager, NotificationType, NotificationPriority
+from python.helpers.build_type import (
+    BuildType,
+    get_build_type,
+    get_tts_device_options,
+    get_tts_defaults,
+    is_setting_visible,
+    get_tts_description,
+    get_tts_device_description,
+)
 
 
 T = TypeVar('T')
@@ -141,6 +150,13 @@ class Settings(TypedDict):
     stt_waiting_timeout: int
 
     tts_kokoro: bool
+    tts_device: str
+    tts_kokoro_voice: str
+    tts_kokoro_voice_secondary: str
+    tts_kokoro_speed: float
+    tts_kokoro_remote_url: str
+    tts_kokoro_remote_token: str
+    tts_kokoro_remote_timeout: float
 
     mcp_servers: str
     mcp_client_init_timeout: int
@@ -511,6 +527,7 @@ def _write_sensitive_settings(settings: Settings):
 
 def get_default_settings() -> Settings:
     gitignore = files.read_file(files.get_abs_path("conf/workdir.gitignore"))
+    tts_defaults = get_tts_defaults()
     return Settings(
         version=_get_version(),
         chat_model_provider=get_default_value("chat_model_provider", "openrouter"),
@@ -588,7 +605,14 @@ def get_default_settings() -> Settings:
         stt_silence_threshold=get_default_value("stt_silence_threshold", 0.3),
         stt_silence_duration=get_default_value("stt_silence_duration", 1000),
         stt_waiting_timeout=get_default_value("stt_waiting_timeout", 2000),
-        tts_kokoro=get_default_value("tts_kokoro", True),
+        tts_kokoro=get_default_value("tts_kokoro", tts_defaults.get("tts_kokoro", True)),
+        tts_device=get_default_value("tts_device", tts_defaults.get("tts_device", "auto")),
+        tts_kokoro_voice=get_default_value("tts_kokoro_voice", tts_defaults.get("tts_kokoro_voice", "am_michael")),
+        tts_kokoro_voice_secondary=get_default_value("tts_kokoro_voice_secondary", tts_defaults.get("tts_kokoro_voice_secondary", "")),
+        tts_kokoro_speed=get_default_value("tts_kokoro_speed", tts_defaults.get("tts_kokoro_speed", 1.1)),
+        tts_kokoro_remote_url=get_default_value("tts_kokoro_remote_url", tts_defaults.get("tts_kokoro_remote_url", "")),
+        tts_kokoro_remote_token=get_default_value("tts_kokoro_remote_token", tts_defaults.get("tts_kokoro_remote_token", "")),
+        tts_kokoro_remote_timeout=get_default_value("tts_kokoro_remote_timeout", tts_defaults.get("tts_kokoro_remote_timeout", 20)),
         mcp_servers=get_default_value("mcp_servers", '{\n    "mcpServers": {}\n}'),
         mcp_client_init_timeout=get_default_value("mcp_client_init_timeout", 10),
         mcp_client_tool_timeout=get_default_value("mcp_client_tool_timeout", 120),
@@ -716,6 +740,96 @@ def _apply_settings(previous: Settings | None):
             task4 = defer.DeferredTask().start_task(
                 update_a2a_token, current_token
             )  # TODO overkill, replace with background task
+
+        # Kokoro TTS hot-apply settings
+        if _settings.get("tts_kokoro"):
+            try:
+                from python.helpers import kokoro_tts
+
+                current_policy = _settings.get("tts_device", "auto")
+                previous_policy = previous.get("tts_device") if previous else None
+                policy_changed = (previous is None) or (current_policy != previous_policy)
+                remote_selected = kokoro_tts.is_remote_policy(current_policy)
+                remote_props_changed = (
+                    not previous
+                    or _settings.get("tts_kokoro_remote_url") != previous.get("tts_kokoro_remote_url")
+                    or _settings.get("tts_kokoro_remote_token") != previous.get("tts_kokoro_remote_token")
+                    or _settings.get("tts_kokoro_remote_timeout") != previous.get("tts_kokoro_remote_timeout")
+                )
+
+                if remote_selected:
+                    device_changed = policy_changed
+
+                    if policy_changed or remote_props_changed:
+
+                        async def verify_remote():
+                            await kokoro_tts.verify_remote_worker(
+                                _settings.get("tts_kokoro_remote_url", ""),
+                                _settings.get("tts_kokoro_remote_token", ""),
+                                float(_settings.get("tts_kokoro_remote_timeout", 20)),
+                                notify=True,
+                            )
+
+                        defer.DeferredTask().start_task(verify_remote)
+
+                else:
+                    if policy_changed:
+                        device_changed = True
+                        new_device = current_policy
+
+                        async def reload_kokoro_device(device: str):
+                            await kokoro_tts.reload_model(device)
+
+                        defer.DeferredTask().start_task(reload_kokoro_device, new_device)
+                    else:
+                        device_changed = False
+
+                if not previous or (
+                    _settings.get("tts_kokoro_voice") != previous.get("tts_kokoro_voice")
+                    or _settings.get("tts_kokoro_voice_secondary") != previous.get("tts_kokoro_voice_secondary")
+                ):
+                    new_voice = _settings.get("tts_kokoro_voice", "am_michael")
+                    secondary_voice = _settings.get("tts_kokoro_voice_secondary", "")
+
+                    kokoro_tts.set_voice(new_voice)
+
+                    if secondary_voice:
+                        NotificationManager.send_notification(
+                            type=NotificationType.INFO,
+                            priority=NotificationPriority.NORMAL,
+                            message=f"Kokoro TTS using merged voices: {new_voice} + {secondary_voice}",
+                            display_time=4,
+                            group="kokoro-voice",
+                        )
+                    else:
+                        NotificationManager.send_notification(
+                            type=NotificationType.SUCCESS,
+                            priority=NotificationPriority.NORMAL,
+                            message=f"Kokoro TTS voice changed to {new_voice} successfully.",
+                            display_time=3,
+                            group="kokoro-voice",
+                        )
+
+                if not previous or _settings.get("tts_kokoro_speed") != previous.get("tts_kokoro_speed"):
+                    new_speed = _settings.get("tts_kokoro_speed", 1.1)
+                    kokoro_tts.set_speed(float(new_speed))
+
+                    if not device_changed:
+                        NotificationManager.send_notification(
+                            type=NotificationType.SUCCESS,
+                            priority=NotificationPriority.NORMAL,
+                            message=f"Kokoro TTS speed changed to {new_speed} successfully.",
+                            display_time=3,
+                            group="kokoro-speed",
+                        )
+
+            except Exception as e:
+                NotificationManager.send_notification(
+                    type=NotificationType.ERROR,
+                    priority=NotificationPriority.HIGH,
+                    message="Failed to apply Kokoro TTS settings",
+                    detail=str(e),
+                )
 
 
 def _env_to_dict(data: str):

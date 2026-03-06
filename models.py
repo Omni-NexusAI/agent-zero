@@ -60,6 +60,25 @@ turn_off_logging()
 browser_use_monkeypatch.apply()
 
 litellm.modify_params = True # helps fix anthropic tool calls by browser-use
+litellm.drop_params = True  # silently drop unsupported params for local models
+
+
+# Disable prompt template for local models (LMStudio, Ollama, etc.)
+# This prevents LiteLLM from trying to apply chat templates that fail with
+# "No user query found in messages"
+try:
+    for _local_model in ["lm_studio", "ollama", "localhost", "local"]:
+        litellm.register_prompt_template(
+            model=_local_model,
+            roles={
+                "system": {"role": "system", "content": ""},
+                "user": {"role": "user", "content": ""},
+                "assistant": {"role": "assistant", "content": ""},
+            },
+        )
+except Exception:
+    pass
+
 
 class ModelType(Enum):
     CHAT = "Chat"
@@ -490,6 +509,12 @@ class LiteLLMChatWrapper(SimpleChatModel):
         # convert to litellm format
         msgs_conv = self._convert_messages(messages, explicit_caching=explicit_caching)
 
+        # LMStudio's Jinja templates require a user message; without one it
+        # raises "No user query found in messages."
+        has_user = any(m.get("role") == "user" for m in msgs_conv)
+        if not has_user:
+            msgs_conv.append({"role": "user", "content": "."})
+
         # Apply rate limiting if configured
         limiter = await apply_rate_limiter(
             self.a0_model_conf, str(msgs_conv), rate_limiter_callback
@@ -762,8 +787,10 @@ def _get_litellm_chat(
     # use api key from kwargs or env
     api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
 
-    # Only pass API key if key is not a placeholder
-    if api_key and api_key not in ("None", "NA"):
+    # Only pass API key if key is not a placeholder (allow empty string for local models)
+    if api_key is not None and api_key not in ("None", "NA"):
+        kwargs["api_key"] = api_key
+    elif api_key == "":
         kwargs["api_key"] = api_key
 
     provider_name, model_name, kwargs = _adjust_call_args(
@@ -798,8 +825,10 @@ def _get_litellm_embedding(
     # use api key from kwargs or env
     api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
 
-    # Only pass API key if key is not a placeholder
-    if api_key and api_key not in ("None", "NA"):
+    # Only pass API key if key is not a placeholder (allow empty string for local models)
+    if api_key is not None and api_key not in ("None", "NA"):
+        kwargs["api_key"] = api_key
+    elif api_key == "":
         kwargs["api_key"] = api_key
 
     provider_name, model_name, kwargs = _adjust_call_args(
