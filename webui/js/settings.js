@@ -127,7 +127,8 @@ const settingsModalProxy = {
                     }
                 ],
                 "sections": set.settings.sections,
-                "models_history": set.settings.models_history || {}
+                "models_history": set.settings.models_history || {},
+                "models_context_history": set.settings.models_context_history || {}
             }
 
             // Initialize model picker dropdown flags before wiring to modal
@@ -439,6 +440,18 @@ const settingsModalProxy = {
 
         // Limit
         this.settings.models_history[field.id][provider] = filtered.slice(0, 20);
+
+        // Also cache context length if applicable
+        if (field.id === 'chat_model_name') {
+            const ctxLengthField = section.fields.find(f => f.id === 'chat_model_ctx_length');
+            if (ctxLengthField) {
+                if (!this.settings.models_context_history) this.settings.models_context_history = {};
+                if (!this.settings.models_context_history[field.id]) this.settings.models_context_history[field.id] = {};
+                if (!this.settings.models_context_history[field.id][provider]) this.settings.models_context_history[field.id][provider] = {};
+
+                this.settings.models_context_history[field.id][provider][val] = parseInt(ctxLengthField.value, 10) || 128000;
+            }
+        }
     },
 
     saveModelName(field, section) {
@@ -515,10 +528,50 @@ const settingsModalProxy = {
     selectModelName(field, modelName) {
         field.value = modelName;
         field.showDropdown = false;
+
+        // Apply cached context length if applicable
+        if (field.id === 'chat_model_name' && this.settings && this.settings.sections) {
+            const section = this.settings.sections.find(s => s.fields && s.fields.includes(field));
+            if (section) {
+                const providerField = this.getProviderField(field, section);
+                const provider = providerField ? providerField.value : 'unknown';
+
+                if (this.settings.models_context_history &&
+                    this.settings.models_context_history[field.id] &&
+                    this.settings.models_context_history[field.id][provider] &&
+                    this.settings.models_context_history[field.id][provider][modelName]) {
+
+                    const ctxLength = this.settings.models_context_history[field.id][provider][modelName];
+                    const ctxLengthField = section.fields.find(f => f.id === 'chat_model_ctx_length');
+                    if (ctxLengthField) {
+                        ctxLengthField.value = ctxLength;
+                    }
+                }
+            }
+        }
     },
 
     handleFieldInput(field, value) {
         field.value = value;
+    },
+
+    handleSelectChange(field, value) {
+        field.value = value;
+
+        // If provider changed for chat model, apply default URLs for local providers
+        if (field.id === 'chat_model_provider' && this.settings && this.settings.sections) {
+            const section = this.settings.sections.find(s => s.fields && s.fields.includes(field));
+            if (section) {
+                const apiBaseField = section.fields.find(f => f.id === 'chat_model_api_base');
+                if (apiBaseField) {
+                    if (value === 'lm_studio' && (!apiBaseField.value || apiBaseField.value.trim() === '')) {
+                        apiBaseField.value = 'http://localhost:1234/v1';
+                    } else if (value === 'ollama' && (!apiBaseField.value || apiBaseField.value.trim() === '')) {
+                        apiBaseField.value = 'http://localhost:11434';
+                    }
+                }
+            }
+        }
     },
 
     cacheAllModelNames(sections) {

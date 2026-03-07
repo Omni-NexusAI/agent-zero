@@ -128,6 +128,7 @@ class Settings(TypedDict):
     litellm_global_kwargs: dict[str, Any]
 
     models_history: dict[str, dict[str, list[str]]]
+    models_context_history: dict[str, dict[str, dict[str, int]]]
 
 class PartialSettings(Settings, total=False):
     pass
@@ -173,6 +174,7 @@ class SettingsSection(TypedDict, total=False):
 class SettingsOutput(TypedDict):
     sections: list[SettingsSection]
     models_history: dict[str, dict[str, list[str]]]
+    models_context_history: dict[str, dict[str, dict[str, int]]]
 
 
 PASSWORD_PLACEHOLDER = "****PSWD****"
@@ -1437,6 +1439,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
         ]
     }
     result["models_history"] = settings.get("models_history", {})
+    result["models_context_history"] = settings.get("models_context_history", {})
     return result
 
 
@@ -1473,6 +1476,9 @@ def convert_in(settings: dict) -> Settings:
 
     if "models_history" in settings:
         current["models_history"] = settings["models_history"]
+
+    if "models_context_history" in settings:
+        current["models_context_history"] = settings["models_context_history"]
 
     return current
 
@@ -1682,6 +1688,7 @@ def get_default_settings() -> Settings:
         secrets="",
         litellm_global_kwargs={},
         models_history={},
+        models_context_history={},
     )
 
 

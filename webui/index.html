@@ -400,7 +400,8 @@
 
                                                 <!-- Default select rendering -->
                                                 <template x-if="field.type === 'select' && !(field.id === 'tts_kokoro_voice' || field.id === 'tts_kokoro_voice_secondary')">
-                                                    <select :class="field.classes" x-model="field.value"
+                                                    <select :class="field.classes" :value="field.value"
+                                                        @change="handleSelectChange(field, $event.target.value)"
                                                         :disabled="field.id === 'tts_device' ? (section.fields.find(f => f.id === 'tts_kokoro')?.value === false) : (field.readonly === true)">
                                                         <template x-for="option in field.options" :key="option.value">
                                                             <option :value="option.value" x-text="option.label"
