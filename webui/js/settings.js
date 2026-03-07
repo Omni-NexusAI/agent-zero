@@ -564,9 +564,24 @@ const settingsModalProxy = {
             if (section) {
                 const apiBaseField = section.fields.find(f => f.id === 'chat_model_api_base');
                 if (apiBaseField) {
-                    if (value === 'lm_studio' && (!apiBaseField.value || apiBaseField.value.trim() === '')) {
-                        apiBaseField.value = 'http://localhost:1234/v1';
-                    } else if (value === 'ollama' && (!apiBaseField.value || apiBaseField.value.trim() === '')) {
+                    if (value === 'lm_studio') {
+                        if (!apiBaseField.value || apiBaseField.value.trim() === '') {
+                            apiBaseField.value = 'http://localhost:1234/v1';
+                        }
+                    } else if (value === 'ollama') {
+                        if (!apiBaseField.value || apiBaseField.value.trim() === '') {
+                            apiBaseField.value = 'http://localhost:11434';
+                        }
+                    } else {
+                        // Clear out the URL if the user switches away from a local provider
+                        // and the URL is still set to one of the defaults
+                        if (apiBaseField.value === 'http://localhost:1234/v1' || apiBaseField.value === 'http://localhost:11434') {
+                            apiBaseField.value = '';
+                        }
+                    }
+                }
+            }
+        } else if (value === 'ollama' && (!apiBaseField.value || apiBaseField.value.trim() === '')) {
                         apiBaseField.value = 'http://localhost:11434';
                     }
                 }
