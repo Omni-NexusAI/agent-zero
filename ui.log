@@ -1,0 +1,49 @@
+Initializing framework...[0m
+Starting server...[0m
+
+[38;2;128;128;128mDebug: Starting server at http://localhost:5000 ...[0m
+INFO     [werkzeug] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://localhost:5000
+
+[38;2;255;0;0mError: Failed to pause job loop by development instance: No RFC password, cannot handle RFC calls.[0m
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+WARNING  [huggingface_hub.utils._http] Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 1858.83it/s]
+[1mBertModel LOAD REPORT[0m from: sentence-transformers/all-MiniLM-L6-v2
+Key                     | Status     |  |
+------------------------+------------+--+-
+embeddings.position_ids | UNEXPECTED |  |
+
+[3mNotes:
+- UNEXPECTED[3m	:can be ignored when loading from different task/architecture; not ok if you expect identical arch.[0m
+Preload completed[0m
+ERROR    [app] Exception on / [GET]
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 976, in ensure_sync
+    return self.async_to_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 997, in async_to_sync
+    raise RuntimeError(
+RuntimeError: Install Flask with the 'async' extra in order to use async views.
+
+[38;2;255;0;0mError: Failed to pause job loop by development instance: No RFC password, cannot handle RFC calls.[0m
+
+[38;2;255;0;0mError: Failed to pause job loop by development instance: No RFC password, cannot handle RFC calls.[0m
+
+[38;2;255;0;0mError: Failed to pause job loop by development instance: No RFC password, cannot handle RFC calls.[0m
+
+[38;2;255;0;0mError: Failed to pause job loop by development instance: No RFC password, cannot handle RFC calls.[0m
+
+[38;2;255;0;0mError: Failed to pause job loop by development instance: No RFC password, cannot handle RFC calls.[0m

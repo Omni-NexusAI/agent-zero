@@ -36,6 +36,7 @@ app = Flask(__name__)
 KOKORO_DEVICE = os.getenv("KOKORO_DEVICE", "cuda:auto")
 DEFAULT_VOICE = os.getenv("KOKORO_VOICE", "am_michael")
 DEFAULT_VOICE_SECONDARY = os.getenv("KOKORO_VOICE_SECONDARY", "")
+DEFAULT_VOICE_BLEND = int(os.getenv("KOKORO_VOICE_BLEND", "50"))
 DEFAULT_SPEED = float(os.getenv("KOKORO_SPEED", "1.1"))
 HOST = os.getenv("KOKORO_HOST", "0.0.0.0")
 PORT = int(os.getenv("KOKORO_PORT", "8891"))
@@ -86,6 +87,7 @@ def _synthesize_local(
     sentences: List[str],
     voice: str | None,
     blend_voice: str | None,
+    blend_ratio: int | None,
     speed: float | None,
 ) -> str:
     _ensure_pipeline()
@@ -103,10 +105,14 @@ def _synthesize_local(
         if secondary_voice:
             try:
                 import torch
-                # Manually blend voices (50/50 split) using style vectors
                 v1 = _pipeline.load_single_voice(primary_voice)
                 v2 = _pipeline.load_single_voice(secondary_voice)
-                use_voice = torch.mean(torch.stack([v1, v2]), dim=0)
+
+                ratio = blend_ratio if blend_ratio is not None else DEFAULT_VOICE_BLEND
+                r1 = max(0, min(100, ratio)) / 100.0
+                r2 = 1.0 - r1
+
+                use_voice = v1 * r1 + v2 * r2
             except Exception as e:
                 PrintStyle.error(f"[Kokoro Worker] Voice blending failed: {e}")
                 use_voice = primary_voice
@@ -162,6 +168,7 @@ def synthesize():
             sentences,
             voice=payload.get("voice"),
             blend_voice=payload.get("voice2"),
+            blend_ratio=int(payload.get("blend")) if payload.get("blend") is not None else None,
             speed=float(payload.get("speed")) if payload.get("speed") else None,
         )
         return jsonify({"success": True, "audio": audio_b64})

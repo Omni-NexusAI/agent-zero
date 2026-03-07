@@ -108,6 +108,7 @@ class Settings(TypedDict):
     tts_device: str
     tts_kokoro_voice: str
     tts_kokoro_voice_secondary: str
+    tts_kokoro_voice_blend: int
     tts_kokoro_speed: float
     tts_kokoro_remote_url: str
     tts_kokoro_remote_token: str
@@ -1186,11 +1187,26 @@ def convert_out(settings: Settings) -> SettingsOutput:
         {
             "id": "tts_kokoro_voice_secondary",
             "title": "Blend with (optional)",
-            "description": "Optional secondary voice to blend (50/50).",
+            "description": "Optional secondary voice to blend.",
             "type": "select",
             "value": settings.get("tts_kokoro_voice_secondary", ""),
             "options": ([{"value": "", "label": "None"}] + voice_options),
             "readonly": False,  # Voice settings remain editable
+        }
+    )
+
+    # Voice Blend (always editable when TTS is enabled)
+    tts_fields.append(
+        {
+            "id": "tts_kokoro_voice_blend",
+            "title": "Primary voice blend %",
+            "description": "Percentage of the primary voice used when blending (50 = 50/50 split).",
+            "type": "range",
+            "min": 1,
+            "max": 99,
+            "step": 1,
+            "value": settings.get("tts_kokoro_voice_blend", 50),
+            "readonly": False,
         }
     )
 
@@ -1660,6 +1676,7 @@ def get_default_settings() -> Settings:
         tts_device=tts_defaults.get("tts_device", "auto"),
         tts_kokoro_voice=tts_defaults.get("tts_kokoro_voice", "am_michael"),
         tts_kokoro_voice_secondary=tts_defaults.get("tts_kokoro_voice_secondary", ""),
+        tts_kokoro_voice_blend=tts_defaults.get("tts_kokoro_voice_blend", 50),
         tts_kokoro_speed=tts_defaults.get("tts_kokoro_speed", 1.1),
         tts_kokoro_remote_url=tts_defaults.get("tts_kokoro_remote_url", "http://kokoro-gpu-worker:8891"),
         tts_kokoro_remote_token=tts_defaults.get("tts_kokoro_remote_token", ""),
@@ -1830,24 +1847,27 @@ def _apply_settings(previous: Settings | None):
                 if not previous or (
                     _settings.get("tts_kokoro_voice") != previous.get("tts_kokoro_voice")
                     or _settings.get("tts_kokoro_voice_secondary") != previous.get("tts_kokoro_voice_secondary")
+                    or _settings.get("tts_kokoro_voice_blend") != previous.get("tts_kokoro_voice_blend")
                 ):
                     voice_changed = True
                     new_voice = _settings.get("tts_kokoro_voice", "am_michael")
                     secondary_voice = _settings.get("tts_kokoro_voice_secondary", "")
+                    blend_ratio = _settings.get("tts_kokoro_voice_blend", 50)
                     
                     kokoro_tts.set_voice(new_voice)
+                    kokoro_tts.set_voice_blend(blend_ratio)
                     
                     if secondary_voice:
                         AgentContext.log_to_all(
                             type="info",
-                            content=f"Kokoro TTS using merged voices: {new_voice} + {secondary_voice}",
+                            content=f"Kokoro TTS using merged voices: {new_voice} ({blend_ratio}%) + {secondary_voice} ({100-blend_ratio}%)",
                             temp=False
                         )
                         from python.helpers.notification import NotificationManager, NotificationType, NotificationPriority
                         NotificationManager.send_notification(
                             NotificationType.INFO,
                             NotificationPriority.NORMAL,
-                            message=f"Kokoro TTS using merged voices: {new_voice} + {secondary_voice}",
+                            message=f"Kokoro TTS using merged voices: {new_voice} ({blend_ratio}%) + {secondary_voice} ({100-blend_ratio}%)",
                             title="Kokoro TTS",
                             display_time=4,
                             group="kokoro-voice",
