@@ -320,7 +320,7 @@
             <div class="field-control">
               <input type="range" min="1" max="99" step="1"
                      x-model.number="$store.settings.settings.tts_kokoro_voice_blend"
-                     :disabled="!$store.settings.settings.tts_kokoro || !$store.settings.settings.tts_kokoro_voice_secondary" />
+                     :disabled="!$store.settings.settings.tts_kokoro" />
               <span class="range-value"
                     x-text="`${$store.settings.settings.tts_kokoro_voice_blend || 50}% / ${100 - ($store.settings.settings.tts_kokoro_voice_blend || 50)}%`"></span>
             </div>

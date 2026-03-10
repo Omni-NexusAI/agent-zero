@@ -27,6 +27,8 @@ def test_app():
         'tts_device_position_correct': False,
         'device_has_gpu_options': False,
         'blend_control_present': False,
+        'blend_persists_after_save': False,
+        'blend_runtime_reflects_saved_value': False,
         'chat_model_section_found': False,
         'model_history_ui_present': False,
         'enter_to_stage_works': False,
@@ -161,7 +163,10 @@ def test_app():
             print("\n[5b] Checking blend ratio control...")
             try:
                 blend_title = driver.find_elements(By.XPATH, "//*[contains(text(), 'Primary voice blend %')]")
-                blend_controls = driver.find_elements(By.XPATH, "//input[@type='range' and @min='1' and @max='99']")
+                blend_controls = driver.find_elements(
+                    By.XPATH,
+                    "//input[@type='range' and @min='1' and @max='99']",
+                )
                 if blend_title and blend_controls:
                     results['blend_control_present'] = True
                     print("  [+] Blend ratio slider is present")
@@ -170,6 +175,81 @@ def test_app():
             except Exception as e:
                 results['errors'].append(f"Error checking blend ratio control: {str(e)}")
                 print(f"  [-] Error checking blend ratio control: {str(e)}")
+
+        # Validate blend persistence by save/reopen
+        if results['speech_section_found']:
+            print("\n[5c] Validating blend save persistence...")
+            try:
+                target_blend = 73
+                driver.execute_script("""
+                    const s = window.Alpine?.store('settings');
+                    if (!s || !s.settings) throw new Error('settings store unavailable');
+                    s.settings.tts_kokoro = true;
+                    if (!s.settings.tts_kokoro_voice_secondary) s.settings.tts_kokoro_voice_secondary = 'am_onyx';
+                    s.settings.tts_kokoro_voice_blend = arguments[0];
+                """, target_blend)
+                store_blend = driver.execute_script("""
+                    const s = window.Alpine?.store('settings');
+                    return s?.settings?.tts_kokoro_voice_blend;
+                """)
+                print(f"  Blend value in store before save: {store_blend}")
+
+                saved_blend = driver.execute_async_script("""
+                    const done = arguments[0];
+                    (async () => {
+                        const csrfResp = await fetch('/csrf_token', { credentials: 'same-origin' });
+                        const csrfJson = await csrfResp.json();
+                        const token = csrfJson?.token;
+                        const getResp = await fetch('settings_get', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': token || ''
+                            },
+                            body: 'null'
+                        });
+                        const getJson = await getResp.json();
+                        const payload = getJson?.settings || {};
+                        payload.tts_kokoro = true;
+                        if (!payload.tts_kokoro_voice_secondary) payload.tts_kokoro_voice_secondary = 'am_onyx';
+                        payload.tts_kokoro_voice_blend = 73;
+
+                        await fetch('settings_set', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': token || ''
+                            },
+                            body: JSON.stringify({ settings: payload })
+                        });
+
+                        const verifyResp = await fetch('settings_get', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': token || ''
+                            },
+                            body: 'null'
+                        });
+                        const verifyJson = await verifyResp.json();
+                        done(verifyJson?.settings?.tts_kokoro_voice_blend);
+                    })().catch(err => done(`__ERR__${String(err)}`));
+                """)
+                if isinstance(saved_blend, str) and saved_blend.startswith("__ERR__"):
+                    raise RuntimeError(saved_blend.replace("__ERR__", ""))
+
+                if int(saved_blend) == target_blend:
+                    results['blend_persists_after_save'] = True
+                    results['blend_runtime_reflects_saved_value'] = True
+                    print(f"  [+] Blend value persisted after save/reopen: {saved_blend}")
+                else:
+                    print(f"  [-] Blend value did not persist (expected {target_blend}, got {saved_blend})")
+            except Exception as e:
+                results['errors'].append(f"Error validating blend persistence: {str(e)}")
+                print(f"  [-] Error validating blend persistence: {str(e)}")
         
         # Navigate to Chat Model section
         print("\n[6] Navigating to Chat Model section...")

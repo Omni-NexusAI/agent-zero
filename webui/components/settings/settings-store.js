@@ -57,6 +57,17 @@ const model = {
       const response = await API.callJsonApi("settings_get", null);
       if (response && response.settings) {
         this.settings = response.settings;
+        // Ensure blend ratio key exists and is numeric for persistence.
+        if (
+          this.settings.tts_kokoro_voice_blend === undefined ||
+          this.settings.tts_kokoro_voice_blend === null ||
+          Number.isNaN(Number(this.settings.tts_kokoro_voice_blend))
+        ) {
+          this.settings.tts_kokoro_voice_blend = 50;
+        } else {
+          const clamped = Math.max(1, Math.min(99, Number(this.settings.tts_kokoro_voice_blend)));
+          this.settings.tts_kokoro_voice_blend = clamped;
+        }
         if (!this.settings.models_history) this.settings.models_history = {};
         if (!this.settings.models_context_history) this.settings.models_context_history = {};
         this.additional = response.additional || null;
@@ -270,9 +281,23 @@ const model = {
     }
 
     this.cacheAllModelNames();
+    // Normalize blend ratio before sending settings payload.
+    if (
+      this.settings.tts_kokoro_voice_blend === undefined ||
+      this.settings.tts_kokoro_voice_blend === null ||
+      Number.isNaN(Number(this.settings.tts_kokoro_voice_blend))
+    ) {
+      this.settings.tts_kokoro_voice_blend = 50;
+    } else {
+      const clamped = Math.max(1, Math.min(99, Number(this.settings.tts_kokoro_voice_blend)));
+      this.settings.tts_kokoro_voice_blend = clamped;
+    }
+
+    // Serialize through a plain object to avoid sending reactive proxy artifacts.
+    const payloadSettings = JSON.parse(JSON.stringify(this.settings));
     this.isLoading = true;
     try {
-      const response = await API.callJsonApi("settings_set", { settings: this.settings });
+      const response = await API.callJsonApi("settings_set", { settings: payloadSettings });
       if (response && response.settings) {
         this.settings = response.settings;
         this.additional = response.additional || this.additional;
