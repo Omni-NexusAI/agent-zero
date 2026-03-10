@@ -26,6 +26,7 @@ def test_app():
         'tts_device_is_dropdown': False,
         'tts_device_position_correct': False,
         'device_has_gpu_options': False,
+        'blend_control_present': False,
         'chat_model_section_found': False,
         'model_history_ui_present': False,
         'enter_to_stage_works': False,
@@ -154,6 +155,21 @@ def test_app():
             except Exception as e:
                 results['errors'].append(f"Error checking TTS device: {str(e)}")
                 print(f"  [-] Error checking TTS device: {str(e)}")
+
+        # Check blend ratio control
+        if results['speech_section_found']:
+            print("\n[5b] Checking blend ratio control...")
+            try:
+                blend_title = driver.find_elements(By.XPATH, "//*[contains(text(), 'Primary voice blend %')]")
+                blend_controls = driver.find_elements(By.XPATH, "//input[@type='range' and @min='1' and @max='99']")
+                if blend_title and blend_controls:
+                    results['blend_control_present'] = True
+                    print("  [+] Blend ratio slider is present")
+                else:
+                    print("  [-] Blend ratio slider not found")
+            except Exception as e:
+                results['errors'].append(f"Error checking blend ratio control: {str(e)}")
+                print(f"  [-] Error checking blend ratio control: {str(e)}")
         
         # Navigate to Chat Model section
         print("\n[6] Navigating to Chat Model section...")

@@ -153,6 +153,7 @@ class Settings(TypedDict):
     tts_device: str
     tts_kokoro_voice: str
     tts_kokoro_voice_secondary: str
+    tts_kokoro_voice_blend: int
     tts_kokoro_speed: float
     tts_kokoro_remote_url: str
     tts_kokoro_remote_token: str
@@ -615,6 +616,7 @@ def get_default_settings() -> Settings:
         tts_device=get_default_value("tts_device", tts_defaults.get("tts_device", "auto")),
         tts_kokoro_voice=get_default_value("tts_kokoro_voice", tts_defaults.get("tts_kokoro_voice", "am_michael")),
         tts_kokoro_voice_secondary=get_default_value("tts_kokoro_voice_secondary", tts_defaults.get("tts_kokoro_voice_secondary", "")),
+        tts_kokoro_voice_blend=get_default_value("tts_kokoro_voice_blend", tts_defaults.get("tts_kokoro_voice_blend", 50)),
         tts_kokoro_speed=get_default_value("tts_kokoro_speed", tts_defaults.get("tts_kokoro_speed", 1.1)),
         tts_kokoro_remote_url=get_default_value("tts_kokoro_remote_url", tts_defaults.get("tts_kokoro_remote_url", "")),
         tts_kokoro_remote_token=get_default_value("tts_kokoro_remote_token", tts_defaults.get("tts_kokoro_remote_token", "")),
@@ -795,17 +797,20 @@ def _apply_settings(previous: Settings | None):
                 if not previous or (
                     _settings.get("tts_kokoro_voice") != previous.get("tts_kokoro_voice")
                     or _settings.get("tts_kokoro_voice_secondary") != previous.get("tts_kokoro_voice_secondary")
+                    or _settings.get("tts_kokoro_voice_blend") != previous.get("tts_kokoro_voice_blend")
                 ):
                     new_voice = _settings.get("tts_kokoro_voice", "am_michael")
                     secondary_voice = _settings.get("tts_kokoro_voice_secondary", "")
+                    blend_ratio = _settings.get("tts_kokoro_voice_blend", 50)
 
                     kokoro_tts.set_voice(new_voice)
+                    kokoro_tts.set_voice_blend(int(blend_ratio))
 
                     if secondary_voice:
                         NotificationManager.send_notification(
                             type=NotificationType.INFO,
                             priority=NotificationPriority.NORMAL,
-                            message=f"Kokoro TTS using merged voices: {new_voice} + {secondary_voice}",
+                            message=f"Kokoro TTS using merged voices: {new_voice} ({blend_ratio}%) + {secondary_voice} ({100-int(blend_ratio)}%)",
                             display_time=4,
                             group="kokoro-voice",
                         )

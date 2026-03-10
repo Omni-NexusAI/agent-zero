@@ -135,6 +135,7 @@ def get_tts_defaults(build_type: Optional[BuildType] = None) -> Dict[str, Any]:
         "tts_kokoro": True,
         "tts_kokoro_voice": "am_michael",
         "tts_kokoro_voice_secondary": "",
+        "tts_kokoro_voice_blend": 50,
         "tts_kokoro_speed": 1.1,
     }
     

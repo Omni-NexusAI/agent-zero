@@ -20,6 +20,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 _pipeline = None
 _voice = "am_puck,am_onyx"
+_voice_blend = 50
 _speed = 1.1
 _device_policy = "auto"
 _current_device = None
@@ -95,8 +96,12 @@ async def _preload():
 
 
 def _apply_runtime_defaults(current_settings: dict):
-    global _voice, _speed
+    global _voice, _voice_blend, _speed
     _voice = current_settings.get("tts_kokoro_voice", _voice)
+    try:
+        _voice_blend = int(current_settings.get("tts_kokoro_voice_blend", _voice_blend))
+    except Exception:
+        pass
     try:
         _speed = float(current_settings.get("tts_kokoro_speed", _speed))
     except Exception:
@@ -134,6 +139,11 @@ def _is_downloaded():
 def set_voice(voice: str):
     global _voice
     _voice = voice
+
+
+def set_voice_blend(blend: int):
+    global _voice_blend
+    _voice_blend = max(1, min(99, int(blend)))
 
 
 def set_speed(speed: float):
@@ -239,11 +249,12 @@ async def synthesize_sentences(
     sentences: list[str],
     voice: str | None = None,
     blend_voice: str | None = None,
+    blend_ratio: int | None = None,
 ):
     """Generate audio for multiple sentences and return concatenated base64 audio"""
     try:
         # return await runtime.call_development_function(_synthesize_sentences, sentences)
-        return await _synthesize_sentences(sentences, voice, blend_voice)
+        return await _synthesize_sentences(sentences, voice, blend_voice, blend_ratio)
     except Exception as e:
         # if not runtime.is_development():
         raise e
@@ -255,6 +266,7 @@ async def _synthesize_sentences(
     sentences: list[str],
     voice: str | None = None,
     blend_voice: str | None = None,
+    blend_ratio: int | None = None,
 ):
     current_settings = settings_helper.get_settings()
     policy = current_settings.get("tts_device", "auto")
@@ -264,6 +276,7 @@ async def _synthesize_sentences(
             sentences,
             voice,
             blend_voice,
+            blend_ratio,
             current_settings,
         )
 
@@ -282,7 +295,11 @@ async def _synthesize_sentences(
                 try:
                     v1 = _pipeline.load_single_voice(primary_voice)
                     v2 = _pipeline.load_single_voice(blend_voice)
-                    use_voice = torch.mean(torch.stack([v1, v2]), dim=0)
+                    ratio = blend_ratio if blend_ratio is not None else _voice_blend
+                    ratio = max(1, min(99, int(ratio)))
+                    r1 = ratio / 100.0
+                    r2 = 1.0 - r1
+                    use_voice = v1 * r1 + v2 * r2
                 except Exception as e:
                     PrintStyle.error(f"Failed to blend voices: {e}")
                     use_voice = primary_voice
@@ -324,6 +341,7 @@ async def _synthesize_remote(
     sentences: list[str],
     voice: str | None,
     blend_voice: str | None,
+    blend_ratio: int | None,
     settings: dict,
 ) -> str:
     remote_url = (settings.get("tts_kokoro_remote_url") or "").rstrip("/")
@@ -332,10 +350,13 @@ async def _synthesize_remote(
 
     token = settings.get("tts_kokoro_remote_token") or ""
     timeout_sec = float(settings.get("tts_kokoro_remote_timeout", DEFAULT_REMOTE_TIMEOUT))
+    ratio = blend_ratio if blend_ratio is not None else int(settings.get("tts_kokoro_voice_blend", _voice_blend))
+    ratio = max(1, min(99, int(ratio)))
     payload = {
         "sentences": sentences,
         "voice": voice or _voice,
         "voice2": blend_voice or settings.get("tts_kokoro_voice_secondary") or "",
+        "blend": ratio,
         "speed": float(settings.get("tts_kokoro_speed", _speed)),
     }
 
