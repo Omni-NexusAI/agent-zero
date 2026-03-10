@@ -236,6 +236,19 @@ const settingsModalProxy = {
                 } catch (cacheErr) {
                     console.warn('cacheAllModelNames failed:', cacheErr);
                 }
+                // Normalize Kokoro blend setting before save (defensive for slider/input coercion).
+                for (const section of (modalAD.settings.sections || [])) {
+                    for (const field of (section.fields || [])) {
+                        if (field.id === 'tts_kokoro_voice_blend') {
+                            const parsed = Number(field.value);
+                            if (Number.isNaN(parsed)) {
+                                field.value = 50;
+                            } else {
+                                field.value = Math.max(1, Math.min(99, parsed));
+                            }
+                        }
+                    }
+                }
                 resp = await window.sendJsonData("/settings_set", modalAD.settings);
             } catch (e) {
                 window.toastFetchError("Error saving settings", e)
