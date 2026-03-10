@@ -1,9 +1,9 @@
 {
-    "version_id": "dev-D-0.9.8-custom-merged",
-    "description": "Merged upstream v0.9.8 with custom AgentSpine features (model picker, MCP toggles, Kokoro TTS, build system).",
-    "timestamp": "2026-03-06T23:00:00+00:00",
+    "version_id": "v0.9.8-custom-pre-full-gpu",
+    "description": "Merged upstream v0.9.8 with custom AgentSpine features for the full GPU build path.",
+    "timestamp": "2026-03-10T00:00:00+00:00",
     "commit_sha": "",
-    "display_version": "Version D 0.9.8-custom-merged 2026-03-06",
+    "display_version": "Version D v0.9.8-custom-pre-full-gpu 2026-03-10 00:00:00",
     "features": [
         {
             "name": "model_picker_latest_ui",

@@ -6,12 +6,46 @@ set -e
 
 REPO_PATH="${1:-/git/agent-zero}"
 
-if [ ! -d "$REPO_PATH/.git" ]; then
-    VARIANT_PREFIX=""
-    if [ -n "$BUILD_VARIANT" ]; then
-        VARIANT_PREFIX="${BUILD_VARIANT} "
+normalize_variant_slug() {
+    case "${1:-}" in
+        hybridGPU|hybridgpu)
+            echo "hybrid-gpu"
+            ;;
+        fullGPU|fullgpu)
+            echo "full-gpu"
+            ;;
+        cpu)
+            echo "cpu"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+build_variant_prefix() {
+    local variant_slug="${1:-}"
+    local version_id="${2:-}"
+    if [ -n "$variant_slug" ] && [ -n "$version_id" ] && [[ "$version_id" == *"$variant_slug"* ]]; then
+        echo ""
+        return
     fi
-    DISPLAY_VERSION="Version D ${VARIANT_PREFIX}local-dev-custom $(date +"%Y-%m-%d %H:%M:%S")"
+    if [ -n "$variant_slug" ]; then
+        echo "${variant_slug} "
+        return
+    fi
+    echo ""
+}
+
+VARIANT_SLUG=$(normalize_variant_slug "${BUILD_VARIANT:-}")
+
+if [ ! -d "$REPO_PATH/.git" ]; then
+    if [ -n "${BUILD_VERSION_ID:-}" ]; then
+        DISPLAY_VERSION="Version D ${BUILD_VERSION_ID} $(date +"%Y-%m-%d %H:%M:%S")"
+    else
+        VARIANT_PREFIX=$(build_variant_prefix "$VARIANT_SLUG" "")
+        DISPLAY_VERSION="Version D ${VARIANT_PREFIX}local-dev-custom $(date +"%Y-%m-%d %H:%M:%S")"
+    fi
     echo "$DISPLAY_VERSION" > /tmp/A0_BUILD_VERSION.txt
     echo "No git repo found, using local version: $DISPLAY_VERSION" >&2
     echo "$DISPLAY_VERSION"
@@ -45,18 +79,12 @@ else
     GIT_TIMESTAMP="unknown"
 fi
 
-# Check for build variant (hybridGPU, fullGPU, or empty for CPU-only)
-# This can be set via environment variable BUILD_VARIANT
-VARIANT_PREFIX=""
-if [ -n "$BUILD_VARIANT" ]; then
-    VARIANT_PREFIX="${BUILD_VARIANT} "
-fi
-
 # Determine version string
 if [ -n "$GIT_TAG" ]; then
     # If on a tag, use the tag name
     # Remove 'v' prefix if present for display
     VERSION_ID="${GIT_TAG#v}"
+    VARIANT_PREFIX=$(build_variant_prefix "$VARIANT_SLUG" "$VERSION_ID")
     # Format: Version D [variant] <tag> <timestamp>
     # If tag already contains -custom, use as-is; otherwise add -custom
     if [[ "$VERSION_ID" == *"-custom"* ]]; then
@@ -67,6 +95,7 @@ if [ -n "$GIT_TAG" ]; then
 else
     # If not on a tag, use commit hash
     # Format: Version D [variant] dev-<commit>-custom <timestamp>
+    VARIANT_PREFIX=$(build_variant_prefix "$VARIANT_SLUG" "")
     DISPLAY_VERSION="Version D ${VARIANT_PREFIX}dev-${GIT_COMMIT}-custom ${GIT_TIMESTAMP}"
 fi
 

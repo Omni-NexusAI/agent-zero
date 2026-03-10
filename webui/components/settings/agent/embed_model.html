@@ -18,7 +18,8 @@
               <div class="field-description">Select provider for embedding model used by the framework</div>
             </div>
             <div class="field-control">
-              <select x-model="$store.settings.settings.embed_model_provider">
+              <select :value="$store.settings.settings.embed_model_provider"
+                      @change="$store.settings.handleProviderChange('embed_model_provider', $event.target.value)">
                 <template x-for="option in $store.settings.additional?.embedding_providers" :key="option.value">
                   <option :value="option.value" :selected="option.value === $store.settings.settings.embed_model_provider" x-text="option.label"></option>
                 </template>
@@ -37,7 +38,7 @@
                    @click.outside="showDropdown = false">
                 <input type="text"
                        x-model="$store.settings.settings.embed_model_name"
-                       @keydown.enter="$store.settings.addToModelHistory('embed_model_name', $store.settings.settings.embed_model_name)"
+                       @keydown.enter="$store.settings.saveModelName('embed_model_name')"
                        style="flex:1; padding-right:4.4em;" />
                 <button type="button" title="Remove from history"
                         @click="$store.settings.removeFromModelHistory('embed_model_name', $store.settings.settings.embed_model_name)"
@@ -48,7 +49,7 @@
                 <div x-show="showDropdown" x-transition class="model-dropdown">
                   <template x-for="name in $store.settings.getModelHistory('embed_model_name')" :key="name">
                     <div class="model-dropdown-item"
-                         @click="$store.settings.settings.embed_model_name = name; showDropdown = false"
+                         @click="$store.settings.selectModelName('embed_model_name', name); showDropdown = false"
                          x-text="name"></div>
                   </template>
                   <div x-show="$store.settings.getModelHistory('embed_model_name').length === 0"

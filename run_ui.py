@@ -16,7 +16,7 @@ from werkzeug.wrappers.response import Response as BaseResponse
 from werkzeug.wrappers.request import Request as WerkzeugRequest
 
 import initialize
-from python.helpers import files, git, mcp_server, fasta2a_server, settings as settings_helper
+from python.helpers import files, git, mcp_server, fasta2a_server, settings as settings_helper, build_info
 from python.helpers.files import get_abs_path
 from python.helpers import runtime, dotenv, process
 from python.helpers.websocket import WebSocketHandler, validate_ws_origin
@@ -218,6 +218,7 @@ async def logout_handler():
 @requires_auth
 async def serve_index():
     gitinfo = None
+    version_banner = ""
     try:
         gitinfo = git.get_git_info()
     except Exception:
@@ -225,11 +226,16 @@ async def serve_index():
             "version": "unknown",
             "commit_time": "unknown",
         }
+    try:
+        version_banner = build_info.get_display_version()
+    except Exception:
+        version_banner = ""
     index = files.read_file("webui/index.html")
     index = files.replace_placeholders_text(
         _content=index,
         version_no=gitinfo["version"],
         version_time=gitinfo["commit_time"],
+        a0_version_banner=version_banner,
         runtime_id=runtime.get_runtime_id(),
         runtime_is_development=("true" if runtime.is_development() else "false"),
         logged_in=("true" if login.get_credentials_hash() else "false"),

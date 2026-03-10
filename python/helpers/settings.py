@@ -172,6 +172,9 @@ class Settings(TypedDict):
     # LiteLLM global kwargs applied to all model calls
     litellm_global_kwargs: dict[str, Any]
 
+    models_history: dict[str, dict[str, list[str]]]
+    models_context_history: dict[str, dict[str, dict[str, int]]]
+
     update_check_enabled: bool
 
 
@@ -224,6 +227,7 @@ class SettingsOutputAdditional(TypedDict):
     agent_subdirs: list[FieldOption]
     knowledge_subdirs: list[FieldOption]
     stt_models: list[FieldOption]
+    tts_device_options: list[FieldOption]
     is_dockerized: bool
     runtime_settings: dict[str, Any]
 
@@ -277,6 +281,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
                 {"value": "large", "label": "Large (1.5B, Multilingual)"},
                 {"value": "turbo", "label": "Turbo (Multilingual)"},
             ],
+            tts_device_options=get_tts_device_options(),
             runtime_settings={},
         ),
     )
@@ -304,6 +309,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
     additional["agent_subdirs"] = _ensure_option_present(additional.get("agent_subdirs"), current.get("agent_profile"))
     additional["knowledge_subdirs"] = _ensure_option_present(additional.get("knowledge_subdirs"), current.get("agent_knowledge_subdir"))
     additional["stt_models"] = _ensure_option_present(additional.get("stt_models"), current.get("stt_model_size"))
+    additional["tts_device_options"] = _ensure_option_present(additional.get("tts_device_options"), current.get("tts_device"))
 
     # masked api keys
     providers = get_providers("chat") + get_providers("embedding")
@@ -622,6 +628,8 @@ def get_default_settings() -> Settings:
         variables="",
         secrets="",
         litellm_global_kwargs=get_default_value("litellm_global_kwargs", {}),
+        models_history=get_default_value("models_history", {}),
+        models_context_history=get_default_value("models_context_history", {}),
         update_check_enabled=get_default_value("update_check_enabled", True),
     )
 

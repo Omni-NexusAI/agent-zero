@@ -42,8 +42,8 @@ docker build \
     --build-arg GIT_REF=$VERSION_TAG \
     --build-arg BUILD_VARIANT=fullGPU \
     --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) \
-    -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-fullgpu \
-    -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-fullgpu-latest \
+    -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu \
+    -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu-latest \
     -f docker/run/Dockerfile \
     docker/run
 
@@ -74,8 +74,8 @@ echo ""
 echo "=== Pushing images to GHCR ==="
 docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-cpu
 docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-cpu-latest
-docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-fullgpu
-docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-fullgpu-latest
+docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu
+docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu-latest
 docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-hybrid-gpu
 docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-hybrid-gpu-latest
 docker push $GHCR_REGISTRY/$GHCR_USER/$KOKORO_IMAGE_NAME:${VERSION_TAG}
@@ -85,7 +85,7 @@ echo ""
 echo "=== Success! All images pushed to GHCR ==="
 echo ""
 echo "CPU-only:    $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-cpu"
-echo "Full GPU:    $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-fullgpu"
+echo "Full GPU:    $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu"
 echo "Hybrid GPU:  $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-hybrid-gpu"
 echo "Kokoro:      $GHCR_REGISTRY/$GHCR_USER/$KOKORO_IMAGE_NAME:${VERSION_TAG}"
 

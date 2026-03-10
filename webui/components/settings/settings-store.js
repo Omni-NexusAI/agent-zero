@@ -57,7 +57,10 @@ const model = {
       const response = await API.callJsonApi("settings_get", null);
       if (response && response.settings) {
         this.settings = response.settings;
+        if (!this.settings.models_history) this.settings.models_history = {};
+        if (!this.settings.models_context_history) this.settings.models_context_history = {};
         this.additional = response.additional || null;
+        this.migrateModelHistory();
       } else {
         throw new Error("Invalid settings response");
       }
@@ -92,29 +95,108 @@ const model = {
     this.activeTab = tabName;
   },
 
-  // Model picker history (localStorage-backed)
-  getModelHistory(fieldId) {
-    try {
-      return JSON.parse(localStorage.getItem(`model_history_${fieldId}`) || "[]");
-    } catch { return []; }
+  // Field mapping for model picker
+  _modelProviderMap: {
+    chat_model_name: "chat_model_provider",
+    util_model_name: "util_model_provider",
+    browser_model_name: "browser_model_provider",
+    embed_model_name: "embed_model_provider",
+  },
+  _modelCtxLengthMap: {
+    chat_model_name: "chat_model_ctx_length",
+  },
+  _providerApiBaseMap: {
+    chat_model_provider: "chat_model_api_base",
+    util_model_provider: "util_model_api_base",
+    browser_model_provider: "browser_model_api_base",
+    embed_model_provider: "embed_model_api_base",
   },
 
-  addToModelHistory(fieldId, value) {
-    if (!value?.trim()) return;
-    const val = value.trim();
-    const history = this.getModelHistory(fieldId);
-    const filtered = history.filter(n => n !== val);
-    filtered.unshift(val);
-    localStorage.setItem(`model_history_${fieldId}`, JSON.stringify(filtered.slice(0, 20)));
+  getProviderForField(fieldId) {
+    const providerKey = this._modelProviderMap[fieldId];
+    return providerKey ? (this.settings?.[providerKey] || "unknown") : "unknown";
+  },
+
+  getModelHistory(fieldId) {
+    if (!this.settings) return [];
+    const provider = this.getProviderForField(fieldId);
+    const history = this.settings.models_history;
+    if (!history || !history[fieldId] || !history[fieldId][provider]) return [];
+    return history[fieldId][provider];
+  },
+
+  saveModelName(fieldId) {
+    if (!this.settings) return;
+    const val = this.settings[fieldId];
+    if (!val?.trim()) return;
+    this._cacheModelName(fieldId, val.trim());
+  },
+
+  _cacheModelName(fieldId, value) {
+    if (!this.settings) return;
+    const provider = this.getProviderForField(fieldId);
+
+    if (!this.settings.models_history) this.settings.models_history = {};
+    if (!this.settings.models_history[fieldId]) this.settings.models_history[fieldId] = {};
+    if (!this.settings.models_history[fieldId][provider]) this.settings.models_history[fieldId][provider] = [];
+
+    const filtered = this.settings.models_history[fieldId][provider].filter(n => n !== value);
+    filtered.unshift(value);
+    this.settings.models_history[fieldId][provider] = filtered.slice(0, 20);
+
+    const ctxKey = this._modelCtxLengthMap[fieldId];
+    if (ctxKey && this.settings[ctxKey] !== undefined) {
+      if (!this.settings.models_context_history) this.settings.models_context_history = {};
+      if (!this.settings.models_context_history[fieldId]) this.settings.models_context_history[fieldId] = {};
+      if (!this.settings.models_context_history[fieldId][provider]) this.settings.models_context_history[fieldId][provider] = {};
+      this.settings.models_context_history[fieldId][provider][value] = parseInt(this.settings[ctxKey], 10) || 128000;
+    }
   },
 
   removeFromModelHistory(fieldId, value) {
-    if (!value?.trim()) return;
-    const history = this.getModelHistory(fieldId);
-    localStorage.setItem(
-      `model_history_${fieldId}`,
-      JSON.stringify(history.filter(n => n !== value.trim()))
-    );
+    if (!this.settings || !value?.trim()) return;
+    const provider = this.getProviderForField(fieldId);
+    const history = this.settings.models_history;
+    if (!history || !history[fieldId] || !history[fieldId][provider]) return;
+    history[fieldId][provider] = history[fieldId][provider].filter(n => n !== value.trim());
+  },
+
+  selectModelName(fieldId, modelName) {
+    if (!this.settings) return;
+    this.settings[fieldId] = modelName;
+
+    const ctxKey = this._modelCtxLengthMap[fieldId];
+    if (ctxKey) {
+      const provider = this.getProviderForField(fieldId);
+      const ctxHistory = this.settings.models_context_history;
+      if (ctxHistory?.[fieldId]?.[provider]?.[modelName]) {
+        this.settings[ctxKey] = ctxHistory[fieldId][provider][modelName];
+      }
+    }
+  },
+
+  handleProviderChange(providerFieldId, value) {
+    if (!this.settings) return;
+    this.settings[providerFieldId] = value;
+
+    const apiBaseKey = this._providerApiBaseMap[providerFieldId];
+    if (!apiBaseKey) return;
+
+    const currentBase = this.settings[apiBaseKey] || "";
+    const localDefaults = [
+      "http://localhost:1234/v1",
+      "http://localhost:11434",
+      "http://host.docker.internal:1234/v1",
+      "http://host.docker.internal:11434",
+    ];
+
+    if (value === "lm_studio") {
+      if (!currentBase.trim()) this.settings[apiBaseKey] = "http://host.docker.internal:1234/v1";
+    } else if (value === "ollama") {
+      if (!currentBase.trim()) this.settings[apiBaseKey] = "http://host.docker.internal:11434";
+    } else {
+      if (localDefaults.includes(currentBase)) this.settings[apiBaseKey] = "";
+    }
   },
 
   cacheAllModelNames() {
@@ -122,8 +204,44 @@ const model = {
     const modelFields = ["chat_model_name", "util_model_name", "browser_model_name", "embed_model_name"];
     modelFields.forEach(id => {
       const v = this.settings[id];
-      if (v?.trim()) this.addToModelHistory(id, v);
+      if (v?.trim()) this._cacheModelName(id, v.trim());
     });
+  },
+
+  migrateModelHistory() {
+    if (!this.settings) return;
+    const modelFields = ["chat_model_name", "util_model_name", "browser_model_name", "embed_model_name"];
+    let migrated = false;
+
+    modelFields.forEach(fieldId => {
+      const lsKey = `model_history_${fieldId}`;
+      try {
+        const raw = localStorage.getItem(lsKey);
+        if (!raw) return;
+        const oldHistory = JSON.parse(raw);
+        if (!Array.isArray(oldHistory) || oldHistory.length === 0) return;
+
+        const provider = this.getProviderForField(fieldId);
+        if (!this.settings.models_history) this.settings.models_history = {};
+        if (!this.settings.models_history[fieldId]) this.settings.models_history[fieldId] = {};
+        if (!this.settings.models_history[fieldId][provider]) this.settings.models_history[fieldId][provider] = [];
+
+        const existing = new Set(this.settings.models_history[fieldId][provider]);
+        oldHistory.forEach(name => {
+          if (name && !existing.has(name)) {
+            this.settings.models_history[fieldId][provider].push(name);
+            existing.add(name);
+          }
+        });
+
+        localStorage.removeItem(lsKey);
+        migrated = true;
+      } catch {}
+    });
+
+    if (migrated) {
+      console.log("Migrated model history from localStorage to server-side settings");
+    }
   },
 
 
