@@ -3,7 +3,9 @@
 # Example: .\scripts\build_and_push_ghcr.ps1 v0.9.8-custom-pre-hybrid-gpu
 
 param(
-    [string]$VERSION_TAG = "v0.9.8-custom-pre-hybrid-gpu"
+    [string]$VERSION_TAG = "v0.9.8-custom-pre-hybrid-gpu",
+    [ValidateSet("pre","release")]
+    [string]$RELEASE_CHANNEL = "pre"
 )
 
 $GHCR_REGISTRY = "ghcr.io"
@@ -13,6 +15,7 @@ $KOKORO_IMAGE_NAME = "agent-zero-kokoro-worker"
 
 Write-Host "Building and pushing Agent Zero images to GHCR" -ForegroundColor Cyan
 Write-Host "Version tag: $VERSION_TAG"
+Write-Host "Release channel: $RELEASE_CHANNEL"
 Write-Host "Registry: $GHCR_REGISTRY/$GHCR_USER"
 Write-Host ""
 
@@ -31,6 +34,7 @@ Write-Host "=== Building CPU-only variant ===" -ForegroundColor Yellow
 docker build `
     --build-arg GIT_REF=$VERSION_TAG `
     --build-arg BUILD_VARIANT="" `
+    --build-arg RELEASE_CHANNEL=$RELEASE_CHANNEL `
     --build-arg CACHE_DATE=$CACHE_DATE `
     -t "$GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME`:${VERSION_TAG}-cpu" `
     -t "$GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME`:${VERSION_TAG}-cpu-latest" `
@@ -48,6 +52,7 @@ Write-Host "=== Building Full GPU variant ===" -ForegroundColor Yellow
 docker build `
     --build-arg GIT_REF=$VERSION_TAG `
     --build-arg BUILD_VARIANT=fullGPU `
+    --build-arg RELEASE_CHANNEL=$RELEASE_CHANNEL `
     --build-arg CACHE_DATE=$CACHE_DATE `
     -t "$GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME`:${VERSION_TAG}-full-gpu" `
     -t "$GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME`:${VERSION_TAG}-full-gpu-latest" `
@@ -65,6 +70,7 @@ Write-Host "=== Building Hybrid GPU variant (main container) ===" -ForegroundCol
 docker build `
     --build-arg GIT_REF=$VERSION_TAG `
     --build-arg BUILD_VARIANT=hybridGPU `
+    --build-arg RELEASE_CHANNEL=$RELEASE_CHANNEL `
     --build-arg CACHE_DATE=$CACHE_DATE `
     -t "$GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME`:${VERSION_TAG}-hybrid-gpu" `
     -t "$GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME`:${VERSION_TAG}-hybrid-gpu-latest" `

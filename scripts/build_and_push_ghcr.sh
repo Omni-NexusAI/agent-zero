@@ -2,10 +2,11 @@
 set -e
 
 # Script to build and push all three build variants to GitHub Container Registry
-# Usage: ./scripts/build_and_push_ghcr.sh [VERSION_TAG]
+# Usage: ./scripts/build_and_push_ghcr.sh [VERSION_TAG] [RELEASE_CHANNEL]
 # Example: ./scripts/build_and_push_ghcr.sh v0.9.8-custom-pre
 
 VERSION_TAG="${1:-v0.9.8-custom-pre}"
+RELEASE_CHANNEL="${2:-pre}"
 GHCR_REGISTRY="ghcr.io"
 GHCR_USER="omni-nexusai"
 IMAGE_NAME="agent-zero"
@@ -13,6 +14,7 @@ KOKORO_IMAGE_NAME="agent-zero-kokoro-worker"
 
 echo "Building and pushing Agent Zero images to GHCR"
 echo "Version tag: $VERSION_TAG"
+echo "Release channel: $RELEASE_CHANNEL"
 echo "Registry: $GHCR_REGISTRY/$GHCR_USER"
 
 # Check if user is logged in to GHCR
@@ -29,6 +31,7 @@ echo "=== Building CPU-only variant ==="
 docker build \
     --build-arg GIT_REF=$VERSION_TAG \
     --build-arg BUILD_VARIANT="" \
+    --build-arg RELEASE_CHANNEL=$RELEASE_CHANNEL \
     --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) \
     -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-cpu \
     -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-cpu-latest \
@@ -41,6 +44,7 @@ echo "=== Building Full GPU variant ==="
 docker build \
     --build-arg GIT_REF=$VERSION_TAG \
     --build-arg BUILD_VARIANT=fullGPU \
+    --build-arg RELEASE_CHANNEL=$RELEASE_CHANNEL \
     --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) \
     -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu \
     -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu-latest \
@@ -53,6 +57,7 @@ echo "=== Building Hybrid GPU variant (main container) ==="
 docker build \
     --build-arg GIT_REF=$VERSION_TAG \
     --build-arg BUILD_VARIANT=hybridGPU \
+    --build-arg RELEASE_CHANNEL=$RELEASE_CHANNEL \
     --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) \
     -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-hybrid-gpu \
     -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-hybrid-gpu-latest \
