@@ -16,6 +16,7 @@ class BuildType(Enum):
     CPU_ONLY = "cpu"
     FULL_GPU = "fullgpu"
     HYBRID_GPU = "hybridgpu"
+    STANDARD = "standard"
 
 
 def get_build_type() -> BuildType:
@@ -36,6 +37,8 @@ def get_build_type() -> BuildType:
         return BuildType.HYBRID_GPU
     elif variant == "fullgpu":
         return BuildType.FULL_GPU
+    elif variant == "standard":
+        return BuildType.STANDARD
     elif variant == "cpu":
         return BuildType.CPU_ONLY
     
@@ -68,6 +71,7 @@ def get_build_type_label(build_type: Optional[BuildType] = None) -> str:
         BuildType.CPU_ONLY: "CPU-only",
         BuildType.FULL_GPU: "Full GPU",
         BuildType.HYBRID_GPU: "Hybrid GPU",
+        BuildType.STANDARD: "Standard",
     }
     return labels.get(build_type, "Unknown")
 
@@ -113,6 +117,14 @@ def get_tts_device_options(build_type: Optional[BuildType] = None) -> List[Dict[
             "value": "remote",
             "label": "Remote GPU (worker) - Extend with any TTS endpoint"
         })
+    elif build_type == BuildType.STANDARD:
+        # Standard build: CPU baseline, optionally allow remote worker via env/compose add-on.
+        enable_remote = os.getenv("A0_ENABLE_REMOTE_TTS", "false").lower() == "true"
+        if enable_remote:
+            options.append({
+                "value": "remote",
+                "label": "Remote GPU (worker) - Optional add-on"
+            })
     
     return options
 
@@ -155,6 +167,22 @@ def get_tts_defaults(build_type: Optional[BuildType] = None) -> Dict[str, Any]:
             "tts_kokoro_remote_token": "",
             "tts_kokoro_remote_timeout": 20,
         })
+    elif build_type == BuildType.STANDARD:
+        enable_remote = os.getenv("A0_ENABLE_REMOTE_TTS", "false").lower() == "true"
+        if enable_remote:
+            defaults.update({
+                "tts_device": "remote",
+                "tts_kokoro_remote_url": "http://kokoro-gpu-worker:8891",
+                "tts_kokoro_remote_token": "",
+                "tts_kokoro_remote_timeout": 20,
+            })
+        else:
+            defaults.update({
+                "tts_device": "auto",
+                "tts_kokoro_remote_url": "",
+                "tts_kokoro_remote_token": "",
+                "tts_kokoro_remote_timeout": 20,
+            })
     else:
         # CPU-only build defaults
         defaults.update({
@@ -194,7 +222,11 @@ def is_setting_visible(setting_id: str, build_type: Optional[BuildType] = None) 
     }
     
     if setting_id in hybrid_only_settings:
-        return build_type == BuildType.HYBRID_GPU
+        if build_type == BuildType.HYBRID_GPU:
+            return True
+        if build_type == BuildType.STANDARD:
+            return os.getenv("A0_ENABLE_REMOTE_TTS", "false").lower() == "true"
+        return False
     
     if setting_id in fullgpu_only_settings:
         return build_type == BuildType.FULL_GPU
@@ -285,6 +317,12 @@ DEFAULT_PORTS = {
             "external_port": 8894,
             "internal_port": 8891,
         },
+    },
+    BuildType.STANDARD: {
+        "container_name": "A0-standard",
+        "stack_name": "a0-standard-custom",
+        "external_port": 8895,
+        "internal_port": 80,
     },
 }
 
