@@ -10,6 +10,10 @@ ENV BRANCH=$BRANCH
 ARG BUILD_VARIANT=""
 ENV BUILD_VARIANT=$BUILD_VARIANT
 
+# Release channel: pre (default) or release (Version M banner)
+ARG RELEASE_CHANNEL=pre
+ENV RELEASE_CHANNEL=$RELEASE_CHANNEL
+
 # PyTorch variant: cpu or cuda (used to install correct PyTorch version)
 ARG PYTORCH_VARIANT=cpu
 ENV PYTORCH_VARIANT=$PYTORCH_VARIANT
@@ -20,6 +24,7 @@ ENV BUILD_VERSION_ID=$BUILD_VERSION_ID
 
 # Bake build metadata into /etc/environment so it persists at runtime
 RUN echo "BUILD_VARIANT=\"$BUILD_VARIANT\"" >> /etc/environment && \
+    echo "RELEASE_CHANNEL=\"$RELEASE_CHANNEL\"" >> /etc/environment && \
     echo "PYTORCH_VARIANT=\"$PYTORCH_VARIANT\"" >> /etc/environment && \
     echo "BUILD_VERSION_ID=\"$BUILD_VERSION_ID\"" >> /etc/environment
 

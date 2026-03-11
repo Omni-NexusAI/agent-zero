@@ -15,12 +15,17 @@ ENV BRANCH=$GIT_REF
 ARG BUILD_VARIANT=""
 ENV BUILD_VARIANT=$BUILD_VARIANT
 
+# Release channel: pre (default) or release (Version M banner)
+ARG RELEASE_CHANNEL=pre
+ENV RELEASE_CHANNEL=$RELEASE_CHANNEL
+
 # PyTorch variant: cpu or cuda (used to install correct PyTorch version)
 ARG PYTORCH_VARIANT=cpu
 ENV PYTORCH_VARIANT=$PYTORCH_VARIANT
 
-# Bake BUILD_VARIANT and PYTORCH_VARIANT into /etc/environment so they persist at runtime
+# Bake BUILD_VARIANT, RELEASE_CHANNEL and PYTORCH_VARIANT into /etc/environment so they persist at runtime
 RUN echo "BUILD_VARIANT=\"$BUILD_VARIANT\"" >> /etc/environment && \
+    echo "RELEASE_CHANNEL=\"$RELEASE_CHANNEL\"" >> /etc/environment && \
     echo "PYTORCH_VARIANT=\"$PYTORCH_VARIANT\"" >> /etc/environment
 
 # Install PyTorch with CUDA support for FullGPU builds
@@ -75,7 +80,7 @@ RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $GIT_REF
 # Recompute version after install_A02.sh (in case repo was re-cloned)
 # Pass BUILD_VARIANT to include in version string (hybridGPU, fullGPU, or empty)
 RUN if [ -d /git/agent-zero/.git ]; then \
-        BUILD_VERSION=$(BUILD_VARIANT="$BUILD_VARIANT" bash /ins/compute_build_version.sh /git/agent-zero | tr -d '\n\r'); \
+        BUILD_VERSION=$(BUILD_VARIANT="$BUILD_VARIANT" RELEASE_CHANNEL="$RELEASE_CHANNEL" bash /ins/compute_build_version.sh /git/agent-zero | tr -d '\n\r'); \
         echo "Final build version: $BUILD_VERSION"; \
         echo "$BUILD_VERSION" > /a0_build_version.txt; \
         chmod 644 /a0_build_version.txt; \

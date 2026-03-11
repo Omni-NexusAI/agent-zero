@@ -42,7 +42,7 @@ fi
 # Compute build version from git repository
 # BUILD_VARIANT env var is inherited from Dockerfile (hybridGPU, fullGPU, or empty)
 echo "Computing build version from git repository (variant: ${BUILD_VARIANT:-cpu-only})..."
-BUILD_VERSION=$(BUILD_VARIANT="$BUILD_VARIANT" bash /ins/compute_build_version.sh /git/agent-zero)
+BUILD_VERSION=$(BUILD_VARIANT="$BUILD_VARIANT" RELEASE_CHANNEL="${RELEASE_CHANNEL:-pre}" bash /ins/compute_build_version.sh /git/agent-zero)
 echo "Build version computed: $BUILD_VERSION"
 # Store in file for later use in Docker build
 echo "$BUILD_VERSION" > /tmp/A0_BUILD_VERSION.txt

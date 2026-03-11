@@ -14,6 +14,9 @@ normalize_variant_slug() {
         fullGPU|fullgpu)
             echo "full-gpu"
             ;;
+        standard)
+            echo "standard"
+            ;;
         cpu)
             echo "cpu"
             ;;
@@ -38,13 +41,19 @@ build_variant_prefix() {
 }
 
 VARIANT_SLUG=$(normalize_variant_slug "${BUILD_VARIANT:-}")
+RELEASE_CHANNEL="${RELEASE_CHANNEL:-pre}"
+if [ "$RELEASE_CHANNEL" = "release" ]; then
+    VERSION_PREFIX="Version M"
+else
+    VERSION_PREFIX="Version D"
+fi
 
 if [ ! -d "$REPO_PATH/.git" ]; then
     if [ -n "${BUILD_VERSION_ID:-}" ]; then
-        DISPLAY_VERSION="Version D ${BUILD_VERSION_ID} $(date +"%Y-%m-%d %H:%M:%S")"
+        DISPLAY_VERSION="${VERSION_PREFIX} ${BUILD_VERSION_ID} $(date +"%Y-%m-%d %H:%M:%S")"
     else
         VARIANT_PREFIX=$(build_variant_prefix "$VARIANT_SLUG" "")
-        DISPLAY_VERSION="Version D ${VARIANT_PREFIX}local-dev-custom $(date +"%Y-%m-%d %H:%M:%S")"
+        DISPLAY_VERSION="${VERSION_PREFIX} ${VARIANT_PREFIX}local-dev-custom $(date +"%Y-%m-%d %H:%M:%S")"
     fi
     echo "$DISPLAY_VERSION" > /tmp/A0_BUILD_VERSION.txt
     echo "No git repo found, using local version: $DISPLAY_VERSION" >&2
@@ -88,15 +97,15 @@ if [ -n "$GIT_TAG" ]; then
     # Format: Version D [variant] <tag> <timestamp>
     # If tag already contains -custom, use as-is; otherwise add -custom
     if [[ "$VERSION_ID" == *"-custom"* ]]; then
-        DISPLAY_VERSION="Version D ${VARIANT_PREFIX}${VERSION_ID} ${GIT_TIMESTAMP}"
+        DISPLAY_VERSION="${VERSION_PREFIX} ${VARIANT_PREFIX}${VERSION_ID} ${GIT_TIMESTAMP}"
     else
-        DISPLAY_VERSION="Version D ${VARIANT_PREFIX}${VERSION_ID}-custom ${GIT_TIMESTAMP}"
+        DISPLAY_VERSION="${VERSION_PREFIX} ${VARIANT_PREFIX}${VERSION_ID}-custom ${GIT_TIMESTAMP}"
     fi
 else
     # If not on a tag, use commit hash
     # Format: Version D [variant] dev-<commit>-custom <timestamp>
     VARIANT_PREFIX=$(build_variant_prefix "$VARIANT_SLUG" "")
-    DISPLAY_VERSION="Version D ${VARIANT_PREFIX}dev-${GIT_COMMIT}-custom ${GIT_TIMESTAMP}"
+    DISPLAY_VERSION="${VERSION_PREFIX} ${VARIANT_PREFIX}dev-${GIT_COMMIT}-custom ${GIT_TIMESTAMP}"
 fi
 
 # Export for use in Docker build
