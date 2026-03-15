@@ -48,9 +48,29 @@ else
     VERSION_PREFIX="Version D"
 fi
 
+# When no git repo: banner must follow the defined versioning pattern only.
+# Do not inject ad-hoc suffixes (e.g. rebake-local); strip them if present.
+normalize_build_version_id() {
+    local raw="${1:-}"
+    while true; do
+        local prev="$raw"
+        raw="${raw%-rebake-local}"
+        raw="${raw%-local}"
+        raw="${raw%-dev}"
+        [ "$raw" = "$prev" ] && break
+    done
+    echo "$raw"
+}
+
 if [ ! -d "$REPO_PATH/.git" ]; then
     if [ -n "${BUILD_VERSION_ID:-}" ]; then
-        DISPLAY_VERSION="${VERSION_PREFIX} ${BUILD_VERSION_ID} $(date +"%Y-%m-%d %H:%M:%S")"
+        NORMALIZED_ID=$(normalize_build_version_id "$BUILD_VERSION_ID")
+        if [ -n "$NORMALIZED_ID" ]; then
+            DISPLAY_VERSION="${VERSION_PREFIX} ${NORMALIZED_ID} $(date +"%Y-%m-%d %H:%M:%S")"
+        else
+            VARIANT_PREFIX=$(build_variant_prefix "$VARIANT_SLUG" "")
+            DISPLAY_VERSION="${VERSION_PREFIX} ${VARIANT_PREFIX}local-dev-custom $(date +"%Y-%m-%d %H:%M:%S")"
+        fi
     else
         VARIANT_PREFIX=$(build_variant_prefix "$VARIANT_SLUG" "")
         DISPLAY_VERSION="${VERSION_PREFIX} ${VARIANT_PREFIX}local-dev-custom $(date +"%Y-%m-%d %H:%M:%S")"

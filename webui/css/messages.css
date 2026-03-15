@@ -369,6 +369,26 @@
   text-overflow: ellipsis;
 }
 
+/* Agent / AI message heading color coding */
+.message-agent .msg-heading h4,
+.message-agent-delegation .msg-heading h4 {
+  color: var(--color-primary);
+  font-weight: 500;
+  opacity: 0.95;
+}
+
+.message-agent-response .msg-heading h4 {
+  color: var(--color-text);
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.message-info .msg-heading h4 {
+  color: var(--color-info-text, #38bdf8);
+  font-weight: 500;
+  opacity: 0.95;
+}
+
 /* Message Actions */
 .message-actions {
   color: var(--color-text);

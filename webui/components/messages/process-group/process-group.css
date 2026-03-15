@@ -419,11 +419,11 @@
   overflow: hidden;
 }
 
-/* Step title */
+/* Step title - use step accent for color coding (GEN, ERR, etc.) */
 .process-step-header .step-title {
   flex: 1;
   font-size: 0.8rem;
-  /* color: var(--color-text-muted); */
+  color: var(--step-accent, var(--color-text-muted));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
