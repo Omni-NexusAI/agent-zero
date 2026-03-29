@@ -1,0 +1,30 @@
+name: a0-fullgpu-custom
+
+services:
+  a0-fullgpu:
+    container_name: A0-fullgpu
+    build:
+      context: ./docker/run
+      dockerfile: Dockerfile
+      args:
+        # Default stays on pre-release tag; override with env (e.g. GIT_REF=v0.9.8-custom-full-gpu)
+        GIT_REF: ${GIT_REF:-v0.9.8-custom-pre-full-gpu}
+        BUILD_VARIANT: fullGPU
+        # pre (default) -> Version D banner, release -> Version M banner
+        RELEASE_CHANNEL: ${RELEASE_CHANNEL:-pre}
+        PYTORCH_VARIANT: cuda
+        CACHE_DATE: ${CACHE_DATE:-none}
+    ports:
+      - "8892:80"
+    environment:
+      - BUILD_VARIANT=fullGPU
+      - RELEASE_CHANNEL=${RELEASE_CHANNEL:-pre}
+      - PYTORCH_VARIANT=cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped

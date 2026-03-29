@@ -22,7 +22,7 @@ from litellm.types.utils import ModelResponse
 from python.helpers import dotenv
 from python.helpers import settings, dirty_json
 from python.helpers.dotenv import load_dotenv
-from python.helpers.providers import get_provider_config
+from python.helpers.providers import ModelType as ProviderModelType, get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
 from python.helpers import dirty_json, browser_use_monkeypatch
@@ -60,6 +60,25 @@ turn_off_logging()
 browser_use_monkeypatch.apply()
 
 litellm.modify_params = True # helps fix anthropic tool calls by browser-use
+litellm.drop_params = True  # silently drop unsupported params for local models
+
+
+# Disable prompt template for local models (LMStudio, Ollama, etc.)
+# This prevents LiteLLM from trying to apply chat templates that fail with
+# "No user query found in messages"
+try:
+    for _local_model in ["lm_studio", "ollama", "localhost", "local"]:
+        litellm.register_prompt_template(
+            model=_local_model,
+            roles={
+                "system": {"role": "system", "content": ""},
+                "user": {"role": "user", "content": ""},
+                "assistant": {"role": "assistant", "content": ""},
+            },
+        )
+except Exception:
+    pass
+
 
 class ModelType(Enum):
     CHAT = "Chat"
@@ -115,8 +134,8 @@ class ChatGenerationResult:
             # if the model outputs thinking tags, we ned to parse them manually as reasoning
             processed_chunk = self._process_thinking_chunk(chunk)
 
-        self.reasoning += processed_chunk["reasoning_delta"]
-        self.response += processed_chunk["response_delta"]
+        self.reasoning += processed_chunk.get("reasoning_delta", "")
+        self.response += processed_chunk.get("response_delta", "")
 
         return processed_chunk
 
@@ -316,7 +335,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
     def _llm_type(self) -> str:
         return "litellm-chat"
 
-    def _convert_messages(self, messages: List[BaseMessage]) -> List[dict]:
+    def _convert_messages(self, messages: List[BaseMessage], explicit_caching: bool = False) -> List[dict]:
         result = []
         # Map LangChain message types to LiteLLM roles
         role_mapping = {
@@ -362,6 +381,15 @@ class LiteLLMChatWrapper(SimpleChatModel):
                 message_dict["tool_call_id"] = tool_call_id
 
             result.append(message_dict)
+
+        if explicit_caching and result:
+            if result[0]["role"] == "system":
+                result[0]["cache_control"] = {"type": "ephemeral"}
+            for i in range(len(result) - 1, -1, -1):
+                if result[i]["role"] == "assistant":
+                    result[i]["cache_control"] = {"type": "ephemeral"}
+                    break
+
         return result
 
     def _call(
@@ -464,6 +492,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
         rate_limiter_callback: (
             Callable[[str, str, int, int], Awaitable[bool]] | None
         ) = None,
+        explicit_caching: bool = False,
         **kwargs: Any,
     ) -> Tuple[str, str]:
 
@@ -478,7 +507,13 @@ class LiteLLMChatWrapper(SimpleChatModel):
             messages.append(HumanMessage(content=user_message))
 
         # convert to litellm format
-        msgs_conv = self._convert_messages(messages)
+        msgs_conv = self._convert_messages(messages, explicit_caching=explicit_caching)
+
+        # LMStudio's Jinja templates require a user message; without one it
+        # raises "No user query found in messages."
+        has_user = any(m.get("role") == "user" for m in msgs_conv)
+        if not has_user:
+            msgs_conv.append({"role": "user", "content": "."})
 
         # Apply rate limiting if configured
         limiter = await apply_rate_limiter(
@@ -752,8 +787,10 @@ def _get_litellm_chat(
     # use api key from kwargs or env
     api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
 
-    # Only pass API key if key is not a placeholder
-    if api_key and api_key not in ("None", "NA"):
+    # Only pass API key if key is not a placeholder (allow empty string for local models)
+    if api_key is not None and api_key not in ("None", "NA"):
+        kwargs["api_key"] = api_key
+    elif api_key == "":
         kwargs["api_key"] = api_key
 
     provider_name, model_name, kwargs = _adjust_call_args(
@@ -788,8 +825,10 @@ def _get_litellm_embedding(
     # use api key from kwargs or env
     api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
 
-    # Only pass API key if key is not a placeholder
-    if api_key and api_key not in ("None", "NA"):
+    # Only pass API key if key is not a placeholder (allow empty string for local models)
+    if api_key is not None and api_key not in ("None", "NA"):
+        kwargs["api_key"] = api_key
+    elif api_key == "":
         kwargs["api_key"] = api_key
 
     provider_name, model_name, kwargs = _adjust_call_args(
@@ -813,7 +852,7 @@ def _parse_chunk(chunk: Any) -> ChatChunk:
         message.get("content", "")
         if isinstance(message, dict)
         else getattr(message, "content", "")
-    )
+    ) or ""
     reasoning_delta = (
         delta.get("reasoning_content", "")
         if isinstance(delta, dict)
@@ -822,7 +861,7 @@ def _parse_chunk(chunk: Any) -> ChatChunk:
         message.get("reasoning_content", "")
         if isinstance(message, dict)
         else getattr(message, "reasoning_content", "")
-    )
+    ) or ""
 
     return ChatChunk(reasoning_delta=reasoning_delta, response_delta=response_delta)
 
@@ -844,7 +883,7 @@ def _adjust_call_args(provider_name: str, model_name: str, kwargs: dict):
 
 
 def _merge_provider_defaults(
-    provider_type: str, original_provider: str, kwargs: dict
+    provider_type: ProviderModelType, original_provider: str, kwargs: dict
 ) -> tuple[str, dict]:
     # Normalize .env-style numeric strings (e.g., "timeout=30") into ints/floats for LiteLLM
     def _normalize_values(values: dict) -> dict:

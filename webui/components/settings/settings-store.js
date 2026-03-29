@@ -1,0 +1,372 @@
+import { createStore } from "/js/AlpineStore.js";
+import * as API from "/js/api.js";
+import { store as notificationStore } from "/components/notifications/notification-store.js";
+
+// Constants
+const VIEW_MODE_STORAGE_KEY = "settingsActiveTab";
+const DEFAULT_TAB = "agent";
+
+// Field button actions (field id -> modal path)
+const FIELD_BUTTON_MODAL_BY_ID = Object.freeze({
+  mcp_servers_config: "settings/mcp/client/mcp-servers.html",
+  backup_create: "settings/backup/backup.html",
+  backup_restore: "settings/backup/restore.html",
+  show_a2a_connection: "settings/a2a/a2a-connection.html",
+  external_api_examples: "settings/external/api-examples.html",
+});
+
+// Helper for toasts
+function toast(text, type = "info", timeout = 5000) {
+  notificationStore.addFrontendToastOnly(type, text, "", timeout / 1000);
+}
+
+// Settings Store
+const model = {
+  // State
+  isLoading: false,
+  error: null,
+  settings: null,
+  additional: null,
+  workdirFileStructureTestOutput: "",
+  
+  // Tab state
+  _activeTab: DEFAULT_TAB,
+  get activeTab() {
+    return this._activeTab;
+  },
+  set activeTab(value) {
+    const previous = this._activeTab;
+    this._activeTab = value;
+    this.applyActiveTab(previous, value);
+  },
+
+  // Lifecycle
+  init() {
+    // Restore persisted tab
+    try {
+      const saved = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+      if (saved) this._activeTab = saved;
+    } catch {}
+  },
+
+  async onOpen() {
+    this.error = null;
+    this.isLoading = true;
+    
+    try {
+      const response = await API.callJsonApi("settings_get", null);
+      if (response && response.settings) {
+        this.settings = response.settings;
+        // Ensure blend ratio key exists and is numeric for persistence.
+        if (
+          this.settings.tts_kokoro_voice_blend === undefined ||
+          this.settings.tts_kokoro_voice_blend === null ||
+          Number.isNaN(Number(this.settings.tts_kokoro_voice_blend))
+        ) {
+          this.settings.tts_kokoro_voice_blend = 50;
+        } else {
+          const clamped = Math.max(1, Math.min(99, Number(this.settings.tts_kokoro_voice_blend)));
+          this.settings.tts_kokoro_voice_blend = clamped;
+        }
+        if (!this.settings.models_history) this.settings.models_history = {};
+        if (!this.settings.models_context_history) this.settings.models_context_history = {};
+        this.additional = response.additional || null;
+        this.migrateModelHistory();
+      } else {
+        throw new Error("Invalid settings response");
+      }
+    } catch (e) {
+      console.error("Failed to load settings:", e);
+      this.error = e.message || "Failed to load settings";
+      toast("Failed to load settings", "error");
+    } finally {
+      this.isLoading = false;
+    }
+
+    // Trigger tab activation for current tab
+    this.applyActiveTab(null, this._activeTab);
+  },
+
+  cleanup() {
+    this.settings = null;
+    this.additional = null;
+    this.error = null;
+    this.isLoading = false;
+  },
+
+  // Tab management
+  applyActiveTab(previous, current) {
+    // Persist
+    try {
+      localStorage.setItem(VIEW_MODE_STORAGE_KEY, current);
+    } catch {}
+  },
+
+  switchTab(tabName) {
+    this.activeTab = tabName;
+  },
+
+  // Field mapping for model picker
+  _modelProviderMap: {
+    chat_model_name: "chat_model_provider",
+    util_model_name: "util_model_provider",
+    browser_model_name: "browser_model_provider",
+    embed_model_name: "embed_model_provider",
+  },
+  _modelCtxLengthMap: {
+    chat_model_name: "chat_model_ctx_length",
+  },
+  _providerApiBaseMap: {
+    chat_model_provider: "chat_model_api_base",
+    util_model_provider: "util_model_api_base",
+    browser_model_provider: "browser_model_api_base",
+    embed_model_provider: "embed_model_api_base",
+  },
+
+  getProviderForField(fieldId) {
+    const providerKey = this._modelProviderMap[fieldId];
+    return providerKey ? (this.settings?.[providerKey] || "unknown") : "unknown";
+  },
+
+  getModelHistory(fieldId) {
+    if (!this.settings) return [];
+    const provider = this.getProviderForField(fieldId);
+    const history = this.settings.models_history;
+    if (!history || !history[fieldId] || !history[fieldId][provider]) return [];
+    return history[fieldId][provider];
+  },
+
+  saveModelName(fieldId) {
+    if (!this.settings) return;
+    const val = this.settings[fieldId];
+    if (!val?.trim()) return;
+    this._cacheModelName(fieldId, val.trim());
+  },
+
+  _cacheModelName(fieldId, value) {
+    if (!this.settings) return;
+    const provider = this.getProviderForField(fieldId);
+
+    if (!this.settings.models_history) this.settings.models_history = {};
+    if (!this.settings.models_history[fieldId]) this.settings.models_history[fieldId] = {};
+    if (!this.settings.models_history[fieldId][provider]) this.settings.models_history[fieldId][provider] = [];
+
+    const filtered = this.settings.models_history[fieldId][provider].filter(n => n !== value);
+    filtered.unshift(value);
+    this.settings.models_history[fieldId][provider] = filtered.slice(0, 20);
+
+    const ctxKey = this._modelCtxLengthMap[fieldId];
+    if (ctxKey && this.settings[ctxKey] !== undefined) {
+      if (!this.settings.models_context_history) this.settings.models_context_history = {};
+      if (!this.settings.models_context_history[fieldId]) this.settings.models_context_history[fieldId] = {};
+      if (!this.settings.models_context_history[fieldId][provider]) this.settings.models_context_history[fieldId][provider] = {};
+      this.settings.models_context_history[fieldId][provider][value] = parseInt(this.settings[ctxKey], 10) || 128000;
+    }
+  },
+
+  removeFromModelHistory(fieldId, value) {
+    if (!this.settings || !value?.trim()) return;
+    const provider = this.getProviderForField(fieldId);
+    const history = this.settings.models_history;
+    if (!history || !history[fieldId] || !history[fieldId][provider]) return;
+    history[fieldId][provider] = history[fieldId][provider].filter(n => n !== value.trim());
+  },
+
+  selectModelName(fieldId, modelName) {
+    if (!this.settings) return;
+    this.settings[fieldId] = modelName;
+
+    const ctxKey = this._modelCtxLengthMap[fieldId];
+    if (ctxKey) {
+      const provider = this.getProviderForField(fieldId);
+      const ctxHistory = this.settings.models_context_history;
+      if (ctxHistory?.[fieldId]?.[provider]?.[modelName]) {
+        this.settings[ctxKey] = ctxHistory[fieldId][provider][modelName];
+      }
+    }
+  },
+
+  handleProviderChange(providerFieldId, value) {
+    if (!this.settings) return;
+    this.settings[providerFieldId] = value;
+
+    const apiBaseKey = this._providerApiBaseMap[providerFieldId];
+    if (!apiBaseKey) return;
+
+    const currentBase = this.settings[apiBaseKey] || "";
+    const localDefaults = [
+      "http://localhost:1234/v1",
+      "http://localhost:11434",
+      "http://host.docker.internal:1234/v1",
+      "http://host.docker.internal:11434",
+    ];
+
+    if (value === "lm_studio") {
+      if (!currentBase.trim()) this.settings[apiBaseKey] = "http://host.docker.internal:1234/v1";
+    } else if (value === "ollama") {
+      if (!currentBase.trim()) this.settings[apiBaseKey] = "http://host.docker.internal:11434";
+    } else {
+      if (localDefaults.includes(currentBase)) this.settings[apiBaseKey] = "";
+    }
+  },
+
+  cacheAllModelNames() {
+    if (!this.settings) return;
+    const modelFields = ["chat_model_name", "util_model_name", "browser_model_name", "embed_model_name"];
+    modelFields.forEach(id => {
+      const v = this.settings[id];
+      if (v?.trim()) this._cacheModelName(id, v.trim());
+    });
+  },
+
+  migrateModelHistory() {
+    if (!this.settings) return;
+    const modelFields = ["chat_model_name", "util_model_name", "browser_model_name", "embed_model_name"];
+    let migrated = false;
+
+    modelFields.forEach(fieldId => {
+      const lsKey = `model_history_${fieldId}`;
+      try {
+        const raw = localStorage.getItem(lsKey);
+        if (!raw) return;
+        const oldHistory = JSON.parse(raw);
+        if (!Array.isArray(oldHistory) || oldHistory.length === 0) return;
+
+        const provider = this.getProviderForField(fieldId);
+        if (!this.settings.models_history) this.settings.models_history = {};
+        if (!this.settings.models_history[fieldId]) this.settings.models_history[fieldId] = {};
+        if (!this.settings.models_history[fieldId][provider]) this.settings.models_history[fieldId][provider] = [];
+
+        const existing = new Set(this.settings.models_history[fieldId][provider]);
+        oldHistory.forEach(name => {
+          if (name && !existing.has(name)) {
+            this.settings.models_history[fieldId][provider].push(name);
+            existing.add(name);
+          }
+        });
+
+        localStorage.removeItem(lsKey);
+        migrated = true;
+      } catch {}
+    });
+
+    if (migrated) {
+      console.log("Migrated model history from localStorage to server-side settings");
+    }
+  },
+
+
+
+  get apiKeyProviders() {
+    const seen = new Set();
+    const options = [];
+    const addProvider = (prov) => {
+      if (!prov?.value) return;
+      const key = prov.value.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      options.push({ value: prov.value, label: prov.label || prov.value });
+    };
+    (this.additional?.chat_providers || []).forEach(addProvider);
+    (this.additional?.embedding_providers || []).forEach(addProvider);
+    options.sort((a, b) => a.label.localeCompare(b.label));
+    return options;
+  },
+
+  // Save settings
+  async saveSettings() {
+    if (!this.settings) {
+      toast("No settings to save", "warning");
+      return false;
+    }
+
+    this.cacheAllModelNames();
+    // Normalize blend ratio before sending settings payload.
+    if (
+      this.settings.tts_kokoro_voice_blend === undefined ||
+      this.settings.tts_kokoro_voice_blend === null ||
+      Number.isNaN(Number(this.settings.tts_kokoro_voice_blend))
+    ) {
+      this.settings.tts_kokoro_voice_blend = 50;
+    } else {
+      const clamped = Math.max(1, Math.min(99, Number(this.settings.tts_kokoro_voice_blend)));
+      this.settings.tts_kokoro_voice_blend = clamped;
+    }
+
+    // Serialize through a plain object to avoid sending reactive proxy artifacts.
+    const payloadSettings = JSON.parse(JSON.stringify(this.settings));
+    this.isLoading = true;
+    try {
+      const response = await API.callJsonApi("settings_set", { settings: payloadSettings });
+      if (response && response.settings) {
+        this.settings = response.settings;
+        this.additional = response.additional || this.additional;
+        toast("Settings saved successfully", "success");
+        document.dispatchEvent(
+          new CustomEvent("settings-updated", { detail: response.settings })
+        );
+        return true;
+      } else {
+        throw new Error("Failed to save settings");
+      }
+    } catch (e) {
+      console.error("Failed to save settings:", e);
+      toast("Failed to save settings: " + e.message, "error");
+      return false;
+    } finally {
+      this.isLoading = false;
+    }
+  },
+
+  // Close the modal
+  closeSettings() {
+    window.closeModal("settings/settings.html");
+  },
+
+  // Save and close
+  async saveAndClose() {
+    const success = await this.saveSettings();
+    if (success) {
+      this.closeSettings();
+    }
+  },
+
+  async testWorkdirFileStructure() {
+    if (!this.settings) return;
+    try {
+      const response = await API.callJsonApi("settings_workdir_file_structure", {
+        workdir_path: this.settings.workdir_path,
+        workdir_max_depth: this.settings.workdir_max_depth,
+        workdir_max_files: this.settings.workdir_max_files,
+        workdir_max_folders: this.settings.workdir_max_folders,
+        workdir_max_lines: this.settings.workdir_max_lines,
+        workdir_gitignore: this.settings.workdir_gitignore,
+      });
+      this.workdirFileStructureTestOutput = response?.data || "";
+      window.openModal("settings/agent/workdir-file-structure-test.html");
+    } catch (e) {
+      console.error("Error testing workdir file structure:", e);
+      toast("Error testing workdir file structure", "error");
+    }
+  },
+
+  // Field helpers for external components
+  // Handle button field clicks (opens sub-modals)
+  async handleFieldButton(field) {
+    const modalPath = FIELD_BUTTON_MODAL_BY_ID[field?.id];
+    if (modalPath) window.openModal(modalPath);
+  },
+
+  // Open settings modal from external callers
+  async open(initialTab = null) {
+    if (initialTab) {
+      this._activeTab = initialTab;
+    }
+    await window.openModal("settings/settings.html");
+  },
+};
+
+const store = createStore("settings", model);
+
+export { store };
+

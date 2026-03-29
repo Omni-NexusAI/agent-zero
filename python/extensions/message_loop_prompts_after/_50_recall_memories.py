@@ -8,6 +8,7 @@ from python.helpers import dirty_json, errors, settings, log
 
 DATA_NAME_TASK = "_recall_memories_task"
 DATA_NAME_ITER = "_recall_memories_iter"
+SEARCH_TIMEOUT = 30
 
 
 class RecallMemories(Extension):
@@ -38,7 +39,10 @@ class RecallMemories(Extension):
             )
 
             task = asyncio.create_task(
-                self.search_memories(loop_data=loop_data, log_item=log_item, **kwargs)
+                asyncio.wait_for(
+                    self.search_memories(loop_data=loop_data, log_item=log_item, **kwargs),
+                    timeout=SEARCH_TIMEOUT,
+                )
             )
         else:
             task = None
@@ -63,9 +67,9 @@ class RecallMemories(Extension):
         # get system message and chat history for util llm
         system = self.agent.read_prompt("memory.memories_query.sys.md")
 
-        # log query streamed by LLM
-        async def log_callback(content):
-            log_item.stream(query=content)
+        # # log query streamed by LLM
+        # async def log_callback(content):
+        #     log_item.stream(query=content)
 
         # call util llm to summarize conversation
         user_instruction = (
@@ -83,13 +87,14 @@ class RecallMemories(Extension):
                 query = await self.agent.call_utility_model(
                     system=system,
                     message=message,
-                    callback=log_callback,
+                    # callback=log_callback,
                 )
                 query = query.strip()
+                log_item.update(query=query) # no need for streaming here
             except Exception as e:
                 err = errors.format_error(e)
                 self.agent.context.log.log(
-                    type="error", heading="Recall memories extension error:", content=err
+                    type="warning", heading="Recall memories extension error:", content=err
                 )
                 query = ""
 
@@ -180,7 +185,7 @@ class RecallMemories(Extension):
             except Exception as e:
                 err = errors.format_error(e)
                 self.agent.context.log.log(
-                    type="error", heading="Failed to filter relevant memories", content=err
+                    type="warning", heading="Failed to filter relevant memories", content=err
                 )
                 filter_inds = []
 
