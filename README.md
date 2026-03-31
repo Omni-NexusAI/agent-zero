@@ -20,7 +20,7 @@
 </div>
 
 > [!NOTE]
-> `AgentSpine` is the Omni-NexusAI continuation of the Agent Zero framework for the broader AI-Link and AINexus roadmap.
+> `AgentSpine` is the Omni-NexusAI spinoff of the Agent Zero framework.
 > The public-facing branding is being renamed first. Some current install paths, image names, environment prefixes, and internal identifiers still use legacy `agent-zero` or `A0` names while the deeper migration is phased in.
 
 <div align="center">
@@ -36,11 +36,11 @@
 
 [![Showcase](/docs/res/showcase-thumb.png)](https://youtu.be/lazLNcEYsiQ)
 
-## AgentSpine for the AI-Link stack
+## AgentSpine for extensibility of your existing agent stack
 
 - AgentSpine is a dynamic, personal agent framework that grows with how you use it.
 - It remains transparent, readable, customizable, and interactive from prompts to tools to UI.
-- It serves as the agent runtime layer in the AI-Link roadmap while remaining usable as a standalone framework.
+- It can serve as the agent runtime layer in apps such as AI-Link or other utility applications, while remaining usable as a standalone framework.
 
 ## Installation
 
@@ -146,7 +146,7 @@ docker compose -f docker/run/docker-compose.yml up -d
 
 ## Changelog
 
-### v0.9.8 pre-release - AgentSpine merge baseline
+### v0.9.8 - AgentSpine merge baseline
 
 - Rebased the custom Omni-NexusAI fork onto upstream `v0.9.8` to carry forward the redesigned web UI, welcome screen, scheduler improvements, process groups, richer step details, and related frontend polish.
 - Ported forward custom backend and settings work for models, providers, MCP controls, speech configuration, and Kokoro support.
