@@ -108,6 +108,11 @@ export function setMessages(messages) {
       _scrollOnNextProcessGroup = null;
     });
   }
+
+  const greetingEl = document.getElementById("chat-greeting");
+  if (greetingEl) {
+    greetingEl.style.display = context.messages.length > 0 ? "none" : "";
+  }
 }
 
 // entrypoint called from poll/WS communication, this is how all messages are rendered and updated

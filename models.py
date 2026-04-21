@@ -90,6 +90,7 @@ class ModelConfig:
     type: ModelType
     provider: str
     name: str
+    api_key: str = ""
     api_base: str = ""
     ctx_length: int = 0
     limit_requests: int = 0
@@ -102,6 +103,8 @@ class ModelConfig:
         kwargs = self.kwargs.copy() or {}
         if self.api_base and "api_base" not in kwargs:
             kwargs["api_base"] = self.api_base
+        if self.api_key and "api_key" not in kwargs:
+            kwargs["api_key"] = self.api_key
         return kwargs
 
 

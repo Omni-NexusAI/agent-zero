@@ -1,0 +1,7 @@
+name: _enhanced_speech
+title: Enhanced Speech
+description: Agentspine speech enhancements for Kokoro TTS, including blending and runtime-safe speech settings behavior.
+version: 1.7.0
+always_enabled: true
+settings_sections:
+  - general

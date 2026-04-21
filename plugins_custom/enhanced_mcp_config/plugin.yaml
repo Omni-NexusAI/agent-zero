@@ -1,0 +1,7 @@
+name: enhanced_mcp_config
+title: Enhanced MCP Configurator
+description: Marketplace-ready custom plugin package for Agentspine MCP toggle and configuration enhancements.
+version: 1.7.0
+always_enabled: false
+settings_sections:
+  - mcp

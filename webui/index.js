@@ -318,6 +318,8 @@ export async function applySnapshot(snapshot, options = {}) {
     if (lastLogGuid) {
       const chatHistoryEl = document.getElementById("chat-history");
       if (chatHistoryEl) chatHistoryEl.innerHTML = "";
+      const greetingEl = document.getElementById("chat-greeting");
+      if (greetingEl) greetingEl.style.display = "";
       lastLogVersion = 0;
       lastLogGuid = snapshot.log_guid;
       if (typeof onLogGuidReset === "function") {
@@ -520,6 +522,8 @@ export const setContext = function (id) {
   // Clear the chat history immediately to avoid showing stale content
   const chatHistoryEl = document.getElementById("chat-history");
   if (chatHistoryEl) chatHistoryEl.innerHTML = "";
+  const greetingEl2 = document.getElementById("chat-greeting");
+  if (greetingEl2) greetingEl2.style.display = "";
 
   // Update both selected states using stores
   chatsStore.setSelected(id);
@@ -551,6 +555,8 @@ export const deselectChat = function () {
 
   // Clear the chat history
   chatHistory.innerHTML = "";
+  const greetingElDesel = document.getElementById("chat-greeting");
+  if (greetingElDesel) greetingElDesel.style.display = "";
 };
 globalThis.deselectChat = deselectChat;
 

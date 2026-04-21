@@ -751,6 +751,11 @@ def _apply_settings(previous: Settings | None):
                 update_a2a_token, current_token
             )  # TODO overkill, replace with background task
 
+        # invalidate self-update caches when update source changes
+        if not previous or _settings.get("self_update_source") != previous.get("self_update_source"):
+            from python.helpers import self_update
+            self_update.invalidate_caches()
+
         # Kokoro TTS hot-apply settings
         if _settings.get("tts_kokoro"):
             try:

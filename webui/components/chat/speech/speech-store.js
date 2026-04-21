@@ -447,10 +447,10 @@ const model = {
           this.playAudio(response.audio);
         }
       } else {
-        throw new Error("Kokoro TTS error:", response.error);
+        throw new Error(`Kokoro TTS error: ${response.error}`);
       }
     } catch (error) {
-      throw new Error("Kokoro TTS error:", error);
+      throw new Error(`Kokoro TTS error: ${error}`);
     }
   },
 
@@ -958,5 +958,11 @@ export const store = createStore("speech", model);
 // window.speechStore = speechStore;
 
 // Event listeners
-document.addEventListener("settings-updated", () => store.loadSettings());
+document.addEventListener("settings-updated", async () => {
+  try {
+    await store.loadSettings();
+  } catch (err) {
+    console.debug("Speech settings reload skipped:", err);
+  }
+});
 // document.addEventListener("DOMContentLoaded", () => speechStore.init());
