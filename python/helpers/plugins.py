@@ -17,22 +17,100 @@ from typing import (
 
 # from regex import W  # Not needed in agentspine
 
-from python.helpers import (
-    files,
-    git,
-    notification,
-    print_style,
-    yaml_helper,
-    cache,
-    extension,
-    watchdog_helper as watchdog,
-    modules,
-    functions,
-)
+from python.helpers import files, git, notification, print_style, extension
+try:
+    from python.helpers import yaml_helper
+except ImportError:
+    import yaml
+
+    class yaml_helper:  # type: ignore[no-redef]
+        @staticmethod
+        def loads(value: str):
+            return yaml.safe_load(value)
+
+        @staticmethod
+        def dumps(value: Any):
+            return yaml.safe_dump(value, sort_keys=False)
+
+try:
+    from python.helpers import cache
+except ImportError:
+    class cache:  # type: ignore[no-redef]
+        _store: dict[tuple[str, str], Any] = {}
+
+        @staticmethod
+        def determine_cache_key(*parts: Any) -> str:
+            return "|".join(str(part) for part in parts)
+
+        @classmethod
+        def get(cls, area: str, key: str):
+            return cls._store.get((area, key))
+
+        @classmethod
+        def add(cls, area: str, key: str, value: Any):
+            cls._store[(area, key)] = value
+
+        @classmethod
+        def has(cls, area: str, key: str) -> bool:
+            return (area, key) in cls._store
+
+        @classmethod
+        def clear(cls, area_pattern: str):
+            prefix = area_pattern.rstrip("*")
+            for key in list(cls._store):
+                if key[0].startswith(prefix) or area_pattern == "*":
+                    cls._store.pop(key, None)
+
+try:
+    from python.helpers import watchdog_helper as watchdog
+except ImportError:
+    class watchdog:  # type: ignore[no-redef]
+        @staticmethod
+        def add_watchdog(**kwargs):
+            return None
+
+try:
+    from python.helpers import modules
+except ImportError:
+    import importlib.util
+    import sys
+
+    class modules:  # type: ignore[no-redef]
+        @staticmethod
+        def purge_namespace(namespace: str):
+            prefix = namespace + "."
+            for name in list(sys.modules):
+                if name == namespace or name.startswith(prefix):
+                    sys.modules.pop(name, None)
+
+        @staticmethod
+        def import_module(path: str):
+            module_name = "plugin_hooks_" + str(abs(hash(path)))
+            spec = importlib.util.spec_from_file_location(module_name, path)
+            if spec is None or spec.loader is None:
+                return None
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+
+try:
+    from python.helpers import functions
+except ImportError:
+    class functions:  # type: ignore[no-redef]
+        @staticmethod
+        def safe_call(func, *args, default=None, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as exc:
+                print_style.PrintStyle.error(str(exc))
+                return default
 from pydantic import BaseModel, Field
 
 from python.helpers.defer import DeferredTask
-from python.helpers.watchdog_helper import WatchItem
+try:
+    from python.helpers.watchdog_helper import WatchItem
+except ImportError:
+    WatchItem = Any  # type: ignore[misc, assignment]
 
 if TYPE_CHECKING:
     from agent import Agent
@@ -464,6 +542,44 @@ def get_enabled_plugin_paths(agent: Agent | None, *subpaths: str) -> List[str]:
     return paths
 
 
+def render_webui_extensions(extension_id: str, agent: Agent | None = None) -> str:
+    """Render enabled plugin WebUI snippets for an x-extension insertion point."""
+
+    safe_id = (extension_id or "").strip().strip("/\\")
+    if not safe_id or ".." in safe_id.replace("\\", "/").split("/"):
+        return ""
+
+    rendered: list[str] = []
+    for path in get_enabled_plugin_paths(agent, "extensions", "webui", safe_id):
+        base = Path(path)
+        if not base.is_dir():
+            continue
+        for item in sorted(base.iterdir(), key=lambda p: p.name):
+            if not item.is_file() or item.suffix.lower() not in {
+                ".html",
+                ".htm",
+                ".js",
+                ".css",
+            }:
+                continue
+            try:
+                rendered.append(item.read_text(encoding="utf-8"))
+            except UnicodeDecodeError:
+                continue
+
+    return "\n".join(rendered)
+
+
+def render_webui_extension_tags(content: str, agent: Agent | None = None) -> str:
+    """Replace <x-extension id="..."></x-extension> tags with plugin snippets."""
+
+    pattern = re.compile(
+        r"<x-extension\s+id=[\"']([^\"']+)[\"']\s*>\s*</x-extension>",
+        re.IGNORECASE,
+    )
+    return pattern.sub(lambda match: render_webui_extensions(match.group(1), agent), content)
+
+
 def get_enabled_plugins(agent: Agent | None):
     if cached := cache.get(
         ENABLED_PLUGINS_LIST_CACHE_AREA, cache.determine_cache_key(agent)
@@ -480,6 +596,7 @@ def get_enabled_plugins(agent: Agent | None):
 
         # root plugin paths
         plugin_paths = get_plugin_roots(plugin)
+        meta = get_plugin_meta(plugin)
 
         # + agent paths
         if agent:
@@ -499,6 +616,8 @@ def get_enabled_plugins(agent: Agent | None):
 
         # go through paths in reverse order and determine the state
         enabled = determined_toggle_from_paths(enabled, reversed(plugin_paths))
+        if meta and meta.always_enabled:
+            enabled = True
 
         if enabled:
             active.append(plugin)

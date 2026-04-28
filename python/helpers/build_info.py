@@ -49,6 +49,17 @@ def format_timestamp(value: str | None) -> str:
 
 
 def friendly_version_label(version_id: str | None) -> str:
+    try:
+        from plugins._agentspine_identity.helpers.identity import (
+            friendly_version_label as identity_version_label,
+        )
+
+        label = identity_version_label(version_id)
+        if label:
+            return label
+    except Exception:
+        pass
+
     if not version_id:
         return "Version Unknown"
 
@@ -71,6 +82,19 @@ def get_display_version() -> str:
         return env_version
 
     meta = get_version_metadata()
+    try:
+        from plugins._agentspine_identity.helpers.identity import format_display_version
+
+        identity_display = format_display_version(
+            meta.get("version_id"),
+            meta.get("timestamp"),
+            meta.get("display_version"),
+        )
+        if identity_display:
+            return identity_display
+    except Exception:
+        pass
+
     display = meta.get("display_version")
     if isinstance(display, str) and display.strip():
         return display.strip()
@@ -86,4 +110,3 @@ def refresh_cache() -> None:
     """Clear memoized manifest data (useful after updates)."""
 
     get_version_metadata.cache_clear()  # type: ignore[attr-defined]
-

@@ -1,32 +1,91 @@
 {
-    "version_id": "v0.9.8-custom-pre-full-gpu",
-    "description": "Merged upstream v0.9.8 with custom AgentSpine features for the full GPU build path.",
-    "timestamp": "2026-03-10T00:00:00+00:00",
-    "commit_sha": "",
-    "display_version": "Version D v0.9.8-custom-pre-full-gpu 2026-03-10 00:00:00",
+    "version_id": "v0.9.9-standard-pre",
+    "description": "Agentspine v0.9.9 standard pre-release with A0-compatible plugin overlays and identity module branding.",
+    "timestamp": "2026-04-28T00:00:00+00:00",
+    "commit_sha": "ef20db1f0ebf02cfdaa19695854fd120cec61e53",
+    "display_version": "AS v0.9.9-standard-pre 2026-04-28 00:00:00",
     "features": [
         {
-            "name": "model_picker_latest_ui",
-            "description": "Dropdown with click-outside, staged history, and refined controls.",
+            "name": "agentspine_identity_module",
+            "description": "Built-in Agentspine identity overlay owns visible branding and AS banner formatting while preserving A0 compatibility.",
             "required_paths": [
-                "webui/index.html",
-                "webui/js/settings.js"
+                "plugins/_agentspine_identity/plugin.yaml",
+                "plugins/_agentspine_identity/default_config.yaml",
+                "plugins/_agentspine_identity/helpers/identity.py",
+                "plugins/_agentspine_identity/extensions/webui/page-head/_10_agentspine_identity.html",
+                "python/helpers/build_info.py",
+                "python/helpers/plugins.py",
+                "python/helpers/extension.py",
+                "run_ui.py"
             ],
             "markers": [
                 {
-                    "path": "webui/index.html",
+                    "path": "plugins/_agentspine_identity/plugin.yaml",
                     "must_include": [
-                        "@click.outside=\"field.showDropdown=false\"",
-                        "class=\"model-dropdown-btn\"",
-                        "class=\"model-remove-btn\""
+                        "name: _agentspine_identity",
+                        "always_enabled: true"
                     ]
                 },
                 {
-                    "path": "webui/js/settings.js",
+                    "path": "plugins/_agentspine_identity/default_config.yaml",
+                    "must_include": [
+                        "product_name: Agentspine",
+                        "default_release_tag: v0.9.9-standard-pre"
+                    ]
+                },
+                {
+                    "path": "python/helpers/build_info.py",
+                    "must_include": [
+                        "plugins._agentspine_identity.helpers.identity",
+                        "format_display_version"
+                    ]
+                },
+                {
+                    "path": "python/helpers/plugins.py",
+                    "must_include": [
+                        "render_webui_extension_tags",
+                        "extensions\", \"webui\""
+                    ]
+                },
+                {
+                    "path": "run_ui.py",
+                    "must_include": [
+                        "plugins.render_webui_extension_tags(index, agent=None)"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "model_picker_latest_ui",
+            "description": "Provider-aware model history dropdowns and context preservation for split settings components.",
+            "required_paths": [
+                "webui/components/settings/settings-store.js",
+                "webui/components/settings/agent/chat_model.html",
+                "webui/css/settings.css",
+                "python/helpers/settings.py"
+            ],
+            "markers": [
+                {
+                    "path": "webui/components/settings/settings-store.js",
                     "must_include": [
                         "cacheAllModelNames",
-                        "field.historyNonce",
-                        "toggleModelDropdown"
+                        "models_context_history",
+                        "handleProviderChange"
+                    ]
+                },
+                {
+                    "path": "webui/components/settings/agent/chat_model.html",
+                    "must_include": [
+                        "class=\"model-dropdown-btn\"",
+                        "class=\"model-remove-btn\"",
+                        "getModelHistory('chat_model_name')"
+                    ]
+                },
+                {
+                    "path": "python/helpers/settings.py",
+                    "must_include": [
+                        "models_history: dict",
+                        "models_context_history: dict"
                     ]
                 }
             ]
@@ -44,7 +103,7 @@
                     "path": "webui/components/settings/mcp/client/mcp-servers.html",
                     "must_include": [
                         "toggleServer",
-                        "server-toggle-slider",
+                        "server-toggle",
                         "mcp-servers-config-json"
                     ]
                 },
@@ -60,16 +119,16 @@
         },
         {
             "name": "kokoro_enhanced_settings",
-            "description": "Kokoro compute/device, primary/blend voice, and voice speed controls present with custom styling.",
+            "description": "Kokoro compute/device, primary/blend voice, remote worker, and voice speed controls.",
             "required_paths": [
-                "webui/index.html",
+                "webui/components/settings/agent/speech.html",
                 "webui/css/settings.css",
                 "python/helpers/kokoro_tts.py",
                 "python/api/synthesize.py"
             ],
             "markers": [
                 {
-                    "path": "webui/index.html",
+                    "path": "webui/components/settings/agent/speech.html",
                     "must_include": [
                         "voice-select",
                         "voice-select-btn",
@@ -96,7 +155,7 @@
                 {
                     "path": "python/api/synthesize.py",
                     "must_include": [
-                        "from python.helpers import settings, kokoro_tts",
+                        "from python.helpers import runtime, settings, kokoro_tts",
                         "kokoro_tts.synthesize_sentences"
                     ]
                 }
@@ -104,7 +163,7 @@
         },
         {
             "name": "fastmcp_compatibility",
-            "description": "fastmcp pinned to 2.3.0 and mcp_server.py adapted for API compatibility. Prevents Pydantic TypeError on startup.",
+            "description": "FastMCP compatibility path remains pinned and server integration uses the current 2.x HTTP helpers.",
             "required_paths": [
                 "requirements.txt",
                 "python/helpers/mcp_server.py"
@@ -113,14 +172,14 @@
                 {
                     "path": "requirements.txt",
                     "must_include": [
-                        "fastmcp==2.3.0"
+                        "fastmcp==2.13.1"
                     ]
                 },
                 {
                     "path": "python/helpers/mcp_server.py",
                     "must_include": [
-                        "create_streamable_http_app",
-                        "from fastmcp.server.http import create_sse_app, create_streamable_http_app"
+                        "create_base_app",
+                        "from fastmcp.server.http import create_sse_app, create_base_app"
                     ]
                 }
             ]

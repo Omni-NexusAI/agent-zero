@@ -240,6 +240,12 @@ async def serve_index():
         runtime_is_development=("true" if runtime.is_development() else "false"),
         logged_in=("true" if login.get_credentials_hash() else "false"),
     )
+    try:
+        from python.helpers import plugins
+
+        index = plugins.render_webui_extension_tags(index, agent=None)
+    except Exception:
+        pass
     return index
 
 
@@ -538,7 +544,16 @@ def wait_for_health(host: str, port: int):
         try:
             with urllib.request.urlopen(url, timeout=2) as resp:
                 if resp.status == 200:
-                    PrintStyle().print("Agent Zero is running.")
+                    message = "Agent Zero is running."
+                    try:
+                        from plugins._agentspine_identity.helpers.identity import (
+                            apply_identity_text,
+                        )
+
+                        message = apply_identity_text(message)
+                    except Exception:
+                        pass
+                    PrintStyle().print(message)
                     return
         except Exception:
             pass
