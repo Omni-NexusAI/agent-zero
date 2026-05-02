@@ -77,8 +77,10 @@ GIT_TAG=$(git describe --exact-match --tags HEAD 2>/dev/null || git describe --t
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 GIT_TIMESTAMP=$(format_git_timestamp "$(git log -1 --format=%ci HEAD 2>/dev/null || echo "")")
 
-if [ -n "$GIT_TAG" ]; then
-    VERSION_ID="${GIT_TAG#v}"
+if [ -n "${GIT_REF:-}" ] && [[ "$GIT_REF" =~ ^v[0-9] ]]; then
+    VERSION_ID="$GIT_REF"
+elif [ -n "$GIT_TAG" ]; then
+    VERSION_ID="$GIT_TAG"
 else
     VERSION_ID="dev-${GIT_COMMIT}"
 fi
