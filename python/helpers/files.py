@@ -18,6 +18,14 @@ import mimetypes
 from simpleeval import simple_eval
 
 
+AGENTS_DIR = "agents"
+PLUGINS_DIR = "plugins"
+PROJECTS_DIR = "projects"
+EXTENSIONS_DIR = "extensions"
+USER_DIR = "usr"
+TEMP_DIR = "tmp"
+
+
 class VariablesPlugin(ABC):
     @abstractmethod
     def get_variables(self, file: str, backup_dirs: list[str] | None = None, **kwargs) -> dict[str, Any]:  # type: ignore
