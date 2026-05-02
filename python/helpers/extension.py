@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from functools import wraps
 from typing import Any
 from python.helpers import extract_tools, files
 from typing import TYPE_CHECKING
@@ -11,6 +12,21 @@ DEFAULT_EXTENSIONS_FOLDER = "python/extensions"
 USER_EXTENSIONS_FOLDER = "usr/extensions"
 
 _cache: dict[str, list[type["Extension"]]] = {}
+
+
+def extensible(func):
+    """Compatibility decorator for plugin-aware helper functions.
+
+    The full upstream extension-point implementation is not required for these
+    release-baked plugin discovery helpers, but callers may decorate functions
+    so the symbol must exist and preserve the wrapped function's signature.
+    """
+
+    @wraps(func)
+    def _wrapped(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    return _wrapped
 
 
 class Extension:
