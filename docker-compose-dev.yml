@@ -5,7 +5,7 @@ services:
       context: ./docker/run
       dockerfile: Dockerfile
       args:
-        GIT_REF: v0.9.8-custom-pre  # Pre-release tag with all custom features
+        GIT_REF: ${GIT_REF:-v0.9.9-standard-pre}
         CACHE_DATE: ${CACHE_DATE:-none}
     volumes:
       - ./docker/run/fs/per:/per
@@ -15,4 +15,3 @@ services:
     environment:
       # Version is automatically set from build, but can be overridden here if needed
       # A0_BUILD_VERSION will be available from /a0_build_version.txt in the container
-

@@ -1,10 +1,9 @@
-name: a0-standard-custom
+name: agentspine-standard
 
 services:
   a0-standard:
-    container_name: A0-standard
-    # Default stays on pre-release CPU image; override with env (e.g. IMAGE_TAG=v0.9.8-custom-standard)
-    image: ghcr.io/omni-nexusai/agent-zero:${IMAGE_TAG:-v0.9.8-custom-pre-cpu}
+    container_name: agentspine-standard
+    image: ghcr.io/omni-nexusai/agent-zero:${IMAGE_TAG:-v0.9.9-standard-pre}
     ports:
       - "8895:80"
     environment:
@@ -16,8 +15,8 @@ services:
 
   kokoro-gpu-worker:
     profiles: ["worker"]
-    container_name: Kokoro-GPU-worker-standard
-    image: ghcr.io/omni-nexusai/agent-zero-kokoro-worker:${WORKER_IMAGE_TAG:-v0.9.8-custom-pre}
+    container_name: agentspine-standard-kokoro
+    image: ghcr.io/omni-nexusai/agent-zero-kokoro-worker:${WORKER_IMAGE_TAG:-v0.9.9-standard-pre}
     ports:
       - "8896:8891"
     deploy:
@@ -28,4 +27,3 @@ services:
               count: all
               capabilities: [gpu]
     restart: unless-stopped
-

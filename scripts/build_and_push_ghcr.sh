@@ -1,96 +1,63 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# Script to build and push all three build variants to GitHub Container Registry
-# Usage: ./scripts/build_and_push_ghcr.sh [VERSION_TAG] [RELEASE_CHANNEL]
-# Example: ./scripts/build_and_push_ghcr.sh v0.9.8-custom-pre
+VERSION_TAG="${1:-v0.9.9-standard-pre}"
+BUILD_TYPE="${2:-standard}"
+RELEASE_CHANNEL="${3:-pre}"
+PUSH="${4:-}"
 
-VERSION_TAG="${1:-v0.9.8-custom-pre}"
-RELEASE_CHANNEL="${2:-pre}"
 GHCR_REGISTRY="ghcr.io"
 GHCR_USER="omni-nexusai"
 IMAGE_NAME="agent-zero"
 KOKORO_IMAGE_NAME="agent-zero-kokoro-worker"
+CACHE_DATE="$(date +%Y-%m-%d:%H:%M:%S)"
 
-echo "Building and pushing Agent Zero images to GHCR"
-echo "Version tag: $VERSION_TAG"
-echo "Release channel: $RELEASE_CHANNEL"
-echo "Registry: $GHCR_REGISTRY/$GHCR_USER"
-
-# Check if user is logged in to GHCR
-if ! docker info | grep -q "$GHCR_REGISTRY"; then
-    echo "Please login to GitHub Container Registry first:"
-    echo "  echo \$GITHUB_TOKEN | docker login $GHCR_REGISTRY -u USERNAME --password-stdin"
-    echo "Or use: docker login $GHCR_REGISTRY"
+case "$BUILD_TYPE" in
+  standard)
+    BUILD_VARIANT="standard"
+    PYTORCH_VARIANT="cpu"
+    ;;
+  gpu)
+    BUILD_VARIANT="fullGPU"
+    PYTORCH_VARIANT="cuda"
+    ;;
+  *)
+    echo "BUILD_TYPE must be standard or gpu" >&2
     exit 1
+    ;;
+esac
+
+echo "Building Agentspine image"
+echo "Image tag: $VERSION_TAG"
+echo "Build type: $BUILD_TYPE"
+echo "Release channel: $RELEASE_CHANNEL"
+echo "Push: ${PUSH:-false}"
+
+docker info >/dev/null
+
+docker build \
+    --build-arg GIT_REF="$VERSION_TAG" \
+    --build-arg BUILD_VARIANT="$BUILD_VARIANT" \
+    --build-arg RELEASE_CHANNEL="$RELEASE_CHANNEL" \
+    --build-arg PYTORCH_VARIANT="$PYTORCH_VARIANT" \
+    --build-arg CACHE_DATE="$CACHE_DATE" \
+    -t "$GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:$VERSION_TAG" \
+    -f docker/run/Dockerfile \
+    docker/run
+
+if [ "$BUILD_TYPE" = "standard" ]; then
+    docker build \
+        --build-arg CACHE_DATE="$CACHE_DATE" \
+        -t "$GHCR_REGISTRY/$GHCR_USER/$KOKORO_IMAGE_NAME:$VERSION_TAG" \
+        -f docker/Dockerfile.kokoro \
+        .
 fi
 
-# Build CPU-only variant
-echo ""
-echo "=== Building CPU-only variant ==="
-docker build \
-    --build-arg GIT_REF=$VERSION_TAG \
-    --build-arg BUILD_VARIANT="" \
-    --build-arg RELEASE_CHANNEL=$RELEASE_CHANNEL \
-    --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) \
-    -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-cpu \
-    -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-cpu-latest \
-    -f docker/run/Dockerfile \
-    docker/run
+if [ "$PUSH" = "--push" ]; then
+    docker push "$GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:$VERSION_TAG"
+    if [ "$BUILD_TYPE" = "standard" ]; then
+        docker push "$GHCR_REGISTRY/$GHCR_USER/$KOKORO_IMAGE_NAME:$VERSION_TAG"
+    fi
+fi
 
-# Build Full GPU variant
-echo ""
-echo "=== Building Full GPU variant ==="
-docker build \
-    --build-arg GIT_REF=$VERSION_TAG \
-    --build-arg BUILD_VARIANT=fullGPU \
-    --build-arg RELEASE_CHANNEL=$RELEASE_CHANNEL \
-    --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) \
-    -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu \
-    -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu-latest \
-    -f docker/run/Dockerfile \
-    docker/run
-
-# Build Hybrid GPU variant (main container)
-echo ""
-echo "=== Building Hybrid GPU variant (main container) ==="
-docker build \
-    --build-arg GIT_REF=$VERSION_TAG \
-    --build-arg BUILD_VARIANT=hybridGPU \
-    --build-arg RELEASE_CHANNEL=$RELEASE_CHANNEL \
-    --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) \
-    -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-hybrid-gpu \
-    -t $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-hybrid-gpu-latest \
-    -f docker/run/Dockerfile \
-    docker/run
-
-# Build Kokoro GPU worker
-echo ""
-echo "=== Building Kokoro GPU worker ==="
-docker build \
-    --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) \
-    -t $GHCR_REGISTRY/$GHCR_USER/$KOKORO_IMAGE_NAME:${VERSION_TAG} \
-    -t $GHCR_REGISTRY/$GHCR_USER/$KOKORO_IMAGE_NAME:${VERSION_TAG}-latest \
-    -f docker/Dockerfile.kokoro \
-    .
-
-# Push all images
-echo ""
-echo "=== Pushing images to GHCR ==="
-docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-cpu
-docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-cpu-latest
-docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu
-docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu-latest
-docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-hybrid-gpu
-docker push $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-hybrid-gpu-latest
-docker push $GHCR_REGISTRY/$GHCR_USER/$KOKORO_IMAGE_NAME:${VERSION_TAG}
-docker push $GHCR_REGISTRY/$GHCR_USER/$KOKORO_IMAGE_NAME:${VERSION_TAG}-latest
-
-echo ""
-echo "=== Success! All images pushed to GHCR ==="
-echo ""
-echo "CPU-only:    $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-cpu"
-echo "Full GPU:    $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-full-gpu"
-echo "Hybrid GPU:  $GHCR_REGISTRY/$GHCR_USER/$IMAGE_NAME:${VERSION_TAG}-hybrid-gpu"
-echo "Kokoro:      $GHCR_REGISTRY/$GHCR_USER/$KOKORO_IMAGE_NAME:${VERSION_TAG}"
-
+echo "Done."

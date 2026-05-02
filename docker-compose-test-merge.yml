@@ -10,7 +10,7 @@ services:
         BRANCH: local
         BUILD_VARIANT: fullGPU
         PYTORCH_VARIANT: cuda
-        BUILD_VERSION_ID: ${A0_FULLGPU_VERSION_ID:-v0.9.8-custom-pre-full-gpu}
+        BUILD_VERSION_ID: ${A0_FULLGPU_VERSION_ID:-v0.9.9-gpu-pre}
         CACHE_DATE: ${CACHE_DATE:-none}
     ports:
       - "8896:80"

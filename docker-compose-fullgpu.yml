@@ -1,16 +1,15 @@
-name: a0-fullgpu-custom
+name: agentspine-fullgpu
 
 services:
   a0-fullgpu:
-    container_name: A0-fullgpu
+    container_name: agentspine-fullgpu
     build:
       context: ./docker/run
       dockerfile: Dockerfile
       args:
-        # Default stays on pre-release tag; override with env (e.g. GIT_REF=v0.9.8-custom-full-gpu)
-        GIT_REF: ${GIT_REF:-v0.9.8-custom-pre-full-gpu}
+        # Default stays on pre-release tag; override with env (e.g. GIT_REF=v0.9.9-gpu-pre)
+        GIT_REF: ${GIT_REF:-v0.9.9-gpu-pre}
         BUILD_VARIANT: fullGPU
-        # pre (default) -> Version D banner, release -> Version M banner
         RELEASE_CHANNEL: ${RELEASE_CHANNEL:-pre}
         PYTORCH_VARIANT: cuda
         CACHE_DATE: ${CACHE_DATE:-none}

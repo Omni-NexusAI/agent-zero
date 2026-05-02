@@ -1,0 +1,89 @@
+<script>
+  (() => {
+    const historyKey = "modelConfig_providerHistory";
+    const localDefaults = {
+      lm_studio: "http://host.docker.internal:1234/v1",
+      ollama: "http://host.docker.internal:11434",
+    };
+    const localUrls = Object.values(localDefaults);
+
+    function storageRead() {
+      try { return JSON.parse(localStorage.getItem(historyKey) || "{}"); } catch { return {}; }
+    }
+
+    function storageWrite(value) {
+      try { localStorage.setItem(historyKey, JSON.stringify(value || {})); } catch {}
+    }
+
+    function patchStore() {
+      const store = globalThis.Alpine?.store?.("modelConfig");
+      if (!store || store.__agentspineProviderProfilesPatched) return;
+      store.__agentspineProviderProfilesPatched = true;
+      store._providerModelHistory = store._providerModelHistory || storageRead();
+      store._HISTORY_LS_KEY = store._HISTORY_LS_KEY || historyKey;
+      store.onProviderChanged = function(sectionKey, model, oldProvider) {
+        if (!model) return;
+        const newProvider = model.provider;
+        if (!newProvider || newProvider === oldProvider) return;
+        if (oldProvider && model.name?.trim()) {
+          this._providerModelHistory[`${sectionKey}_${oldProvider}`] = {
+            name: model.name,
+            api_base: model.api_base || "",
+            ctx_length: model.ctx_length,
+          };
+          storageWrite(this._providerModelHistory);
+        }
+        if (newProvider in localDefaults) {
+          if (!model.api_base?.trim() || localUrls.includes(model.api_base)) model.api_base = localDefaults[newProvider];
+        } else if (localUrls.includes(model.api_base)) {
+          model.api_base = "";
+        }
+        const saved = this._providerModelHistory[`${sectionKey}_${newProvider}`];
+        if (saved?.name) {
+          model.name = saved.name;
+          if (saved.ctx_length !== undefined) model.ctx_length = saved.ctx_length;
+        } else {
+          model.name = "";
+        }
+      };
+    }
+
+    function findModelScope(element) {
+      const stack = element?._x_dataStack || [];
+      return stack.find((scope) => scope && scope.model && scope.modelType) || null;
+    }
+
+    function wireProviderSelects(root = document) {
+      patchStore();
+      const store = globalThis.Alpine?.store?.("modelConfig");
+      if (!store?.onProviderChanged) return;
+      const selects = root.querySelectorAll?.('select[x-model="model.provider"]') || [];
+      selects.forEach((select) => {
+        if (select.__agentspineProviderHistoryWired) return;
+        select.__agentspineProviderHistoryWired = true;
+        select.dataset.prevProvider = select.value || "";
+        select.addEventListener("focus", () => { select.dataset.prevProvider = select.value || ""; });
+        select.addEventListener("change", () => {
+          const scope = findModelScope(select);
+          if (!scope?.model) return;
+          const oldProvider = select.dataset.prevProvider || scope._prevProvider || "";
+          const sectionKey = `${scope.modelType || "chat"}_model`;
+          store.onProviderChanged(sectionKey, scope.model, oldProvider);
+          select.dataset.prevProvider = scope.model.provider || select.value || "";
+          if ("_prevProvider" in scope) scope._prevProvider = scope.model.provider;
+        });
+      });
+    }
+
+    document.addEventListener("alpine:init", () => setTimeout(() => wireProviderSelects(), 0));
+    document.addEventListener("DOMContentLoaded", () => wireProviderSelects(), { once: true });
+    new MutationObserver((mutations) => {
+      patchStore();
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType === 1) wireProviderSelects(node);
+        }
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  })();
+</script>

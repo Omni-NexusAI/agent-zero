@@ -12,7 +12,7 @@ fi
 bash /ins/install_A0.sh "$@"
 
 # Recompute and save build version after reinstall
-# BUILD_VARIANT env var is inherited from Dockerfile (hybridGPU, fullGPU, or empty)
+# BUILD_VARIANT env var is inherited from Dockerfile (standard or fullGPU)
 if [ -d /git/agent-zero/.git ]; then
     echo "Recomputing build version after reinstall (variant: ${BUILD_VARIANT:-cpu-only})..."
     BUILD_VERSION=$(BUILD_VARIANT="$BUILD_VARIANT" bash /ins/compute_build_version.sh /git/agent-zero | tr -d '\n\r')

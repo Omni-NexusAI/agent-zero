@@ -1,0 +1,5 @@
+history_storage_key: modelConfig_providerHistory
+local_provider_defaults:
+  lm_studio: http://host.docker.internal:1234/v1
+  ollama: http://host.docker.internal:11434
+clear_stale_model_on_new_provider: true

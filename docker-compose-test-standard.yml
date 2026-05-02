@@ -1,0 +1,41 @@
+name: agentspine-standard-test
+
+services:
+  agentspine-standard-test:
+    container_name: agentspine-standard-test
+    image: ghcr.io/omni-nexusai/agent-zero:${IMAGE_TAG:-v0.9.9-standard-pre}
+    ports:
+      - "${AGENTSPINE_TEST_PORT:-50991}:80"
+    environment:
+      - BUILD_VARIANT=standard
+      - RELEASE_CHANNEL=pre
+      - PYTORCH_VARIANT=cpu
+      - A0_ENABLE_REMOTE_TTS=true
+      - A0_KOKORO_WORKER_URL=http://agentspine-standard-test-kokoro:8891
+    depends_on:
+      - agentspine-standard-test-kokoro
+    networks:
+      - agentspine-standard-test-net
+    restart: unless-stopped
+
+  agentspine-standard-test-kokoro:
+    container_name: agentspine-standard-test-kokoro
+    image: ghcr.io/omni-nexusai/agent-zero-kokoro-worker:${WORKER_IMAGE_TAG:-v0.9.9-standard-pre}
+    ports:
+      - "${KOKORO_TEST_PORT:-50992}:8891"
+    networks:
+      agentspine-standard-test-net:
+        aliases:
+          - kokoro-gpu-worker
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+networks:
+  agentspine-standard-test-net:
+    name: agentspine-standard-test-net

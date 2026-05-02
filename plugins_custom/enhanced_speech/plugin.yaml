@@ -1,7 +1,0 @@
-name: enhanced_speech
-title: Enhanced Speech
-description: Marketplace-ready custom plugin package for Agentspine speech enhancements built on Kokoro TTS.
-version: 1.7.0
-always_enabled: false
-settings_sections:
-  - general

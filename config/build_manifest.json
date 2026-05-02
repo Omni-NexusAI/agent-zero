@@ -2,7 +2,7 @@
     "version_id": "v0.9.9-standard-pre",
     "description": "Agentspine v0.9.9 standard pre-release with A0-compatible plugin overlays and identity module branding.",
     "timestamp": "2026-04-28T00:00:00+00:00",
-    "commit_sha": "ef20db1f0ebf02cfdaa19695854fd120cec61e53",
+    "commit_sha": "f25eeee5b8c9adccf79b3caf62bccce8a5e9a0f1",
     "display_version": "AS v0.9.9-standard-pre 2026-04-28 00:00:00",
     "features": [
         {
@@ -51,6 +51,35 @@
                     "path": "run_ui.py",
                     "must_include": [
                         "plugins.render_webui_extension_tags(index, agent=None)"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "provider_profiles_builtin",
+            "description": "Built-in Agentspine provider profile overlay preserves provider-specific model names, context length, and local provider URL defaults.",
+            "required_paths": [
+                "plugins/_provider_profiles/plugin.yaml",
+                "plugins/_provider_profiles/default_config.yaml",
+                "plugins/_provider_profiles/extensions/webui/page-head/_10_provider_profiles.html",
+                "plugins/_provider_profiles/extensions/python/agent_init/_10_provider_profiles.py",
+                "plugins/_provider_profiles/webui/thumbnail.svg"
+            ],
+            "markers": [
+                {
+                    "path": "plugins/_provider_profiles/plugin.yaml",
+                    "must_include": [
+                        "name: _provider_profiles",
+                        "always_enabled: true",
+                        "title: Provider Profiles"
+                    ]
+                },
+                {
+                    "path": "plugins/_provider_profiles/extensions/webui/page-head/_10_provider_profiles.html",
+                    "must_include": [
+                        "modelConfig_providerHistory",
+                        "onProviderChanged",
+                        "host.docker.internal:1234/v1"
                     ]
                 }
             ]

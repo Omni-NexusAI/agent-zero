@@ -11,7 +11,7 @@ ENV GIT_REF=$GIT_REF
 # Backward compatibility: also set BRANCH for scripts that still use it
 ENV BRANCH=$GIT_REF
 
-# Build variant for version banner and settings: hybridGPU, fullGPU, or empty for CPU-only
+# Build variant for version banner and settings: standard or fullGPU
 ARG BUILD_VARIANT=""
 ENV BUILD_VARIANT=$BUILD_VARIANT
 
@@ -67,7 +67,7 @@ RUN if [ -f /tmp/A0_BUILD_VERSION.txt ]; then \
         chmod 644 /a0_build_version.txt; \
     else \
         echo "WARNING: A0_BUILD_VERSION.txt not found during build"; \
-        echo "Version D unknown-custom unknown" > /a0_build_version.txt; \
+        echo "AS unknown unknown" > /a0_build_version.txt; \
     fi
 
 # install additional software
@@ -78,7 +78,7 @@ ARG CACHE_DATE=none
 RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $GIT_REF
 
 # Recompute version after install_A02.sh (in case repo was re-cloned)
-# Pass BUILD_VARIANT to include in version string (hybridGPU, fullGPU, or empty)
+# Pass BUILD_VARIANT to include in version string (standard or fullGPU)
 RUN if [ -d /git/agent-zero/.git ]; then \
         BUILD_VERSION=$(BUILD_VARIANT="$BUILD_VARIANT" RELEASE_CHANNEL="$RELEASE_CHANNEL" bash /ins/compute_build_version.sh /git/agent-zero | tr -d '\n\r'); \
         echo "Final build version: $BUILD_VERSION"; \

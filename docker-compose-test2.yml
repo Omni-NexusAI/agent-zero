@@ -9,9 +9,8 @@ services:
     ports:
       - "8891:80"
     environment:
-      - A0_BUILD_VERSION=Version D 0.9.7-custom 2025-11-04 18:06:16
+      - A0_BUILD_VERSION=AS v0.9.9-standard-pre 2026-05-02
     restart: unless-stopped
-
 
 
 

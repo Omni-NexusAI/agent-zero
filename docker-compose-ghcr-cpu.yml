@@ -1,14 +1,13 @@
-name: a0-cpu-custom
+name: agentspine-standard
 
 services:
   a0-cpu:
-    container_name: A0-cpu
-    # Default stays on pre-release CPU image; override with env (e.g. IMAGE_TAG=v0.9.8-custom-standard)
-    image: ghcr.io/omni-nexusai/agent-zero:${IMAGE_TAG:-v0.9.8-custom-pre-cpu}
+    container_name: agentspine-standard-cpu-compat
+    image: ghcr.io/omni-nexusai/agent-zero:${IMAGE_TAG:-v0.9.9-standard-pre}
     ports:
       - "8891:80"
     environment:
-      - BUILD_VARIANT=cpu
+      - BUILD_VARIANT=standard
       - RELEASE_CHANNEL=${RELEASE_CHANNEL:-pre}
       - PYTORCH_VARIANT=cpu
     restart: unless-stopped
