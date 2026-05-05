@@ -3,7 +3,6 @@ set -e
 
 # update apt
 apt-get update
-apt-get install -y --no-install-recommends cmake libclang-dev
 
 # fix permissions for cron files if any
 if [ -f /etc/cron.d/* ]; then
