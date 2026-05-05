@@ -10,6 +10,9 @@ PLUGIN_DIR = Path(__file__).resolve().parents[1]
 DEFAULTS = {
     "product_name": "Agentspine",
     "short_name": "AS",
+    "banner_prefix": "D",
+    "main_release_prefix": "M",
+    "development_prefix": "D",
     "compatibility_label": "A0-compatible",
     "default_release_tag": "v0.9.9-standard-pre",
 }
@@ -89,8 +92,8 @@ def format_timestamp(value: str | None) -> str:
 
 
 def friendly_version_label(version_id: str | None) -> str:
-    short_name = str(get_identity_config().get("short_name") or "AS")
-    return f"{short_name} {normalize_release_tag(version_id)}"
+    prefix = str(get_identity_config().get("banner_prefix") or DEFAULTS["banner_prefix"])
+    return f"{prefix} {normalize_release_tag(version_id)}"
 
 
 def format_display_version(
@@ -99,7 +102,7 @@ def format_display_version(
     existing_display: str | None = None,
 ) -> str:
     existing = (existing_display or "").strip()
-    if existing.startswith("AS "):
+    if existing.startswith(("D ", "M ", "AS ")):
         return existing
     label = friendly_version_label(version_id)
     formatted_time = format_timestamp(timestamp)

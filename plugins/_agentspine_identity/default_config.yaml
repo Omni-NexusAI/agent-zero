@@ -1,5 +1,8 @@
 product_name: Agentspine
 short_name: AS
+banner_prefix: D
+main_release_prefix: M
+development_prefix: D
 compatibility_label: A0-compatible
 default_release_tag: v0.9.9-standard-pre
 release_tags:

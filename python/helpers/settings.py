@@ -17,12 +17,36 @@ from python.helpers.notification import NotificationManager, NotificationType, N
 from python.helpers.build_type import (
     BuildType,
     get_build_type,
-    get_tts_device_options,
-    get_tts_defaults,
+    get_tts_device_options as _base_get_tts_device_options,
+    get_tts_defaults as _base_get_tts_defaults,
     is_setting_visible,
     get_tts_description,
     get_tts_device_description,
 )
+
+
+def _agentspine_enhanced_speech_helper():
+    try:
+        from plugins._enhanced_speech.helpers import remote_tts
+        return remote_tts
+    except Exception:
+        return None
+
+
+def get_tts_device_options():
+    options = _base_get_tts_device_options()
+    helper = _agentspine_enhanced_speech_helper()
+    if helper:
+        return helper.ensure_remote_tts_option(options, globals().get("_settings"))
+    return options
+
+
+def get_tts_defaults():
+    defaults = _base_get_tts_defaults()
+    helper = _agentspine_enhanced_speech_helper()
+    if helper:
+        return helper.apply_remote_tts_defaults(defaults, globals().get("_settings"))
+    return defaults
 
 
 T = TypeVar('T')

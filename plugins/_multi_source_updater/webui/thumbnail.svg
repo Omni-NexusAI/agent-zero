@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Multi Source Updater">
+  <defs>
+    <linearGradient id="g" x1="18" x2="110" y1="18" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1f8a70"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="24" fill="#0f172a"/>
+  <path fill="url(#g)" d="M29 36h48a22 22 0 0 1 20 31l-6-11h15v31H75l7-13a10 10 0 0 0-5-19H29V36z"/>
+  <path fill="#f8fafc" d="M99 92H51a22 22 0 0 1-20-31l6 11H22V41h31l-7 13a10 10 0 0 0 5 19h48v19z"/>
+</svg>

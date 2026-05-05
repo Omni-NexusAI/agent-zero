@@ -16,6 +16,7 @@ import inspect
 import glob
 import mimetypes
 from simpleeval import simple_eval
+import yaml
 
 
 AGENTS_DIR = "agents"
@@ -218,6 +219,10 @@ def read_file(relative_path: str, encoding="utf-8"):
     # Read the file content
     with open(absolute_path, "r", encoding=encoding) as f:
         return f.read()
+
+
+def read_file_yaml(relative_path: str, encoding="utf-8"):
+    return yaml.safe_load(read_file(relative_path, encoding=encoding))
 
 
 def read_file_bin(relative_path: str):

@@ -17,8 +17,8 @@
 
     function patchStore() {
       const store = globalThis.Alpine?.store?.("modelConfig");
-      if (!store || store.__agentspineProviderProfilesPatched) return;
-      store.__agentspineProviderProfilesPatched = true;
+      if (!store || store.__agentspineModelEnhancementsPatched) return;
+      store.__agentspineModelEnhancementsPatched = true;
       store._providerModelHistory = store._providerModelHistory || storageRead();
       store._HISTORY_LS_KEY = store._HISTORY_LS_KEY || historyKey;
       store.onProviderChanged = function(sectionKey, model, oldProvider) {

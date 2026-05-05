@@ -3,6 +3,9 @@
     const identity = {
       productName: "Agentspine",
       shortName: "AS",
+      bannerPrefix: "D",
+      mainReleasePrefix: "M",
+      developmentPrefix: "D",
       compatibilityLabel: "A0-compatible",
       defaultReleaseTag: "v0.9.9-standard-pre",
     };
@@ -23,7 +26,9 @@
     ];
 
     const rootSelectors = [
+      "body",
       ".container",
+      ".sidebar",
       ".modal",
       ".notification-toast-stack",
       ".notification-modal",
@@ -32,6 +37,15 @@
     ];
     const attrNames = ["title", "alt", "aria-label", "placeholder"];
     const skipTags = new Set(["SCRIPT", "STYLE", "CODE", "PRE", "TEXTAREA", "INPUT"]);
+
+    function timestamp() {
+      const value = globalThis.gitinfo?.commit_time || "";
+      return value && value !== "unknown" ? value : "";
+    }
+
+    function displayVersion() {
+      return `${identity.bannerPrefix} ${identity.defaultReleaseTag}${timestamp() ? ` ${timestamp()}` : ""}`;
+    }
 
     function applyIdentityText(value) {
       if (!value || typeof value !== "string") return value;
@@ -78,11 +92,40 @@
       rewriteAttributes(root);
     }
 
+    function patchSidebarVersionStore() {
+      const alpine = globalThis.Alpine;
+      if (!alpine?.store) return;
+      let sidebarStore = null;
+      try {
+        sidebarStore = alpine.store("sidebarBottom");
+      } catch {
+        sidebarStore = null;
+      }
+      if (!sidebarStore || sidebarStore.__agentspineVersionPatched) return;
+      Object.defineProperty(sidebarStore, "versionLabel", {
+        configurable: true,
+        enumerable: true,
+        get() {
+          return globalThis.agentspineIdentity?.displayVersion || globalThis.a0VersionBanner || "";
+        },
+      });
+      sidebarStore.__agentspineVersionPatched = true;
+    }
+
     function applyIdentity() {
       document.title = identity.productName;
+      identity.displayVersion = displayVersion();
       globalThis.agentspineIdentity = identity;
-      if (globalThis.a0VersionBanner && globalThis.a0VersionBanner.startsWith("Version ")) {
-        globalThis.a0VersionBanner = globalThis.a0VersionBanner.replace(/^Version\s+/, `${identity.shortName} `);
+      globalThis.a0VersionBanner = identity.displayVersion;
+      patchSidebarVersionStore();
+      if (globalThis.gitinfo && typeof globalThis.gitinfo === "object") {
+        globalThis.gitinfo.agentspine_display_version = identity.displayVersion;
+        globalThis.gitinfo.agentZeroVersion = globalThis.gitinfo.agentZeroVersion || identity.defaultReleaseTag;
+      }
+      const versionEl = document.getElementById("a0version");
+      if (versionEl && versionEl.textContent !== identity.displayVersion) {
+        versionEl.textContent = identity.displayVersion;
+        versionEl.dataset.agentspineOwned = "true";
       }
       for (const selector of rootSelectors) {
         document.querySelectorAll(selector).forEach(rewriteRoot);
@@ -95,6 +138,13 @@
       applyIdentity();
     }
 
+    let identityRefreshCount = 0;
+    const identityRefreshTimer = setInterval(() => {
+      applyIdentity();
+      identityRefreshCount += 1;
+      if (identityRefreshCount >= 40) clearInterval(identityRefreshTimer);
+    }, 250);
+
     const observer = new MutationObserver((mutations) => {
       let shouldApply = false;
       for (const mutation of mutations) {
@@ -103,7 +153,11 @@
           break;
         }
         if (mutation.type === "characterData") {
-          rewriteTextNode(mutation.target);
+          if (mutation.target.parentElement?.id === "a0version") {
+            shouldApply = true;
+          } else {
+            rewriteTextNode(mutation.target);
+          }
         }
       }
       if (shouldApply) queueMicrotask(applyIdentity);
@@ -118,3 +172,4 @@
     }, { once: true });
   })();
 </script>
+

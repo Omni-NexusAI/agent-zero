@@ -1,5 +1,5 @@
 import { createStore } from "/js/AlpineStore.js";
-import { updateChatInput, sendMessage } from "/index.js";
+import { updateChatInput, sendMessage, toast } from "/index.js";
 import { sleep } from "/js/sleep.js";
 import { store as microphoneSettingStore } from "/components/settings/speech/microphone-setting-store.js";
 import * as shortcuts from "/js/shortcuts.js";
