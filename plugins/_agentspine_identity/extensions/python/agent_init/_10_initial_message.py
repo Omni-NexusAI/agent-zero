@@ -1,12 +1,12 @@
 import json
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 from plugins._agentspine_identity.helpers.identity import apply_identity_text
 
 
 class InitialMessage(Extension):
-    async def execute(self, **kwargs):
+    def execute(self, **kwargs):
         """Add the Agentspine-branded greeting for the main agent."""
 
         if self.agent.number != 0:
@@ -32,3 +32,4 @@ class InitialMessage(Extension):
             finished=True,
             update_progress="none",
         )
+

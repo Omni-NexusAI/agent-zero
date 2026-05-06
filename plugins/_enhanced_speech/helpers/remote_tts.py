@@ -21,7 +21,11 @@ def _normalize_url(url: str | None) -> str:
 
 def _configured_url(settings: dict | None = None) -> str:
     settings = settings or {}
-    for key in ("tts_kokoro_remote_url", "kokoro_remote_url", "tts_remote_url"):
+    for key in (
+        "tts_kokoro_remote_url",
+        "kokoro_remote_url",
+        "tts_remote_url",
+    ):
         value = _normalize_url(settings.get(key))
         if value:
             return value
@@ -73,11 +77,13 @@ def ensure_remote_tts_option(options: list[dict], settings: dict | None = None) 
     result = [dict(option) for option in (options or [])]
     current_values = {option.get("value") for option in result}
     if detect_remote_tts_url(settings) and REMOTE_DEVICE_VALUE not in current_values:
-        result.append({
-            "value": REMOTE_DEVICE_VALUE,
-            "label": "Remote Kokoro worker / endpoint",
-            "description": "Use the Kokoro worker sidecar or configured remote TTS endpoint.",
-        })
+        result.append(
+            {
+                "value": REMOTE_DEVICE_VALUE,
+                "label": "Remote Kokoro worker / endpoint",
+                "description": "Use the Kokoro worker sidecar or configured remote TTS endpoint.",
+            }
+        )
     return result
 
 
@@ -94,19 +100,31 @@ def apply_remote_tts_defaults(defaults: dict, settings: dict | None = None) -> d
     return result
 
 
+def apply_remote_tts_runtime_settings(settings: dict | None) -> dict | None:
+    if not isinstance(settings, dict):
+        return settings
+    remote_url = detect_remote_tts_url(settings)
+    if not remote_url:
+        return settings
+    settings.setdefault("tts_kokoro", True)
+    settings.setdefault("tts_kokoro_remote_url", remote_url)
+    if not settings.get("tts_kokoro_remote_url"):
+        settings["tts_kokoro_remote_url"] = remote_url
+    if settings.get("tts_device") in (None, "", "auto", "cpu"):
+        settings["tts_device"] = REMOTE_DEVICE_VALUE
+    return settings
+
+
 def patch_runtime() -> None:
-    try:
-        import python.helpers.build_type as build_type
-        import python.helpers.settings as settings_module
-    except Exception:
-        import helpers.build_type as build_type
-        import helpers.settings as settings_module
+    import helpers.build_type as build_type
+    import helpers.settings as settings_module
 
     if getattr(settings_module, "_agentspine_enhanced_speech_patched", False):
         return
 
     original_options = settings_module.get_tts_device_options
     original_defaults = settings_module.get_tts_defaults
+    original_get_settings = settings_module.get_settings
 
     def patched_options(*args, **kwargs):
         current = getattr(settings_module, "_settings", None)
@@ -116,8 +134,16 @@ def patch_runtime() -> None:
         current = getattr(settings_module, "_settings", None)
         return apply_remote_tts_defaults(original_defaults(*args, **kwargs), current)
 
+    def patched_get_settings(*args, **kwargs):
+        return apply_remote_tts_runtime_settings(original_get_settings(*args, **kwargs))
+
     build_type.get_tts_device_options = patched_options
     build_type.get_tts_defaults = patched_defaults
     settings_module.get_tts_device_options = patched_options
     settings_module.get_tts_defaults = patched_defaults
+    settings_module.get_settings = patched_get_settings
     settings_module._agentspine_enhanced_speech_patched = True
+
+    current = getattr(settings_module, "_settings", None)
+    if isinstance(current, dict):
+        apply_remote_tts_runtime_settings(current)

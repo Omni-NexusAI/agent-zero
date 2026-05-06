@@ -1,7 +1,7 @@
 name: _enhanced_mcp_config
 title: Enhanced MCP Configurator
-description: Agentspine MCP configuration enhancements including toggle-state consistency and JSON disabled flag normalization.
-version: 1.7.0
+description: Adds Agentspine MCP server toggle and refined MCP configuration behavior.
+version: 0.9.9
 always_enabled: true
 settings_sections:
   - mcp

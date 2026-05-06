@@ -1,4 +1,4 @@
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 from plugins._agentspine_identity.helpers.identity import apply_identity_text
 
 
@@ -9,3 +9,4 @@ class AgentspineIdentityBanners(Extension):
                 for key in ("title", "html", "message"):
                     if key in banner and isinstance(banner[key], str):
                         banner[key] = apply_identity_text(banner[key])
+

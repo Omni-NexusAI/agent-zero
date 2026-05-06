@@ -1,6 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
-  <rect width="96" height="96" rx="18" fill="#1f2937"/>
-  <path d="M22 60V36h14l16-12v48L36 60H22z" fill="#60a5fa"/>
-  <path d="M60 36c5 3 8 7 8 12s-3 9-8 12" fill="none" stroke="#93c5fd" stroke-width="5" stroke-linecap="round"/>
-  <path d="M68 28c8 5 13 12 13 20s-5 15-13 20" fill="none" stroke="#bfdbfe" stroke-width="5" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Enhanced Speech">
+  <rect width="96" height="96" rx="18" fill="#172033"/>
+  <path d="M28 40v16c0 11 9 20 20 20s20-9 20-20V40" fill="none" stroke="#8bd3ff" stroke-width="6" stroke-linecap="round"/>
+  <rect x="36" y="14" width="24" height="42" rx="12" fill="#58d68d"/>
+  <path d="M22 42v13M74 42v13M48 76v9M36 85h24" stroke="#f4d35e" stroke-width="6" stroke-linecap="round"/>
+  <path d="M67 24c5 3 8 8 8 14M75 16c8 5 13 13 13 23" fill="none" stroke="#ff8a65" stroke-width="5" stroke-linecap="round"/>
 </svg>

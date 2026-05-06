@@ -62,7 +62,6 @@
     <script>
         // Expose git info for sidebar component
         globalThis.gitinfo = { version: "{{version_no}}", commit_time: "{{version_time}}" };
-        globalThis.a0VersionBanner = "{{a0_version_banner}}";
 
         // Expose runtime info for frontend components (development gating, runtime-scoped cookies).
         globalThis.runtimeInfo = {
@@ -99,13 +98,6 @@
             </div>
             <!-- Message History (actual messages) -->
             <div id="chat-area-wrapper" x-data x-show="!$store.welcomeStore || !$store.welcomeStore.isVisible">
-              <div id="chat-greeting">
-                <div class="chat-greeting-inner">
-                  <span class="material-symbols-outlined chat-greeting-icon">smart_toy</span>
-                  <h2 class="chat-greeting-title">Agentspine</h2>
-                  <p class="chat-greeting-subtitle">What can I help you with?</p>
-                </div>
-              </div>
               <div id="chat-history"></div>
 
               <!-- Chat Navigation Buttons (floating over chat area) -->

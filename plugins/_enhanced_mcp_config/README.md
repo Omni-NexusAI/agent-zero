@@ -1,14 +1,11 @@
-# Enhanced MCP Configurator (Builtin)
+# Enhanced MCP Configurator
 
-This builtin plugin represents Agentspine MCP configuration enhancements.
+Builtin Agentspine MCP configuration enhancement plugin.
 
-## Included behavior
+This plugin provides the MCP configuration enhancements integrated into the core runtime:
 
-- Toggle-state handling tied to JSON `disabled` flags
-- Consistent normalization for new server entries
-- Runtime-safe MCP settings behavior across reloads and updates
+- Per-server enable/disable toggle controls
+- Refined MCP server status handling in settings
+- Safer apply/toggle update flow for MCP server configuration
 
-## Notes
-
-Core MCP settings logic is integrated into the existing settings/client modules.
-This plugin provides stable builtin packaging and discoverability.
+Custom marketplace-compatible variant will be added after validation.

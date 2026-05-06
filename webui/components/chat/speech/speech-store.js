@@ -961,8 +961,8 @@ export const store = createStore("speech", model);
 document.addEventListener("settings-updated", async () => {
   try {
     await store.loadSettings();
-  } catch (err) {
-    console.debug("Speech settings reload skipped:", err);
+  } catch (error) {
+    console.warn("Speech settings reload skipped:", error);
   }
 });
 // document.addEventListener("DOMContentLoaded", () => speechStore.init());

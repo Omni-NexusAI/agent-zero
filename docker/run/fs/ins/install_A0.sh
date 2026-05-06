@@ -1,44 +1,46 @@
 #!/bin/bash
 set -e
 
-# GIT_REF can be a branch name (for release-candidate tests) or a version tag.
+# Exit immediately if a command exits with a non-zero status.
+# set -e
+
+# branch from parameter
 if [ -z "$1" ]; then
-    echo "Error: GIT_REF parameter is empty. Please provide a valid branch name or tag."
+    echo "Error: Branch parameter is empty. Please provide a valid branch name."
     exit 1
 fi
-GIT_REF="$1"
+BRANCH="$1"
 
-if [ "$GIT_REF" = "local" ]; then
+if [ "$BRANCH" = "local" ]; then
+    # For local branch, use the files
     echo "Using local dev files in /git/agent-zero"
+    # List all files recursively in the target directory
+    # echo "All files in /git/agent-zero (recursive):"
+    # find "/git/agent-zero" -type f | sort
 else
-    echo "Cloning $GIT_REF from Omni-NexusAI Agentspine repository..."
-    git clone -b "$GIT_REF" "https://github.com/Omni-NexusAI/agentspine" "/git/agent-zero" || {
-        echo "CRITICAL ERROR: Failed to clone $GIT_REF from Omni-NexusAI/agentspine"
+    # For other branches, clone from GitHub
+    echo "Cloning repository from branch $BRANCH..."
+    git clone -b "$BRANCH" "https://github.com/agent0ai/agent-zero" "/git/agent-zero" || {
+        echo "CRITICAL ERROR: Failed to clone repository. Branch: $BRANCH"
         exit 1
     }
 fi
 
-echo "Computing build version from git repository (variant: ${BUILD_VARIANT:-standard})..."
-BUILD_VERSION=$(BUILD_VARIANT="$BUILD_VARIANT" RELEASE_CHANNEL="${RELEASE_CHANNEL:-pre}" bash /ins/compute_build_version.sh /git/agent-zero)
-echo "Build version computed: $BUILD_VERSION"
-echo "$BUILD_VERSION" > /tmp/A0_BUILD_VERSION.txt
-
 . "/ins/setup_venv.sh" "$@"
 
-echo "Validating critical dependencies..."
-bash /ins/validate_dependencies.sh /git/agent-zero
+# moved to base image
+# # Ensure the virtual environment and pip setup
+# pip install --upgrade pip ipython requests
+# # Install some packages in specific variants
+# pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-# Install A0 python packages (use uv for speed, matching upstream approach).
+# Install remaining A0 python packages
 uv pip install -r /git/agent-zero/requirements.txt
+# override for packages that have unnecessarily strict dependencies
 uv pip install -r /git/agent-zero/requirements2.txt
 
-python -c "import fastmcp; print('Verified fastmcp', fastmcp.__version__)"
-
+# install playwright
 bash /ins/install_playwright.sh "$@"
 
+# Preload A0
 python /git/agent-zero/preload.py --dockerized=true
-
-if [ -f /tmp/A0_BUILD_VERSION.txt ]; then
-    export A0_BUILD_VERSION=$(cat /tmp/A0_BUILD_VERSION.txt)
-    echo "A0_BUILD_VERSION set to: $A0_BUILD_VERSION"
-fi

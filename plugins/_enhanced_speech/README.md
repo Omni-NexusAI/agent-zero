@@ -1,14 +1,11 @@
-# Enhanced Speech (Builtin)
+# Enhanced Speech
 
-This builtin plugin represents the Agentspine speech enhancement layer for Kokoro TTS.
+Builtin Agentspine speech enhancement plugin.
 
-## Included behavior
+This plugin represents the enhanced Kokoro speech feature set integrated into the core runtime:
 
-- Voice blending support via primary/secondary voice settings
-- Speech settings compatibility with Agentspine's runtime
-- Update-safe plugin identity for builtin loading
+- Secondary voice blending and blend ratio support
+- Local and remote Kokoro synthesis compatibility
+- Runtime-safe speech settings refresh behavior
 
-## Notes
-
-Runtime synthesis logic remains in core helper modules used by the speech pipeline.
-This plugin provides stable metadata/packaging so the enhancement survives in-place updates.
+Custom marketplace-compatible variant will be added after validation.

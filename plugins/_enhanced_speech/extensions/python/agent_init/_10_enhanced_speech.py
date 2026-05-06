@@ -3,10 +3,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-try:
-    from python.helpers.extension import Extension
-except ImportError:
-    from helpers.extension import Extension
+from helpers.extension import Extension
 
 
 def _load_remote_tts_helper():
