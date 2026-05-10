@@ -369,26 +369,6 @@
   text-overflow: ellipsis;
 }
 
-/* Agent / AI message heading color coding */
-.message-agent .msg-heading h4,
-.message-agent-delegation .msg-heading h4 {
-  color: var(--color-primary);
-  font-weight: 500;
-  opacity: 0.95;
-}
-
-.message-agent-response .msg-heading h4 {
-  color: var(--color-text);
-  font-weight: 500;
-  opacity: 0.9;
-}
-
-.message-info .msg-heading h4 {
-  color: var(--color-info-text, #38bdf8);
-  font-weight: 500;
-  opacity: 0.95;
-}
-
 /* Message Actions */
 .message-actions {
   color: var(--color-text);
@@ -565,7 +545,7 @@
 }
 
 .message-agent-response .msg-content .message-markdown-image-wrap img:hover {
-  transform: translateY(-2px);
+  filter: brightness(1.02);
 }
 
 .msg-content h1 {
@@ -753,6 +733,19 @@
 /* No fade when content fits */
 .message.message-collapsible:not(.has-overflow) .message-body::after {
   opacity: 0;
+}
+
+/* ALL detail mode: force full response bodies and hide the expand control */
+#chat-history[data-detail-mode="expanded"] .message.message-collapsible .message-body {
+  max-height: none !important;
+}
+
+#chat-history[data-detail-mode="expanded"] .message.message-collapsible .message-body::after {
+  opacity: 0;
+}
+
+#chat-history[data-detail-mode="expanded"] .message.message-collapsible .expand-btn {
+  display: none !important;
 }
 
 /* Smooth Render */

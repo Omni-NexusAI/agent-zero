@@ -1,0 +1,7 @@
+name: _enhanced_mcp_config
+title: Enhanced MCP Configurator
+description: Adds Agentspine MCP server toggle and refined MCP configuration behavior.
+version: 0.9.9
+always_enabled: true
+settings_sections:
+  - mcp

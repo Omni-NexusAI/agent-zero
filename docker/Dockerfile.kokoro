@@ -1,12 +1,7 @@
-# Optimized Dockerfile for Kokoro GPU Worker
-# ------------------------------------------
-# Uses a slim Python base and installs only the necessary ML/Audio dependencies
-# to significantly reduce image size compared to the full Agent Zero image.
+# Kokoro GPU worker for Agentspine standard builds.
 
 FROM python:3.10-slim
 
-# Install system dependencies
-# libsndfile1 is required for soundfile
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
     curl \
@@ -14,41 +9,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install PyTorch with CUDA support
-# Using cu124 to match the main project's default
+# Bootstrap before using the PyTorch CUDA index; its typing_extensions wheel
+# metadata can be rejected by older pip when it is not already installed.
+RUN pip install --no-cache-dir typing-extensions==4.15.0
+
 RUN pip install --no-cache-dir \
-    torch==2.4.0+cu124 \
-    torchaudio==2.4.0+cu124 \
+    torch==2.6.0+cu124 \
+    torchaudio==2.6.0+cu124 \
     --index-url https://download.pytorch.org/whl/cu124
 
-# Install Kokoro and worker service dependencies
 RUN pip install --no-cache-dir \
     flask[async]==3.0.3 \
-    kokoro>=0.9.2 \
+    kokoro==0.9.4 \
+    transformers==5.8.0 \
     soundfile==0.13.1 \
     numpy==1.26.4 \
     webcolors==24.6.0 \
     python-dotenv==1.1.0 \
     simpleeval==1.0.3
 
-# Copy the python package structure
-# We copy the whole python directory to ensure helpers/utils are available
-COPY python /app/python
+COPY helpers /app/helpers
+COPY services /app/services
 
-# Set PYTHONPATH so imports from 'python.helpers' work correctly
 ENV PYTHONPATH=/app
-
-# Environment variables for the worker
 ENV KOKORO_DEVICE=cuda:auto
 ENV KOKORO_HOST=0.0.0.0
 ENV KOKORO_PORT=8891
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8891/health || exit 1
 
-# Run the worker
-CMD ["python", "python/services/kokoro_gpu_worker.py"]
-
-
-
+CMD ["python", "services/kokoro_gpu_worker.py"]

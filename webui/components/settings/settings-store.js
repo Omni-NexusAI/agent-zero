@@ -42,7 +42,6 @@ const model = {
 
   // Lifecycle
   init() {
-    // Restore persisted tab
     try {
       const saved = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
       if (saved) this._activeTab = saved;
@@ -57,7 +56,6 @@ const model = {
       const response = await API.callJsonApi("settings_get", null);
       if (response && response.settings) {
         this.settings = response.settings;
-        // Ensure blend ratio key exists and is numeric for persistence.
         if (
           this.settings.tts_kokoro_voice_blend === undefined ||
           this.settings.tts_kokoro_voice_blend === null ||
@@ -83,7 +81,6 @@ const model = {
       this.isLoading = false;
     }
 
-    // Trigger tab activation for current tab
     this.applyActiveTab(null, this._activeTab);
   },
 
@@ -96,7 +93,6 @@ const model = {
 
   // Tab management
   applyActiveTab(previous, current) {
-    // Persist
     try {
       localStorage.setItem(VIEW_MODE_STORAGE_KEY, current);
     } catch {}
@@ -106,12 +102,19 @@ const model = {
     this.activeTab = tabName;
   },
 
-  // Field mapping for model picker
+  // Field mapping: model name field -> provider field
   _modelProviderMap: {
     chat_model_name: "chat_model_provider",
     util_model_name: "util_model_provider",
     browser_model_name: "browser_model_provider",
     embed_model_name: "embed_model_provider",
+  },
+  // Reverse: provider field -> model name field
+  _providerModelNameMap: {
+    chat_model_provider: "chat_model_name",
+    util_model_provider: "util_model_name",
+    browser_model_provider: "browser_model_name",
+    embed_model_provider: "embed_model_name",
   },
   _modelCtxLengthMap: {
     chat_model_name: "chat_model_ctx_length",
@@ -188,25 +191,56 @@ const model = {
 
   handleProviderChange(providerFieldId, value) {
     if (!this.settings) return;
+
+    // Cache current model name for the OLD provider before switching
+    const modelFieldId = this._providerModelNameMap[providerFieldId];
+    if (modelFieldId) {
+      const currentModel = this.settings[modelFieldId];
+      if (currentModel?.trim()) {
+        this._cacheModelName(modelFieldId, currentModel.trim());
+      }
+    }
+
     this.settings[providerFieldId] = value;
 
+    // Auto-sync API base URL for local providers
     const apiBaseKey = this._providerApiBaseMap[providerFieldId];
-    if (!apiBaseKey) return;
+    if (apiBaseKey) {
+      const currentBase = this.settings[apiBaseKey] || "";
+      const localDefaults = [
+        "http://localhost:1234/v1",
+        "http://localhost:11434",
+        "http://host.docker.internal:1234/v1",
+        "http://host.docker.internal:11434",
+      ];
 
-    const currentBase = this.settings[apiBaseKey] || "";
-    const localDefaults = [
-      "http://localhost:1234/v1",
-      "http://localhost:11434",
-      "http://host.docker.internal:1234/v1",
-      "http://host.docker.internal:11434",
-    ];
+      if (value === "lm_studio") {
+        if (!currentBase.trim() || localDefaults.includes(currentBase))
+          this.settings[apiBaseKey] = "http://host.docker.internal:1234/v1";
+      } else if (value === "ollama") {
+        if (!currentBase.trim() || localDefaults.includes(currentBase))
+          this.settings[apiBaseKey] = "http://host.docker.internal:11434";
+      } else {
+        if (localDefaults.includes(currentBase)) this.settings[apiBaseKey] = "";
+      }
+    }
 
-    if (value === "lm_studio") {
-      if (!currentBase.trim()) this.settings[apiBaseKey] = "http://host.docker.internal:1234/v1";
-    } else if (value === "ollama") {
-      if (!currentBase.trim()) this.settings[apiBaseKey] = "http://host.docker.internal:11434";
-    } else {
-      if (localDefaults.includes(currentBase)) this.settings[apiBaseKey] = "";
+    // Auto-restore last-used model for the NEW provider
+    if (modelFieldId) {
+      const history = this.settings.models_history;
+      if (history?.[modelFieldId]?.[value]?.length > 0) {
+        const lastModel = history[modelFieldId][value][0];
+        this.settings[modelFieldId] = lastModel;
+
+        // Also restore context length if available
+        const ctxKey = this._modelCtxLengthMap[modelFieldId];
+        if (ctxKey) {
+          const ctxHistory = this.settings.models_context_history;
+          if (ctxHistory?.[modelFieldId]?.[value]?.[lastModel]) {
+            this.settings[ctxKey] = ctxHistory[modelFieldId][value][lastModel];
+          }
+        }
+      }
     }
   },
 
@@ -255,8 +289,6 @@ const model = {
     }
   },
 
-
-
   get apiKeyProviders() {
     const seen = new Set();
     const options = [];
@@ -281,7 +313,7 @@ const model = {
     }
 
     this.cacheAllModelNames();
-    // Normalize blend ratio before sending settings payload.
+
     if (
       this.settings.tts_kokoro_voice_blend === undefined ||
       this.settings.tts_kokoro_voice_blend === null ||
@@ -293,7 +325,6 @@ const model = {
       this.settings.tts_kokoro_voice_blend = clamped;
     }
 
-    // Serialize through a plain object to avoid sending reactive proxy artifacts.
     const payloadSettings = JSON.parse(JSON.stringify(this.settings));
     this.isLoading = true;
     try {
@@ -350,14 +381,11 @@ const model = {
     }
   },
 
-  // Field helpers for external components
-  // Handle button field clicks (opens sub-modals)
   async handleFieldButton(field) {
     const modalPath = FIELD_BUTTON_MODAL_BY_ID[field?.id];
     if (modalPath) window.openModal(modalPath);
   },
 
-  // Open settings modal from external callers
   async open(initialTab = null) {
     if (initialTab) {
       this._activeTab = initialTab;
@@ -369,4 +397,3 @@ const model = {
 const store = createStore("settings", model);
 
 export { store };
-

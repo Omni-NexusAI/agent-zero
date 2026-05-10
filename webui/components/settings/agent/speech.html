@@ -12,13 +12,22 @@
             Voice transcription and speech synthesis settings.
           </div>
 
+          <template x-if="$store.settings.additional?.enhanced_speech_capabilities?.warnings?.length">
+            <div class="field field-full">
+              <div class="field-label">
+                <div class="field-title">Speech runtime status</div>
+                <div class="field-description" x-text="$store.settings.additional.enhanced_speech_capabilities.warnings.join(' ')"></div>
+              </div>
+            </div>
+          </template>
+
           <div class="field field-full">
             <div class="field-label">
               <div class="field-title">Microphone device</div>
               <div class="field-description">Select the microphone device to use for speech-to-text.</div>
             </div>
             <div class="field-control">
-              <x-component path="/settings/speech/microphone.html"></x-component>
+              <x-component path="settings/speech/microphone.html"></x-component>
             </div>
           </div>
 
@@ -31,6 +40,20 @@
               <select x-model="$store.settings.settings.stt_model_size">
                 <template x-for="option in $store.settings.additional?.stt_models" :key="option.value">
                   <option :value="option.value" :selected="option.value === $store.settings.settings.stt_model_size" x-text="option.label"></option>
+                </template>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">Speech-to-text device</div>
+              <div class="field-description">Compute device for Whisper speech recognition.</div>
+            </div>
+            <div class="field-control">
+              <select x-model="$store.settings.settings.stt_device">
+                <template x-for="option in ($store.settings.additional?.stt_device_options || [{value:'auto',label:'Auto'}])" :key="option.value">
+                  <option :value="option.value" :selected="option.value === $store.settings.settings.stt_device" x-text="option.label"></option>
                 </template>
               </select>
             </div>
