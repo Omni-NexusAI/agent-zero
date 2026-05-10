@@ -85,6 +85,41 @@ def get_tts_device_options(build_type: Optional[BuildType] = None) -> List[Dict[
     return options
 
 
+def get_stt_device_options(build_type: Optional[BuildType] = None) -> List[Dict[str, str]]:
+    if build_type is None:
+        build_type = get_build_type()
+
+    options: List[Dict[str, str]] = [
+        {"value": "auto", "label": "Auto (recommended)"},
+        {"value": "cpu", "label": "CPU"},
+    ]
+
+    if build_type == BuildType.FULL_GPU:
+        try:
+            from helpers.device_utils import enumerate_devices
+            devices = enumerate_devices()
+            if devices.get("cuda", {}).get("available"):
+                options.append({"value": "cuda:auto", "label": "CUDA: Auto"})
+                for d in devices.get("cuda", {}).get("devices", []):
+                    options.append({
+                        "value": f"cuda:{d['index']}",
+                        "label": f"CUDA: GPU {d['index']} \u2013 {d['name']} ({d['memory_total']})",
+                    })
+        except Exception:
+            options.append({"value": "cuda:auto", "label": "CUDA: Auto"})
+
+    return options
+
+
+def get_stt_defaults(build_type: Optional[BuildType] = None) -> Dict[str, Any]:
+    if build_type is None:
+        build_type = get_build_type()
+
+    if build_type == BuildType.FULL_GPU:
+        return {"stt_device": "cuda:auto"}
+    return {"stt_device": "auto"}
+
+
 def get_tts_defaults(build_type: Optional[BuildType] = None) -> Dict[str, Any]:
     if build_type is None:
         build_type = get_build_type()

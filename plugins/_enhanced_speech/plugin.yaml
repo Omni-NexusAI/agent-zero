@@ -1,6 +1,6 @@
 name: _enhanced_speech
 title: Enhanced Speech
-description: Enables Agentspine enhanced Kokoro speech capabilities in the plugin framework.
+description: Enables portable enhanced speech controls, GPU-aware Whisper STT, and Kokoro TTS in the plugin framework.
 version: 0.9.9
 always_enabled: true
 settings_sections:

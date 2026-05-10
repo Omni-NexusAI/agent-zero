@@ -5,6 +5,7 @@ from helpers import runtime, settings, whisper
 class Transcribe(ApiHandler):
     async def process(self, input: dict, request: Request) -> dict | Response:
         audio = input.get("audio")
+        mime_type = input.get("mime_type", "")
         ctxid = input.get("ctxid", "")
 
         if ctxid:
@@ -14,5 +15,5 @@ class Transcribe(ApiHandler):
         #     context.log.log(type="info", content="Whisper STT model is currently being initialized, please wait...")
 
         set = settings.get_settings()
-        result = await whisper.transcribe(set["stt_model_size"], audio) # type: ignore
+        result = await whisper.transcribe(set["stt_model_size"], audio, mime_type=mime_type) # type: ignore
         return result

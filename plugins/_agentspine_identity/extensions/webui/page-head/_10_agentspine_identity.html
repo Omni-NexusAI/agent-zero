@@ -44,6 +44,16 @@
     }
 
     function displayVersion() {
+      const runtimeVersion =
+        globalThis.gitinfo?.agentspine_display_version ||
+        globalThis.gitinfo?.version ||
+        "";
+      if (
+        typeof runtimeVersion === "string" &&
+        /^(D|M|AS)\s+/.test(runtimeVersion.trim())
+      ) {
+        return runtimeVersion.trim();
+      }
       return `${identity.bannerPrefix} ${identity.defaultReleaseTag}${timestamp() ? ` ${timestamp()}` : ""}`;
     }
 
@@ -120,7 +130,7 @@
       patchSidebarVersionStore();
       if (globalThis.gitinfo && typeof globalThis.gitinfo === "object") {
         globalThis.gitinfo.agentspine_display_version = identity.displayVersion;
-        globalThis.gitinfo.agentZeroVersion = globalThis.gitinfo.agentZeroVersion || identity.defaultReleaseTag;
+        globalThis.gitinfo.agentZeroVersion = globalThis.gitinfo.agentZeroVersion || globalThis.gitinfo.version || identity.defaultReleaseTag;
       }
       const versionEl = document.getElementById("a0version");
       if (versionEl && versionEl.textContent !== identity.displayVersion) {
@@ -172,4 +182,3 @@
     }, { once: true });
   })();
 </script>
-

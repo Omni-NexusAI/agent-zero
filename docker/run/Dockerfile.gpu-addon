@@ -1,0 +1,47 @@
+ARG STANDARD_IMAGE=ghcr.io/omni-nexusai/agent-zero:v0.9.9-standard-pre
+FROM ${STANDARD_IMAGE}
+
+ARG GIT_REF=v0.9.9-gpu-pre
+ARG BUILD_VARIANT=fullGPU
+ARG RELEASE_CHANNEL=pre
+ARG PYTORCH_VARIANT=cuda
+
+ENV GIT_REF=$GIT_REF
+ENV BRANCH=$GIT_REF
+ENV BUILD_VARIANT=$BUILD_VARIANT
+ENV RELEASE_CHANNEL=$RELEASE_CHANNEL
+ENV PYTORCH_VARIANT=$PYTORCH_VARIANT
+
+COPY helpers/build_type.py /git/agent-zero/helpers/build_type.py
+COPY helpers/settings.py /git/agent-zero/helpers/settings.py
+COPY helpers/whisper.py /git/agent-zero/helpers/whisper.py
+COPY api/health.py /git/agent-zero/api/health.py
+COPY api/transcribe.py /git/agent-zero/api/transcribe.py
+COPY webui/components/settings/agent/speech.html /git/agent-zero/webui/components/settings/agent/speech.html
+COPY plugins/_agentspine_identity/extensions/webui/page-head/_10_agentspine_identity.html /git/agent-zero/plugins/_agentspine_identity/extensions/webui/page-head/_10_agentspine_identity.html
+COPY plugins/_agentspine_identity/extensions/python/_functions/helpers/ui_server/UiRouteHandlers/serve_index/end/_10_agentspine_index_identity.py /git/agent-zero/plugins/_agentspine_identity/extensions/python/_functions/helpers/ui_server/UiRouteHandlers/serve_index/end/_10_agentspine_index_identity.py
+COPY plugins/_enhanced_speech/plugin.yaml /git/agent-zero/plugins/_enhanced_speech/plugin.yaml
+COPY plugins/_enhanced_speech/README.md /git/agent-zero/plugins/_enhanced_speech/README.md
+COPY plugins/_enhanced_speech/helpers/remote_tts.py /git/agent-zero/plugins/_enhanced_speech/helpers/remote_tts.py
+COPY plugins/_enhanced_speech/helpers/runtime_capabilities.py /git/agent-zero/plugins/_enhanced_speech/helpers/runtime_capabilities.py
+COPY plugins/_enhanced_speech/api/capabilities.py /git/agent-zero/plugins/_enhanced_speech/api/capabilities.py
+COPY plugins/_enhanced_speech/api/transcribe.py /git/agent-zero/plugins/_enhanced_speech/api/transcribe.py
+COPY plugins/_enhanced_speech/extensions/python/startup_migration/_05_enhanced_speech_remote_tts.py /git/agent-zero/plugins/_enhanced_speech/extensions/python/startup_migration/_05_enhanced_speech_remote_tts.py
+COPY plugins/_enhanced_speech/extensions/webui/initFw_end/enhanced-stt-recorder.js /git/agent-zero/plugins/_enhanced_speech/extensions/webui/initFw_end/enhanced-stt-recorder.js
+
+RUN sed -i '/^GIT_REF=/d;/^BRANCH=/d;/^BUILD_VARIANT=/d;/^RELEASE_CHANNEL=/d;/^PYTORCH_VARIANT=/d' /etc/environment || true && \
+    echo "GIT_REF=\"$GIT_REF\"" >> /etc/environment && \
+    echo "BRANCH=\"$GIT_REF\"" >> /etc/environment && \
+    echo "BUILD_VARIANT=\"$BUILD_VARIANT\"" >> /etc/environment && \
+    echo "RELEASE_CHANNEL=\"$RELEASE_CHANNEL\"" >> /etc/environment && \
+    echo "PYTORCH_VARIANT=\"$PYTORCH_VARIANT\"" >> /etc/environment
+
+RUN /opt/venv-a0/bin/pip install --no-cache-dir --force-reinstall \
+        torch==2.4.0+cu124 \
+        torchvision==0.19.0+cu124 \
+        torchaudio==2.4.0+cu124 \
+        numpy==1.26.4 \
+        --index-url https://download.pytorch.org/whl/cu124
+
+RUN echo "D ${GIT_REF} $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /a0_build_version.txt && \
+    chmod 644 /a0_build_version.txt

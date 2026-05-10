@@ -15,6 +15,8 @@ from helpers.secrets import get_default_secrets_manager
 from helpers import dirty_json
 from helpers.notification import NotificationManager, NotificationType, NotificationPriority
 from helpers.build_type import (
+    get_stt_device_options as _base_get_stt_device_options,
+    get_stt_defaults as _base_get_stt_defaults,
     get_tts_device_options as _base_get_tts_device_options,
     get_tts_defaults as _base_get_tts_defaults,
 )
@@ -28,20 +30,48 @@ def _agentspine_enhanced_speech_helper():
         return None
 
 
+def _agentspine_speech_capabilities_helper():
+    try:
+        from plugins._enhanced_speech.helpers import runtime_capabilities
+        return runtime_capabilities
+    except Exception:
+        return None
+
+
 def get_tts_device_options():
     options = _base_get_tts_device_options()
+    capability_helper = _agentspine_speech_capabilities_helper()
+    if capability_helper:
+        options = capability_helper.get_tts_device_options(options)
     helper = _agentspine_enhanced_speech_helper()
     if helper:
         return helper.ensure_remote_tts_option(options, globals().get("_settings"))
     return options
 
 
+def get_stt_device_options():
+    helper = _agentspine_speech_capabilities_helper()
+    if helper:
+        return helper.get_stt_device_options()
+    return _base_get_stt_device_options()
+
+
 def get_tts_defaults():
     defaults = _base_get_tts_defaults()
+    capability_helper = _agentspine_speech_capabilities_helper()
+    if capability_helper:
+        defaults = capability_helper.get_tts_defaults(defaults)
     helper = _agentspine_enhanced_speech_helper()
     if helper:
         return helper.apply_remote_tts_defaults(defaults, globals().get("_settings"))
     return defaults
+
+
+def get_stt_defaults():
+    helper = _agentspine_speech_capabilities_helper()
+    if helper:
+        return helper.get_stt_defaults(_base_get_stt_defaults())
+    return _base_get_stt_defaults()
 
 
 T = TypeVar('T')
@@ -107,6 +137,7 @@ class Settings(TypedDict):
     uvicorn_access_logs_enabled: bool
 
     stt_model_size: str
+    stt_device: str
     stt_language: str
     stt_silence_threshold: float
     stt_silence_duration: int
@@ -193,6 +224,7 @@ class SettingsOutputAdditional(TypedDict):
     agent_subdirs: list[FieldOption]
     knowledge_subdirs: list[FieldOption]
     stt_models: list[FieldOption]
+    stt_device_options: list[FieldOption]
     tts_device_options: list[FieldOption]
     is_dockerized: bool
     runtime_settings: dict[str, Any]
@@ -246,6 +278,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
                 {"value": "large", "label": "Large (1.5B, Multilingual)"},
                 {"value": "turbo", "label": "Turbo (Multilingual)"},
             ],
+            stt_device_options=get_stt_device_options(),
             runtime_settings={},
         ),
     )
@@ -268,6 +301,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
     additional["agent_subdirs"] = _ensure_option_present(additional.get("agent_subdirs"), current.get("agent_profile"))
     additional["knowledge_subdirs"] = _ensure_option_present(additional.get("knowledge_subdirs"), current.get("agent_knowledge_subdir"))
     additional["stt_models"] = _ensure_option_present(additional.get("stt_models"), current.get("stt_model_size"))
+    additional["stt_device_options"] = _ensure_option_present(additional.get("stt_device_options"), current.get("stt_device"))
     additional["tts_device_options"] = get_tts_device_options()
     additional["tts_device_options"] = _ensure_option_present(additional.get("tts_device_options"), current.get("tts_device"))
 
@@ -515,6 +549,7 @@ def get_default_settings() -> Settings:
         websocket_server_restart_enabled=get_default_value("websocket_server_restart_enabled", True),
         uvicorn_access_logs_enabled=get_default_value("uvicorn_access_logs_enabled", False),
         stt_model_size=get_default_value("stt_model_size", "base"),
+        stt_device=get_default_value("stt_device", get_stt_defaults().get("stt_device", "auto")),
         stt_language=get_default_value("stt_language", "en"),
         stt_silence_threshold=get_default_value("stt_silence_threshold", 0.3),
         stt_silence_duration=get_default_value("stt_silence_duration", 1000),
@@ -561,7 +596,7 @@ def _apply_settings(previous: Settings | None):
                 agent = agent.get_data(agent.DATA_NAME_SUBORDINATE)
 
         # reload whisper model if necessary
-        if not previous or _settings["stt_model_size"] != previous["stt_model_size"]:
+        if not previous or _settings["stt_model_size"] != previous["stt_model_size"] or _settings["stt_device"] != previous.get("stt_device"):
             task = defer.DeferredTask().start_task(
                 whisper.preload, _settings["stt_model_size"]
             )  # TODO overkill, replace with background task

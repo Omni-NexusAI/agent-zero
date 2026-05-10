@@ -1,0 +1,57 @@
+name: agentspine-standard
+
+services:
+  a0-standard:
+    container_name: agentspine-standard
+    image: ghcr.io/omni-nexusai/agent-zero:${STANDARD_IMAGE_TAG:-v0.9.9-standard-pre}
+    ports:
+      - "8895:80"
+    environment:
+      - BUILD_VARIANT=standard
+      - RELEASE_CHANNEL=${RELEASE_CHANNEL:-pre}
+      - PYTORCH_VARIANT=cpu
+      - A0_ENABLE_REMOTE_TTS=${A0_ENABLE_REMOTE_TTS:-false}
+    restart: unless-stopped
+
+  a0-fullgpu:
+    profiles: ["fullgpu"]
+    container_name: agentspine-fullgpu
+    image: ghcr.io/omni-nexusai/agent-zero:${GPU_IMAGE_TAG:-v0.9.9-gpu-pre}
+    build:
+      context: .
+      dockerfile: docker/run/Dockerfile.gpu-addon
+      args:
+        STANDARD_IMAGE: ghcr.io/omni-nexusai/agent-zero:${STANDARD_IMAGE_TAG:-v0.9.9-standard-pre}
+        GIT_REF: ${GPU_IMAGE_TAG:-v0.9.9-gpu-pre}
+        BUILD_VARIANT: fullGPU
+        RELEASE_CHANNEL: ${RELEASE_CHANNEL:-pre}
+        PYTORCH_VARIANT: cuda
+    ports:
+      - "8892:80"
+    environment:
+      - BUILD_VARIANT=fullGPU
+      - RELEASE_CHANNEL=${RELEASE_CHANNEL:-pre}
+      - PYTORCH_VARIANT=cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  kokoro-gpu-worker:
+    profiles: ["worker"]
+    container_name: agentspine-standard-kokoro
+    image: ghcr.io/omni-nexusai/agent-zero-kokoro-worker:${WORKER_IMAGE_TAG:-v0.9.9-standard-pre}
+    ports:
+      - "8896:8891"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped

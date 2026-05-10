@@ -20,3 +20,9 @@ def _load_remote_tts_helper():
 class EnhancedSpeechRemoteTTSStartup(Extension):
     def execute(self, **kwargs):
         _load_remote_tts_helper().patch_runtime()
+        try:
+            from plugins._enhanced_speech.helpers import runtime_capabilities
+
+            runtime_capabilities.patch_runtime()
+        except Exception:
+            pass

@@ -10,6 +10,19 @@ DEFAULT_WORKER_URL = "http://kokoro-gpu-worker:8891"
 REMOTE_DEVICE_VALUE = "remote"
 
 
+def _should_probe_default_worker() -> bool:
+    if os.getenv("A0_ENABLE_REMOTE_TTS", "false").lower() == "true":
+        return True
+    if os.getenv("A0_TTS_REMOTE_WORKER", "false").lower() == "true":
+        return True
+    try:
+        from helpers.build_type import BuildType, get_build_type
+
+        return get_build_type() == BuildType.HYBRID_GPU
+    except Exception:
+        return False
+
+
 def _normalize_url(url: str | None) -> str:
     value = (url or "").strip().rstrip("/")
     if not value:
@@ -68,7 +81,7 @@ def detect_remote_tts_url(settings: dict | None = None, probe: bool = True) -> s
     configured = _configured_url(settings)
     if configured:
         return configured
-    if not probe:
+    if not probe or not _should_probe_default_worker():
         return ""
     return DEFAULT_WORKER_URL if _health_reachable(DEFAULT_WORKER_URL) else ""
 
