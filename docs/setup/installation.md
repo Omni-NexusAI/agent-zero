@@ -35,7 +35,7 @@ Use the built-in updater in the Web UI:
 
 1. Open **Settings UI → Update** tab
 2. Open **Self Update**
-3. Wait for the update checker to see if you have the latest version or if there's an available update. 
+3. Wait for the update checker to see if you have the latest version or if there's an available update.
 
 You'll also be prompted through the UI when a new A0 version is released. Backups are automatically managed internally during this process.
 
@@ -132,7 +132,7 @@ Once installed, launch Docker Desktop from your Start menu or desktop shortcut.
 
 <img src="../res/setup/image-11.png" alt="docker installed" height="100"/>
 
-✅ **Docker is now installed!** 
+✅ **Docker is now installed!**
 
 Continue to [Step 2: Run Agent Zero](#step-2-run-agent-zero)
 
@@ -169,7 +169,7 @@ Open Docker Desktop from your Applications folder.
 
 ![docker socket macOS](../res/setup/macsocket.png)
 
-✅ **Docker is now installed!** 
+✅ **Docker is now installed!**
 
 Continue to [Step 2: Run Agent Zero](#step-2-run-agent-zero)
 
@@ -208,7 +208,7 @@ docker login
 
 If you installed Docker Desktop, launch it from your applications menu.
 
-✅ **Docker is now installed!** 
+✅ **Docker is now installed!**
 
 > [!TIP]
 > **Deploying on a VPS/Server?** For production deployments with reverse proxy, SSL, and domain configuration, see the [VPS Deployment Guide](vps-deployment.md).
@@ -235,7 +235,7 @@ docker pull agent0ai/agent-zero
 
 #### 2.2. (Optional) Map Folders for Persistence
 
-Choose or create a folder on your computer where Agent Zero will save its data. 
+Choose or create a folder on your computer where Agent Zero will save its data.
 
 Setting up persistence is needed only if you want your data and files to remain available even after you delete the container.
 
@@ -536,7 +536,7 @@ ollama rm <model-name>
 ```
 
 > [!TIP]
-> Experiment with different model combinations to find the balance of performance and cost that best suits your needs. E.g., faster and lower latency LLMs will help, and you can also use `faiss_gpu` instead of `faiss_cpu` for the memory. 
+> Experiment with different model combinations to find the balance of performance and cost that best suits your needs. E.g., faster and lower latency LLMs will help, and you can also use `faiss_gpu` instead of `faiss_cpu` for the memory.
 
 ---
 

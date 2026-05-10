@@ -167,7 +167,7 @@
     <div x-data>
         <template x-if="$store.onboarding">
             <div x-init="$store.onboarding.onOpen()" x-destroy="$store.onboarding.cleanup()">
-                
+
                 <div class="modal-header">
                     <div class="onboarding-logo">
                         <img src="/public/a0-fullDark.svg" alt="Agent Zero">
@@ -176,7 +176,7 @@
 
                 <div class="modal-scroll">
                     <div class="modal-bd onboarding-body">
-                        
+
                         <div x-show="$store.onboarding.loading" class="loading loading-container"></div>
 
                         <template x-if="!$store.onboarding.loading && $store.onboarding.config">
@@ -192,7 +192,7 @@
                                     <div class="model-section">
                                         <div class="section-title" x-text="$store.modelConfig.MODEL_SECTIONS[0].title"></div>
                                         <div class="section-description" x-text="$store.modelConfig.MODEL_SECTIONS[0].desc"></div>
-                                        
+
                                         <!-- Provider -->
                                         <div class="field">
                                             <div class="field-label">
@@ -276,7 +276,7 @@
                                     <div class="model-section">
                                         <div class="section-title" x-text="$store.modelConfig.MODEL_SECTIONS[1].title"></div>
                                         <div class="section-description" x-text="$store.modelConfig.MODEL_SECTIONS[1].desc"></div>
-                                        
+
                                         <!-- Provider -->
                                         <div class="field">
                                             <div class="field-label">
@@ -379,7 +379,7 @@
                         <button class="btn" x-show="$store.onboarding.step > 1" @click="$store.onboarding.prev()" :disabled="$store.onboarding.loading">
                             Back
                         </button>
-                        
+
                         <button class="btn btn-ok" x-show="$store.onboarding.step < 3" @click="$store.onboarding.next()" :disabled="$store.onboarding.loading">
                             Next <span class="material-symbols-outlined onboarding-icon-right">arrow_forward</span>
                         </button>

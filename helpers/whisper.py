@@ -49,7 +49,7 @@ async def preload(model_name:str):
     except Exception as e:
         # if not runtime.is_development():
         raise e
-        
+
 async def _preload(model_name:str):
     global _model, _model_name, _model_device, is_updating_model
 
@@ -114,7 +114,7 @@ async def transcribe(model_name:str, audio_bytes_b64: str, mime_type: str | None
 
 async def _transcribe(model_name:str, audio_bytes_b64: str, mime_type: str | None = None):
     await _preload(model_name)
-    
+
     # Decode audio bytes if encoded as a base64 string
     audio_bytes = base64.b64decode(_strip_data_url(audio_bytes_b64))
 

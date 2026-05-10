@@ -24,7 +24,7 @@ const model = {
   async refreshCards() {
     if (this._isLoading) return;
     this._isLoading = true;
-    
+
     try {
       const response = await API.callJsonApi("/banners", {
         banners: [],
@@ -32,20 +32,20 @@ const model = {
             is_onboarding: document.body.dataset.mode === "onboarding"
         },
       });
-      
+
       const banners = response?.banners || [];
       const dismissed = this._getDismissedIds();
-      
+
       // Filter out standard banners, keep only hero and feature
       // Also respect the onboarding filtering
       const is_onboarding = document.body.dataset.mode === "onboarding";
-      
+
       this.cards = banners
         .filter((card) => card.type === "hero" || card.type === "feature")
         .filter((card) => !is_onboarding || card.show_in_onboarding === true)
         .filter((card) => !dismissed.has(card.id))
         .sort((left, right) => (right.priority || 0) - (left.priority || 0));
-        
+
       this.hasDismissedCards = dismissed.size > 0;
     } catch (error) {
       console.error("Failed to fetch discovery cards:", error);
@@ -58,7 +58,7 @@ const model = {
     const dismissed = this._getDismissedIds();
     dismissed.add(cardId);
     this._persistDismissedIds(dismissed);
-    
+
     // Optimistically update UI
     this.cards = this.cards.filter(c => c.id !== cardId);
     this.hasDismissedCards = true;

@@ -1,5 +1,5 @@
 """
-Email handler — orchestrates poll, dispatch, and reply. 
+Email handler — orchestrates poll, dispatch, and reply.
 
 Requires agent context.
 """
@@ -143,7 +143,7 @@ async def _fetch_exchange(
 async def _dispatch_all(handler_cfg: dict, messages: list[InboundMessage]):
     own_address = (handler_cfg.get("username") or "").lower()
 
-    # Need an agent for dispatcher AI calls 
+    # Need an agent for dispatcher AI calls
     # find existing dispatcher or create new background context
     ctx = None
     for c in AgentContext._contexts.values():
@@ -241,7 +241,7 @@ async def _call_dispatcher(
     try:
         response = await _call_model(agent, handler_cfg, system, prompt)
         return disp.parse_dispatcher_response(str(response))
-        
+
     except Exception as e:
         PrintStyle.error(f"Dispatcher error: {format_error(e)}")
         return disp.DispatchDecision(action="new_chat", reason="dispatcher error")
@@ -266,7 +266,7 @@ async def _start_new_chat(agent: Agent, handler_cfg: dict, msg: InboundMessage):
     context.data[disp.CTX_EMAIL_SUBJECT] = msg.subject
     context.data[disp.CTX_EMAIL_LAST_BODY] = msg.body
     context.data[disp.CTX_EMAIL_MESSAGE_ID] = msg.message_id
-    
+
     refs_list = []
     if msg.references:
         for r in msg.references.split():
@@ -274,7 +274,7 @@ async def _start_new_chat(agent: Agent, handler_cfg: dict, msg: InboundMessage):
                 refs_list.append(r)
     if msg.message_id and msg.message_id not in refs_list:
         refs_list.append(msg.message_id)
-        
+
     context.data[disp.CTX_EMAIL_REFERENCES] = " ".join(refs_list)
 
     project = handler_cfg.get("project", "")
@@ -310,18 +310,18 @@ async def _route_to_chat(
 
     context.data[disp.CTX_EMAIL_MESSAGE_ID] = msg.message_id
     context.data[disp.CTX_EMAIL_LAST_BODY] = msg.body
-    
+
     refs = context.data.get(disp.CTX_EMAIL_REFERENCES, "")
     refs_list = refs.split() if refs else []
-    
+
     if msg.references:
         for r in msg.references.split():
             if r not in refs_list:
                 refs_list.append(r)
-                
+
     if msg.message_id and msg.message_id not in refs_list:
         refs_list.append(msg.message_id)
-        
+
     context.data[disp.CTX_EMAIL_REFERENCES] = " ".join(refs_list)
 
     user_msg = _build_user_message(agent, msg, handler_cfg)

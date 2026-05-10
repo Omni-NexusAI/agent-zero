@@ -31,7 +31,7 @@ const model = {
 
   async init() {
     this.loading = false;
-    // If a tab is already selected (e.g. via open()), use it. 
+    // If a tab is already selected (e.g. via open()), use it.
     // Otherwise default to custom -> builtin fallback.
     if (this.activeTab && this.activeTab !== "custom") {
       await this.setTab(this.activeTab);
@@ -130,10 +130,10 @@ const model = {
 
   async updateToggle(plugin, value) {
     if (!plugin?.name) return;
-    
+
     if (value === 'advanced') {
         await this.openPluginAdvancedToggle(plugin);
-        return; 
+        return;
     }
 
     const enabled = value === 'enabled';

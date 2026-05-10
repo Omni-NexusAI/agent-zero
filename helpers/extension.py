@@ -397,4 +397,3 @@ def register_extensions_watchdogs():
         patterns=[f"*/{files.EXTENSIONS_DIR}/**/*"],
         handler=extensions_changed,
     )
-

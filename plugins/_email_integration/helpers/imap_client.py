@@ -1,5 +1,5 @@
 """
-IMAP/Exchange email reader. 
+IMAP/Exchange email reader.
 
 No agent/tool dependencies.
 """
@@ -342,7 +342,7 @@ async def _parse_body(
                         cid = part.get("Content-ID")
                         if cid:
                             cid_map[cid.strip("<>")] = path
-                        
+
                         if not cid:
                             body_parts.append(f"\n[attachment://{path}]\n")
 
@@ -425,17 +425,17 @@ async def _save_attachment(filename: str, content: bytes, download_folder: str) 
     rel_path = os.path.join(download_folder, unique)
     from helpers import runtime
     from plugins._email_integration.helpers.attachment_writer import write_attachment
-    
+
     import base64
     content_b64 = base64.b64encode(content).decode()
-    
+
     result = await runtime.call_development_function(
         write_attachment, rel_path, content_b64
     )
     if result.get("error"):
         from helpers.print_style import PrintStyle
         PrintStyle.error(f"Failed to save attachment {filename}: {result['error']}")
-        
+
     return result.get("path", files.get_abs_path(rel_path))
 
 
@@ -474,12 +474,12 @@ def _matches_whitelist(sender: str, whitelist: list[str]) -> bool:
 
 def _extract_email_from_sender(sender: str) -> str:
     """Extract email address from sender string.
-    
+
     Handles formats like:
     - "email@example.com"
     - "Name <email@example.com>"
     - "\"Display Name\" <email@example.com>"
-    
+
     Uses content inside angle brackets as authoritative to prevent spoofing
     by fake emails in the display name (e.g., "John ceo@company.com <real@email.com>").
     """
@@ -491,12 +491,12 @@ def _extract_email_from_sender(sender: str) -> str:
         # Validate it looks like an email
         if re.match(r"^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$", email):
             return email
-    
+
     # No angle brackets - extract email from the whole string
     # This handles plain "email@example.com" or malformed input
     email_match = re.search(r"[^\s<>]+@[^\s<>]+\.[^\s<>]+", sender)
     if email_match:
         return email_match.group(0)
-    
+
     # Fallback: return the whole string (will likely fail pattern match)
     return sender

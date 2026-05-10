@@ -32,4 +32,3 @@ class InitialMessage(Extension):
             finished=True,
             update_progress="none",
         )
-

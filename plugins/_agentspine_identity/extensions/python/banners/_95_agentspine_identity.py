@@ -9,4 +9,3 @@ class AgentspineIdentityBanners(Extension):
                 for key in ("title", "html", "message"):
                     if key in banner and isinstance(banner[key], str):
                         banner[key] = apply_identity_text(banner[key])
-

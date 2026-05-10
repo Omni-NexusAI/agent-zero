@@ -6,7 +6,7 @@ class MaskReasoningStreamChunk(Extension):
     async def execute(self, **kwargs):
         if not self.agent:
             return
-            
+
         # Get stream data and agent from kwargs
         stream_data = kwargs.get("stream_data")
         agent = kwargs.get("agent")

@@ -20,7 +20,7 @@ export const store = createStore("onboarding", {
         await modelConfigStore.ensureLoaded();
         modelConfigStore.resetApiKeyDrafts();
         await modelConfigStore.refreshApiKeyStatus();
-        
+
         // Fetch current config
         const response = await fetchApi("/plugins", {
             method: "POST",
@@ -34,13 +34,13 @@ export const store = createStore("onboarding", {
         });
         const result = await response.json().catch(() => ({}));
         this.config = result.ok ? (result.data || {}) : {};
-        
+
         // Ensure slots exist
         if (!this.config.chat_model) this.config.chat_model = { provider: "", name: "", api_key: "" };
         if (!this.config.utility_model) this.config.utility_model = { provider: "", name: "", api_key: "" };
-        
+
         modelConfigStore.initConfigFields(this.config);
-        
+
         this.loading = false;
     },
 
@@ -77,10 +77,10 @@ export const store = createStore("onboarding", {
                     settings: this.config,
                 }),
             });
-            
+
             // Save API keys
             await modelConfigStore.persistApiKeysForConfig(this.config);
-            
+
             // Open a new chat after finishing
             window.closeModal?.();
             chatsStore.newChat();
@@ -91,7 +91,7 @@ export const store = createStore("onboarding", {
             this.loading = false;
         }
     },
-    
+
     async openAdvancedSettings() {
         window.closeModal?.();
         // Dynamic import since we just removed the static import to fix cyclic imports

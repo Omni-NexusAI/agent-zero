@@ -1,5 +1,5 @@
 """
-Email dispatch logic — routes inbound emails to chats. 
+Email dispatch logic — routes inbound emails to chats.
 
 No agent deps in pure helpers.
 """

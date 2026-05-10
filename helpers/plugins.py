@@ -911,4 +911,3 @@ def _apply_defaults_from_env(plugin_name: str, config: dict[str, Any]):
                 _apply([*prefix, key], value[key])
 
     _apply([], config)
-

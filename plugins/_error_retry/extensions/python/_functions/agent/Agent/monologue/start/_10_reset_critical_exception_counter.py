@@ -12,7 +12,5 @@ class ResetCriticalExceptionCounter(Extension):
     async def execute(self, exception_data: dict = {}, **kwargs):
         if not self.agent:
             return
-        
-        self.agent.set_data(DATA_NAME_COUNTER, 0)
 
-        
+        self.agent.set_data(DATA_NAME_COUNTER, 0)

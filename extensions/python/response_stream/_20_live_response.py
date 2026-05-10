@@ -17,7 +17,7 @@ class LiveResponse(Extension):
     ):
         if not self.agent:
             return
-            
+
         try:
             if (
                 not "tool_name" in parsed

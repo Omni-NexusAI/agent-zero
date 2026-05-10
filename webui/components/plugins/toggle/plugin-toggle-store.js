@@ -5,7 +5,7 @@ const fetchApi = globalThis.fetchApi;
 
 const model = {
     pluginName: null,
-    
+
     // Context selectors
     projects: [],
     agentProfiles: [],
@@ -16,7 +16,7 @@ const model = {
     isLoading: false,
     isSaving: false,
     error: null,
-    
+
     // Status: 'enabled' | 'disabled'
     status: 'enabled',
     alwaysEnabled: false,

@@ -65,7 +65,7 @@ class RetryCriticalException(Extension):
 
     def try_clear_embeds(self, data: dict = {}):
         """Try to clear embeds before failing on LiteLLM errors"""
-        
+
         if not self.agent:
             return
 

@@ -45,7 +45,7 @@ from to inclusive \n in content
 {from:1 to:3 content:"x\n"} replace range
 {from:2 to:2} delete (no content)
 {from:2 content:"x\n"} insert before (omit to)
-use original line numbers from read 
+use original line numbers from read
 dont adjust for shifts no overlapping edits
 ensure valid syntax in content (all braces brackets tags closed)
 only replace exact lines needed dont include surrounding unchanged lines

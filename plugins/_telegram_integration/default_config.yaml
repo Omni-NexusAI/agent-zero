@@ -15,4 +15,3 @@ bots: []
 #   default_project: ""          # Fallback project if user not in user_projects
 #   attachment_max_age_hours: 0  # Hours to keep downloaded attachments. 0 = keep forever.
 #   agent_instructions: ""       # Extra instructions for the agent in Telegram chats
-

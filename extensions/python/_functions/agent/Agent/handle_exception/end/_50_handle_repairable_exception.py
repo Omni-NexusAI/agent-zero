@@ -21,5 +21,3 @@ class HandleRepairableException(Extension):
             PrintStyle(font_color="red", padding=True).print(msg["message"])
             self.agent.context.log.log(type="warning", content=msg["message"], id=wmsg.id)
             data["exception"] = None
-
-        

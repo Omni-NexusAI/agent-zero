@@ -9,5 +9,5 @@ class PluginsList(ApiHandler):
         builtin = filter.get("builtin", False)
 
         plugin_list = plugins.get_enhanced_plugins_list(custom=custom, builtin=builtin)
-        
+
         return {"ok": True, "plugins": [p.model_dump(mode="json") for p in plugin_list]}

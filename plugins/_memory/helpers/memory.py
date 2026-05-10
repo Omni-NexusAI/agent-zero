@@ -524,7 +524,7 @@ def get_agent_memory_subdir(agent: Agent) -> str:
 
     if not config:
         return "default"
-    
+
     # Check if project isolation is enabled and we are in a project
     if config.get("project_memory_isolation", True):
         project_name = projects.get_context_project_name(agent.context)

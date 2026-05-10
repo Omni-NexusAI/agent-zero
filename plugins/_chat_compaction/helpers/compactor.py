@@ -79,7 +79,7 @@ async def run_compaction(
 ) -> None:
     """
     Compact the chat history into a single summarized message.
-    
+
     This function:
     1. Extracts the full conversation text
     2. Estimates token count and checks against model context window
@@ -88,27 +88,27 @@ async def run_compaction(
     5. Replaces the history with a single AI message containing the summary
     6. Resets the log and creates a response log item
     7. Persists the changes
-    
+
     The function streams progress to the frontend via the log system.
     If any error occurs, the original history is preserved.
     """
     agent = context.agent0
-    
+
     try:
         # Step 1: Extract full conversation text
         history_output = agent.history.output()
         full_text = output_text(history_output, ai_label="assistant", human_label="user")
-        
+
         if not full_text.strip():
             raise ValueError("No conversation content to compact")
-        
+
         # Step 2: Estimate tokens, resolve model, and compute context budget
         token_count = tokens.approximate_tokens(full_text)
 
         resolved_cfg, model = _build_model(use_chat_model, preset_name, agent)
         ctx_length = int(resolved_cfg.get("ctx_length", 128000)) if resolved_cfg else 128000
         max_input_tokens = int(ctx_length * 0.7)
-        
+
         # Step 3: Create progress log item (count user-visible messages only)
         visible_types = {"user", "response"}
         visible_count = sum(1 for item in context.log.logs if item.type in visible_types)
@@ -117,7 +117,7 @@ async def run_compaction(
             heading="Compacting chat history...",
             content=f"Analyzing {visible_count} messages (~{token_count} tokens)...",
         )
-        
+
         # Step 4: Handle large histories by chunking if necessary
         if token_count > max_input_tokens:
             summary = await _compact_large_history(
@@ -127,13 +127,13 @@ async def run_compaction(
             summary = await _compact_single_pass(
                 agent, full_text, log_item, model
             )
-        
+
         if not summary or not summary.strip():
             raise ValueError("Compaction produced empty summary")
-        
+
         # Step 5: Save pre-compaction backup before destroying history
         backup_paths = _save_pre_compaction_backup(context, full_text)
-        
+
         # Step 6: Replace history with compacted version
         backup_note = (
             f"\n\n---\n"
@@ -144,11 +144,11 @@ async def run_compaction(
 
         agent.history = History(agent=agent)
         agent.history.add_message(ai=True, content=compacted_content)
-        
+
         # Clear subordinate chain
         agent.data.pop(Agent.DATA_NAME_SUBORDINATE, None)
         context.streaming_agent = None
-        
+
         # Step 7: Reset log and create response
         context.log.reset()
         context.log.log(
@@ -157,16 +157,16 @@ async def run_compaction(
             content=compacted_content,
             update_progress="none",
         )
-        
+
         # Step 8: Persist and notify
         save_tmp_chat(context)
         remove_msg_files(context.id)
-        
+
         # Step 9: Force progress bar to inactive state LAST
         # This must happen after all log operations and persist
         context.log.set_progress("Waiting for input", 0, False)
         mark_dirty_all(reason="plugins.compaction.compact_chat")
-        
+
     except Exception as e:
         # Log error but don't modify history
         context.log.log(
@@ -244,12 +244,12 @@ async def _compact_large_history(
 async def get_compaction_stats(context) -> dict:
     """
     Get statistics about the current chat for the confirmation modal.
-    
+
     Returns:
         dict with message_count, token_count, model_name
     """
     agent = context.agent0
-    
+
     # Count user-visible conversation turns only
     # 'user' = user sent a message, 'response' = agent final response
     # Other types (agent, tool, code_exe, etc.) are intermediate processing steps
@@ -258,18 +258,18 @@ async def get_compaction_stats(context) -> dict:
         1 for item in context.log.logs
         if item.type in visible_types
     )
-    
+
     # Estimate tokens
     history_output = agent.history.output()
     full_text = output_text(history_output, ai_label="assistant", human_label="user")
     token_count = tokens.approximate_tokens(full_text) if full_text else 0
-    
+
     # Get model names for both chat and utility
     chat_cfg = get_chat_model_config(agent)
     utility_cfg = get_utility_model_config(agent)
     chat_model_name = chat_cfg.get("name", "Default") if chat_cfg else "Default"
     utility_model_name = utility_cfg.get("name", "Default") if utility_cfg else "Default"
-    
+
     return {
         "message_count": message_count,
         "token_count": token_count,

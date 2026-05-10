@@ -9,7 +9,7 @@ class SaveToolCallFile(Extension):
     def execute(self, data: dict[str, Any] | None = None, **kwargs):
         if not self.agent:
             return
-            
+
         if not data:
             return
 

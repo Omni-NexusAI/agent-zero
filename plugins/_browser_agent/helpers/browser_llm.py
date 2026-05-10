@@ -155,7 +155,7 @@ def build_browser_model_for_agent(agent=None) -> BrowserCompatibleChatWrapper:
         build_model_config,
     )
     import models
-    
+
     cfg = get_chat_model_config(agent)
     mc = build_model_config(cfg, models.ModelType.CHAT)
     return build_browser_model_from_config(mc)

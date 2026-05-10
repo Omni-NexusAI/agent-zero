@@ -54,7 +54,7 @@ class MyPluginDiscoveryCard(Extension):
         # 1. Condition Check
         # Only show the discovery card if the user hasn't configured the plugin yet.
         config = plugins.get_plugin_config("my_custom_plugin") or {}
-        
+
         # If the API key is already set, we don't need to advertise the setup!
         if config.get("api_key"):
             return
@@ -65,15 +65,15 @@ class MyPluginDiscoveryCard(Extension):
             "type": "feature",                     # 'feature' or 'hero'
             "title": "Connect My Service",         # Card title
             "description": "Unlock amazing capabilities by linking your account.",
-            
+
             # Visuals (use either thumbnail OR icon)
             "thumbnail": "/plugins/my_custom_plugin/assets/thumb.png", # Path to image
             "icon": "bolt",                        # Or a Material Symbol icon name
-            
+
             # Call To Action (CTA)
             "cta_text": "Setup Now",
             "cta_action": "open-plugin-config:my_custom_plugin", # Opens your plugin's config modal
-            
+
             # Behavior
             "dismissible": True,                   # Let the user hide it
             "priority": 40,                        # Higher numbers appear first

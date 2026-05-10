@@ -81,5 +81,3 @@ def fix_json_string(json_string):
         r'(?<=: ")(.*?)(?=")', replace_unescaped_newlines, json_string, flags=re.DOTALL
     )
     return fixed_string
-
-

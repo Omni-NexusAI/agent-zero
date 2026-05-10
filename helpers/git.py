@@ -428,24 +428,24 @@ def is_official_agent_zero_repo() -> bool:
 def clone_repo(url: str, dest: str, token: str | None = None):
     """Clone a git repository. Uses http.extraHeader for token auth (never stored in URL/config)."""
     cmd = ['git']
-    
+
     if token:
         # GitHub Git HTTP requires Basic Auth, not Bearer
         auth_string = f"x-access-token:{token}"
         auth_base64 = base64.b64encode(auth_string.encode()).decode()
         cmd.extend(['-c', f'http.extraHeader=Authorization: Basic {auth_base64}'])
-    
+
     cmd.extend(['clone', '--progress', '--', url, dest])
-    
+
     env = os.environ.copy()
     env['GIT_TERMINAL_PROMPT'] = '0'
-    
+
     result = subprocess.run(cmd, capture_output=True, text=True, env=env)
-    
+
     if result.returncode != 0:
         error_msg = result.stderr.strip() or result.stdout.strip() or 'Unknown error'
         raise Exception(f"Git clone failed: {error_msg}")
-    
+
     return Repo(dest)
 
 
@@ -481,7 +481,7 @@ def get_repo_status(repo_path: str) -> dict:
         repo = Repo(repo_path)
         if repo.bare:
             return {"is_git_repo": False, "error": "Repository is bare"}
-        
+
         # Remote URL (always strip auth info for security)
         remote_url = ""
         try:
@@ -489,27 +489,27 @@ def get_repo_status(repo_path: str) -> dict:
                 remote_url = strip_auth_from_url(repo.remotes.origin.url)
         except Exception:
             pass
-        
+
         # Current branch
         try:
             current_branch = repo.active_branch.name if not repo.head.is_detached else f"HEAD@{repo.head.commit.hexsha[:7]}"
         except Exception:
             current_branch = "unknown"
-        
+
         # Check dirty status, excluding A0 metadata
         def is_a0_file(path: str) -> bool:
             return path.startswith(".a0proj") or path == ".a0proj"
-        
+
         # Filter out A0 files from diff and untracked
         changed_files = [d.a_path for d in repo.index.diff(None)] + [d.a_path for d in repo.index.diff("HEAD")]
         untracked = repo.untracked_files
-        
+
         real_changes = [f for f in changed_files if not is_a0_file(f)]
         real_untracked = [f for f in untracked if not is_a0_file(f)]
-        
+
         is_dirty = len(real_changes) > 0 or len(real_untracked) > 0
         untracked_count = len(real_untracked)
-        
+
         last_commit = None
         try:
             commit = repo.head.commit
@@ -521,7 +521,7 @@ def get_repo_status(repo_path: str) -> dict:
             }
         except Exception:
             pass
-        
+
         return {
             "is_git_repo": True,
             "remote_url": remote_url,

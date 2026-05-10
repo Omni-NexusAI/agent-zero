@@ -7,7 +7,7 @@ class DiscoveryCardsExtension(Extension):
     async def execute(self, banners: list = [], frontend_context: dict = {}, **kwargs):
         # Optional logic: only show specific cards if plugins aren't already configured.
         # Telegram, Email, Whatsapp are built-in, so we only need to check if they've been configured.
-        
+
         telegram_config = plugins.get_plugin_config("_telegram_integration") or {}
         email_config = plugins.get_plugin_config("_email_integration") or {}
         whatsapp_config = plugins.get_plugin_config("_whatsapp_integration") or {}
@@ -74,4 +74,3 @@ class DiscoveryCardsExtension(Extension):
                 "priority": 50,
                 "show_in_onboarding": True
             })
-

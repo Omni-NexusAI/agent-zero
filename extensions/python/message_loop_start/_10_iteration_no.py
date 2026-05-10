@@ -7,7 +7,7 @@ class IterationNo(Extension):
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs):
         if not self.agent:
             return
-            
+
         # total iteration number
         no = self.agent.get_data(DATA_NAME_ITER_NO) or 0
         self.agent.set_data(DATA_NAME_ITER_NO, no + 1)

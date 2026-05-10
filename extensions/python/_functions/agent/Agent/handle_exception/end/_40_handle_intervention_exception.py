@@ -17,5 +17,3 @@ class HandleInterventionException(Extension):
 
         if isinstance(data["exception"], InterventionException):
             data["exception"] = None # skip the exception and continue message loop
-
-        

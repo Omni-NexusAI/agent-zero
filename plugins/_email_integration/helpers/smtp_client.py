@@ -1,5 +1,5 @@
 """
-SMTP email sender. 
+SMTP email sender.
 
 No agent/tool dependencies.
 """
@@ -48,7 +48,7 @@ async def send_reply(
 
     def _sync_send():
         import markdown
-        
+
         html_body = markdown.markdown(body, extensions=['extra', 'nl2br'])
         html_content = f"""
         <html>
@@ -69,12 +69,12 @@ async def send_reply(
 
         if attachments:
             msg = MIMEMultipart("mixed")
-            
+
             alt_part = MIMEMultipart("alternative")
             alt_part.attach(MIMEText(body, "plain", "utf-8"))
             alt_part.attach(MIMEText(html_content, "html", "utf-8"))
             msg.attach(alt_part)
-            
+
             for filename, content in attachments:
                 part = MIMEBase("application", "octet-stream")
                 part.set_payload(content)

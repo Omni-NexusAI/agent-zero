@@ -2,7 +2,7 @@ import { drawMessageToolSimple } from "/js/messages.js";
 
 /**
  * Registers the browser_agent tool message handler to set the custom badge.
- * @param {object} extData 
+ * @param {object} extData
  */
 export default async function registerBrowserToolHandler(extData) {
   if (extData?.tool_name === "browser_agent") {
