@@ -1,0 +1,34 @@
+# Standalone Kokoro sidecar for the Compose "kokoro" profile.  It does not
+# contain A0 host code or plugins; it implements only the plugin-local worker
+# protocol consumed by Enhanced Speech.
+FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    KOKORO_DEVICE=cuda:auto \
+    KOKORO_HOST=0.0.0.0 \
+    KOKORO_PORT=8891
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        espeak-ng \
+        libsndfile1 \
+        python3 \
+        python3-pip \
+    && rm -rf /var/lib/apt/lists/* \
+    && python3 -m pip install --upgrade pip \
+    && python3 -m pip install \
+        --index-url https://download.pytorch.org/whl/cu126 \
+        torch==2.7.1+cu126 \
+        torchaudio==2.7.1+cu126 \
+    && python3 -m pip install \
+        flask==3.1.0 \
+        kokoro==0.9.4 \
+        soundfile==0.13.1
+
+WORKDIR /app
+COPY ./docker/agentspine/kokoro_worker.py /app/kokoro_worker.py
+
+EXPOSE 8891
+CMD ["python3", "/app/kokoro_worker.py"]

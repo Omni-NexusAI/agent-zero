@@ -1,0 +1,73 @@
+# Agent Spine 9.9 is one pinned A0 v2.7 source tree with Compose-selected targets.
+# The standard and CUDA targets deliberately receive the exact same built-in
+# plugin packages; CUDA support is the only target-specific capability.
+# Keep the 9.9 base reproducible. A0 v2.8 is validated as a separate custom
+# plugin target and must never implicitly rebase a verified Spine release.
+ARG A0_BASE_IMAGE=agent0ai/agent-zero@sha256:a7f5ccf351d612c3eaafc708251490277e1d731afe71a2eaf8aa3d871a55ece4
+
+FROM ${A0_BASE_IMAGE} AS spine-base
+
+ENV AGENTSPINE_RELEASE=9.9 \
+    AGENTSPINE_IDENTITY_ENABLED=true
+
+# Keep dependency layers independent of the application packages.  A plugin
+# change must rebuild the built-in package layer, not re-download CUDA wheels.
+FROM spine-base AS spine-runtime-deps
+USER root
+RUN /opt/venv-a0/bin/python -m pip install --no-cache-dir --no-deps \
+    https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+FROM spine-runtime-deps AS cuda-runtime
+
+# The NVIDIA runtime supplies the host driver; the CUDA PyTorch wheel supplies
+# the user-space CUDA libraries required by the local Kokoro runtime.
+USER root
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        espeak-ng \
+        libsndfile1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && /opt/venv-a0/bin/python -m pip install --no-cache-dir --upgrade \
+        --index-url https://download.pytorch.org/whl/cu126 \
+        torch==2.7.1+cu126 \
+        torchvision==0.22.1+cu126 \
+        torchaudio==2.7.1+cu126
+
+ENV PYTORCH_VARIANT=cuda \
+    A0_TTS_KOKORO_DEVICE=cuda
+
+# The A0 container initializes its runtime by copying /git/agent-zero to /a0.
+# Put Spine's built-in packages in that source tree, never in usr/plugins or
+# directly in the transient /a0 runtime tree.  This is intentionally a late
+# stage so standard and CUDA receive byte-identical source packages.
+FROM spine-base AS spine-plugin-source
+COPY ./plugins/_enhanced_speech /git/agent-zero/plugins/_enhanced_speech
+COPY ./plugins/_provider_profiles /git/agent-zero/plugins/_provider_profiles
+COPY ./plugins/_agentspine_identity /git/agent-zero/plugins/_agentspine_identity
+COPY ./plugins/_multi_source_updater /git/agent-zero/plugins/_multi_source_updater
+COPY ./plugins/ai_link_bridge /git/agent-zero/plugins/ai_link_bridge
+COPY ./docker/agentspine/sanitize_spine_runtime_plugins.py /usr/local/lib/agentspine/sanitize_spine_runtime_plugins.py
+COPY ./docker/agentspine/agentspine-entrypoint.sh /usr/local/bin/agentspine-entrypoint
+RUN chmod 0755 /usr/local/bin/agentspine-entrypoint
+
+FROM spine-runtime-deps AS standard
+COPY --from=spine-plugin-source /git/agent-zero/plugins/_enhanced_speech /git/agent-zero/plugins/_enhanced_speech
+COPY --from=spine-plugin-source /git/agent-zero/plugins/_provider_profiles /git/agent-zero/plugins/_provider_profiles
+COPY --from=spine-plugin-source /git/agent-zero/plugins/_agentspine_identity /git/agent-zero/plugins/_agentspine_identity
+COPY --from=spine-plugin-source /git/agent-zero/plugins/_multi_source_updater /git/agent-zero/plugins/_multi_source_updater
+COPY --from=spine-plugin-source /git/agent-zero/plugins/ai_link_bridge /git/agent-zero/plugins/ai_link_bridge
+COPY --from=spine-plugin-source /usr/local/lib/agentspine/sanitize_spine_runtime_plugins.py /usr/local/lib/agentspine/sanitize_spine_runtime_plugins.py
+COPY --from=spine-plugin-source /usr/local/bin/agentspine-entrypoint /usr/local/bin/agentspine-entrypoint
+ENTRYPOINT ["/usr/local/bin/agentspine-entrypoint"]
+CMD ["/exe/initialize.sh", "$BRANCH"]
+
+FROM cuda-runtime AS cuda
+COPY --from=spine-plugin-source /git/agent-zero/plugins/_enhanced_speech /git/agent-zero/plugins/_enhanced_speech
+COPY --from=spine-plugin-source /git/agent-zero/plugins/_provider_profiles /git/agent-zero/plugins/_provider_profiles
+COPY --from=spine-plugin-source /git/agent-zero/plugins/_agentspine_identity /git/agent-zero/plugins/_agentspine_identity
+COPY --from=spine-plugin-source /git/agent-zero/plugins/_multi_source_updater /git/agent-zero/plugins/_multi_source_updater
+COPY --from=spine-plugin-source /git/agent-zero/plugins/ai_link_bridge /git/agent-zero/plugins/ai_link_bridge
+COPY --from=spine-plugin-source /usr/local/lib/agentspine/sanitize_spine_runtime_plugins.py /usr/local/lib/agentspine/sanitize_spine_runtime_plugins.py
+COPY --from=spine-plugin-source /usr/local/bin/agentspine-entrypoint /usr/local/bin/agentspine-entrypoint
+ENTRYPOINT ["/usr/local/bin/agentspine-entrypoint"]
+CMD ["/exe/initialize.sh", "$BRANCH"]
