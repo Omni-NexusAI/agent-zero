@@ -1,0 +1,7 @@
+name: _provider_profiles
+title: Provider Profiles
+description: Preserves model settings per provider and model slot when switching providers in Agentspine model configuration.
+version: 1.0.0
+always_enabled: false
+settings_sections:
+  - model

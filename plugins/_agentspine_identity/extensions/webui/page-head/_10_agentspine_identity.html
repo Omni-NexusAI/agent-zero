@@ -1,0 +1,191 @@
+<script>
+  (() => {
+    if (!globalThis.agentspineIdentityEnabled) return;
+    const identity = {
+      productName: "Agentspine",
+      shortName: "AS",
+      bannerPrefix: "M",
+      mainReleasePrefix: "M",
+      developmentPrefix: "D",
+      compatibilityLabel: "A0-compatible",
+      defaultReleaseTag: "v0.9.9-standard",
+    };
+
+    const protectedPhrases = new Map([
+      ["Agent Zero Venice", "__AS_IDENTITY_AGENT_ZERO_VENICE__"],
+    ]);
+
+    const replacements = [
+      ["Agent-Zero", identity.productName],
+      ["AgentZero", identity.productName],
+      ["Agent Zero", identity.productName],
+      ["agent-zero", "agentspine"],
+      ["agent zero", identity.productName],
+      ["A0 MCP Server", `${identity.shortName} MCP Server`],
+      ["A0 A2A Server", `${identity.shortName} A2A Server`],
+      ["A0 instance", `${identity.shortName} instance`],
+    ];
+
+    const rootSelectors = [
+      "body",
+      ".container",
+      ".sidebar",
+      ".modal",
+      ".notification-toast-stack",
+      ".notification-modal",
+      ".toast",
+      "[role='dialog']",
+    ];
+    const attrNames = ["title", "alt", "aria-label", "placeholder"];
+    const skipTags = new Set(["SCRIPT", "STYLE", "CODE", "PRE", "TEXTAREA", "INPUT"]);
+
+    function timestamp() {
+      const value = globalThis.gitinfo?.commit_time || "";
+      return value && value !== "unknown" ? value : "";
+    }
+
+    function releaseTag() {
+      const current = String(globalThis.gitinfo?.version || "").trim();
+      const match = current.match(/^(?:D|M|AS)\s+(v[^\s]+)/);
+      if (match?.[1]) return match[1];
+      return identity.defaultReleaseTag;
+    }
+
+    function displayPrefix(tag) {
+      return /(?:-pre|-dev)/i.test(tag)
+        ? identity.developmentPrefix
+        : identity.mainReleasePrefix;
+    }
+
+    function displayVersion() {
+      const current = String(globalThis.gitinfo?.version || "").trim();
+      if (/^(?:D|M)\s+v[^\s]+(?:\s+.*)?$/.test(current)) return current;
+      const tag = releaseTag();
+      return `${displayPrefix(tag)} ${tag}${timestamp() ? ` ${timestamp()}` : ""}`;
+    }
+
+    function applyIdentityText(value) {
+      if (!value || typeof value !== "string") return value;
+      let result = value;
+      for (const [phrase, token] of protectedPhrases) {
+        result = result.split(phrase).join(token);
+      }
+      for (const [source, target] of replacements) {
+        result = result.split(source).join(target);
+      }
+      for (const [phrase, token] of protectedPhrases) {
+        result = result.split(token).join(phrase);
+      }
+      return result;
+    }
+
+    function rewriteTextNode(node) {
+      const parent = node.parentElement;
+      if (!parent || skipTags.has(parent.tagName)) return;
+      const next = applyIdentityText(node.nodeValue);
+      if (next !== node.nodeValue) node.nodeValue = next;
+    }
+
+    function rewriteAttributes(root) {
+      if (!root.querySelectorAll) return;
+      const nodes = root.matches?.("*") ? [root, ...root.querySelectorAll("*")] : [...root.querySelectorAll("*")];
+      for (const node of nodes) {
+        if (skipTags.has(node.tagName)) continue;
+        for (const attr of attrNames) {
+          if (!node.hasAttribute?.(attr)) continue;
+          const current = node.getAttribute(attr);
+          const next = applyIdentityText(current);
+          if (next !== current) node.setAttribute(attr, next);
+        }
+      }
+    }
+
+    function rewriteRoot(root) {
+      if (!root) return;
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+      textNodes.forEach(rewriteTextNode);
+      rewriteAttributes(root);
+    }
+
+    function patchSidebarVersionStore() {
+      const alpine = globalThis.Alpine;
+      if (!alpine?.store) return;
+      let sidebarStore = null;
+      try {
+        sidebarStore = alpine.store("sidebarBottom");
+      } catch {
+        sidebarStore = null;
+      }
+      if (!sidebarStore || sidebarStore.__agentspineVersionPatched) return;
+      Object.defineProperty(sidebarStore, "versionLabel", {
+        configurable: true,
+        enumerable: true,
+        get() {
+          return globalThis.agentspineIdentity?.displayVersion || globalThis.a0VersionBanner || "";
+        },
+      });
+      sidebarStore.__agentspineVersionPatched = true;
+    }
+
+    function applyIdentity() {
+      document.title = identity.productName;
+      identity.displayVersion = displayVersion();
+      globalThis.agentspineIdentity = identity;
+      globalThis.a0VersionBanner = identity.displayVersion;
+      patchSidebarVersionStore();
+      if (globalThis.gitinfo && typeof globalThis.gitinfo === "object") {
+        globalThis.gitinfo.agentspine_display_version = identity.displayVersion;
+        globalThis.gitinfo.agentZeroVersion = releaseTag();
+      }
+      const versionEl = document.getElementById("a0version");
+      if (versionEl && versionEl.textContent !== identity.displayVersion) {
+        versionEl.textContent = identity.displayVersion;
+        versionEl.dataset.agentspineOwned = "true";
+      }
+      for (const selector of rootSelectors) {
+        document.querySelectorAll(selector).forEach(rewriteRoot);
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", applyIdentity, { once: true });
+    } else {
+      applyIdentity();
+    }
+
+    let identityRefreshCount = 0;
+    const identityRefreshTimer = setInterval(() => {
+      applyIdentity();
+      identityRefreshCount += 1;
+      if (identityRefreshCount >= 40) clearInterval(identityRefreshTimer);
+    }, 250);
+
+    const observer = new MutationObserver((mutations) => {
+      let shouldApply = false;
+      for (const mutation of mutations) {
+        if (mutation.type === "childList" && mutation.addedNodes.length) {
+          shouldApply = true;
+          break;
+        }
+        if (mutation.type === "characterData") {
+          if (mutation.target.parentElement?.id === "a0version") {
+            shouldApply = true;
+          } else {
+            rewriteTextNode(mutation.target);
+          }
+        }
+      }
+      if (shouldApply) queueMicrotask(applyIdentity);
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+    }, { once: true });
+  })();
+</script>
