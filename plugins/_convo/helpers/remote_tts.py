@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import os
+import copy
+import importlib
+from pathlib import Path
 import socket
 import urllib.request
 from urllib.parse import urlparse
@@ -128,6 +131,14 @@ def apply_remote_tts_runtime_settings(settings: dict | None) -> dict | None:
     return settings
 
 
+def _lifecycle():
+    prefix = 'usr.plugins' if Path(__file__).resolve().parents[2].parent.name == 'usr' else 'plugins'
+    return importlib.import_module(prefix + '._convo.helpers.lifecycle')
+
+
+@_lifecycle().owned_patch('remote', [
+    ('helpers.build_type', ('get_tts_device_options', 'get_tts_defaults')),
+    ('helpers.settings', ('get_tts_device_options', 'get_tts_defaults', 'get_settings', '_agentspine_convo_patched'))])
 def patch_runtime() -> bool:
     """Install optional remote-worker defaults when this host exposes them.
 
@@ -155,7 +166,7 @@ def patch_runtime() -> bool:
         return apply_remote_tts_defaults(original_defaults(*args, **kwargs), current)
 
     def patched_get_settings(*args, **kwargs):
-        return apply_remote_tts_runtime_settings(original_get_settings(*args, **kwargs))
+        return apply_remote_tts_runtime_settings(copy.deepcopy(original_get_settings(*args, **kwargs)))
 
     build_type.get_tts_device_options = patched_options
     build_type.get_tts_defaults = patched_defaults
@@ -164,7 +175,4 @@ def patch_runtime() -> bool:
     settings_module.get_settings = patched_get_settings
     settings_module._agentspine_convo_patched = True
 
-    current = getattr(settings_module, "_settings", None)
-    if isinstance(current, dict):
-        apply_remote_tts_runtime_settings(current)
     return True

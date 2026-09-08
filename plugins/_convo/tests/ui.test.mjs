@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 async function fixture({ startBarrier = null, captureBarrier = null } = {}) {
     const calls = [], sessions = [], microphones = [];
-    let selected = 'a', epoch = 0, session = 'session-a';
+    let selected = 'a', epoch = 0, session = 'session-a', statusError = false;
     const nativeMic = { status:'LISTENING', dispose() { calls.push('native.dispose'); }, async toggle() { calls.push('native.toggle'); }, async finishConvoDictation() { calls.push('native.finish'); } };
     const nativeStore = { microphoneInput: null, getSelectedDevice:()=>({deviceId:'mic'}), async initRuntime(){}, async initMicrophone(){ this.microphoneInput=nativeMic; calls.push('native.init'); } };
     const context = vm.createContext({ setTimeout, clearTimeout, setInterval, clearInterval, console, crypto:globalThis.crypto,
@@ -13,7 +13,7 @@ async function fixture({ startBarrier = null, captureBarrier = null } = {}) {
         fetch:async()=>({ok:true}) });
     class Client {
         addHandlers() {}
-        async on(event, cb) { this.receive=cb; }
+        async on(event, cb) { (this.handlers ??= {})[event] = cb; this.receive=cb; }
         onDisconnect(cb) { this.disconnected=cb; }
         disconnect() { calls.push('socket.close'); }
         async request(event, data) {
@@ -32,7 +32,10 @@ async function fixture({ startBarrier = null, captureBarrier = null } = {}) {
     }
     const exports = {
         '/js/AlpineStore.js': { createStore:(_,value)=>value },
-        '/js/api.js': { callJsonApi:async(_,payload)=>payload.action==='status' ? {settings:{enabled:true,max_audio_seconds:20,transcription_enabled:false}} : {events:[],jobs:[]} },
+        '/js/api.js': { callJsonApi:async(_,payload)=>{
+            if (statusError) throw new Error('Plugin disabled or unavailable');
+            return payload.action==='status' ? {settings:{enabled:true,max_audio_seconds:20,transcription_enabled:false}} : {events:[],jobs:[]};
+        } },
         '/js/websocket.js': { createNamespacedClient:()=>{const client=new Client(); sessions.push(client);return client;} },
         '/js/shortcuts.js': {getCurrentContextId:()=>selected,openModal:async()=>{}},
         './audio.js': {AudioSession:Audio},
@@ -50,7 +53,7 @@ async function fixture({ startBarrier = null, captureBarrier = null } = {}) {
     const source=await readFile(new URL('../webui/convo-store.js',import.meta.url),'utf8');
     const module=new vm.SourceTextModule(source,{context,importModuleDynamically:resolve});
     await module.link(resolve); await module.evaluate();
-    return {store:module.namespace.store,calls,sessions,microphones,nativeStore,setTarget:v=>selected=v};
+    return {store:module.namespace.store,calls,sessions,microphones,nativeStore,setTarget:v=>selected=v,failStatus:()=>statusError=true};
 }
 
 test('Start, interrupt, stop have one owned socket and microphone',async()=>{
@@ -88,4 +91,18 @@ test('Explicit dictation flushes through native recorder before releasing it',as
     const f=await fixture(); await f.store.beginDictation(); assert.equal(f.store.dictating,true);
     await f.store.endDictation(); assert.equal(f.store.dictating,false); assert.ok(f.calls.includes('native.finish'));
     assert.equal(f.nativeStore.microphoneInput,null);
+});
+
+test('Losing the disabled plugin API releases microphone and playback',async()=>{
+    const f=await fixture(); await f.store.start(); f.failStatus(); await f.store.refresh();
+    assert.equal(f.microphones[0].closed,true); assert.equal(f.store.active,false);
+    assert.equal(f.store.enabled,false); assert.ok(f.calls.includes('socket.close'));
+});
+
+test('Server disable releases capture and leaves explicit native dictation usable',async()=>{
+    const f=await fixture(); await f.store.start();
+    f.sessions[0].handlers['convo.disabled']({});
+    while(f.store.busy) await new Promise(r=>setTimeout(r,1));
+    assert.equal(f.microphones[0].closed,true); assert.equal(f.store.active,false);
+    await f.store.beginDictation(); assert.equal(f.store.dictating,true); await f.store.endDictation();
 });

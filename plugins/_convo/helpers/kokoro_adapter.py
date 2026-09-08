@@ -22,6 +22,7 @@ def _load_helper(name: str):
 speech_config = _load_helper("config")
 remote_worker = _load_helper("remote_worker")
 gpu = _load_helper("gpu")
+lifecycle = _load_helper("lifecycle")
 
 
 def _notify(kind: str, message: str, *, group: str, detail: str = "") -> None:
@@ -64,6 +65,11 @@ def _resolve_local_device(policy: str) -> tuple[str, str]:
     return gpu.resolve_local_device(requested)
 
 
+@lifecycle.owned_patch('kokoro', [('plugins._kokoro_tts.helpers.runtime', (
+    'normalize_config', 'get_config', 'synthesize_sentences', 'is_downloaded',
+    '_agentspine_convo_patched', '_agentspine_original_normalize_config',
+    '_agentspine_original_get_config', '_agentspine_original_synthesize_sentences',
+    '_agentspine_original_is_downloaded'))])
 def patch_runtime() -> bool:
     try:
         runtime = importlib.import_module("plugins._kokoro_tts.helpers.runtime")
@@ -117,11 +123,12 @@ def patch_runtime() -> bool:
         if cfg.get("remote_enabled"):
             status = await _worker_status_async(cfg)
             return bool(status.get("success"))
-        original = getattr(runtime, "_agentspine_original_is_downloaded", None)
+        original = original_is_downloaded
         if callable(original):
             return bool(await original())
         return getattr(runtime, "_pipeline", None) is not None
 
+    original_is_downloaded = runtime._agentspine_original_is_downloaded
     runtime.normalize_config = normalize_config
     runtime.get_config = get_config
     runtime.synthesize_sentences = synthesize_sentences

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import inspect
+import importlib
 import os
 import tempfile
 from pathlib import Path
@@ -269,6 +270,13 @@ async def _transcribe_portable(model_name: str, audio: str, mime_type: str | Non
             pass
 
 
+def _lifecycle():
+    prefix = 'usr.plugins' if Path(__file__).resolve().parents[2].parent.name == 'usr' else 'plugins'
+    return importlib.import_module(prefix + '._convo.helpers.lifecycle')
+
+
+@_lifecycle().owned_patch('capabilities', [('helpers.settings', (
+    'get_stt_device_options', 'get_tts_device_options', 'get_stt_defaults', 'get_tts_defaults'))])
 def patch_runtime() -> None:
     try:
         from helpers import settings as settings_module

@@ -10,3 +10,12 @@ def save_plugin_config(settings=None, **kwargs):
     if not isinstance(settings, dict):
         raise ValueError("Plugin configuration must be an object")
     return {**settings, "convo": contract.validate_settings(settings.get("convo", {}))}
+
+
+def pre_update(**kwargs):
+    root = Path(__file__).resolve().parent
+    prefix = 'usr.plugins' if root.parent.parent.name == 'usr' else 'plugins'
+    importlib.import_module(prefix + '._convo.helpers.lifecycle').state().disable()
+
+
+uninstall = pre_update

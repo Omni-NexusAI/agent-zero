@@ -30,11 +30,17 @@ class Realtime(WsHandler):
     async def on_disconnect(self, sid):
         state = self.connections.pop(sid, None)
         if state:
+            if hasattr(state['service'], 'forget_connection'):
+                state['service'].forget_connection(self, sid)
             try:
                 state["service"].store.stop(state["session"]["id"], sid)
             except ValueError:
                 pass
             await self._cancel(state)
+
+    async def disable(self, sid):
+        await self.on_disconnect(sid)
+        await self.emit_to(sid, 'convo.disabled', {'reason': 'Plugin disabled; native speech remains available.'})
 
     async def _cancel(self, state):
         tasks = [state.get("task"), state.get("compact_task")]
@@ -78,10 +84,15 @@ class Realtime(WsHandler):
             state = {"session": session, "service": s, "preparing": True, "task": asyncio.current_task()}
             self.connections[sid] = state
             try:
+                if hasattr(s, 'register_connection'):
+                    s.register_connection(self, sid)
                 await sidecar.health()
                 persona = await asyncio.wait_for(s.host.persona(target, config["style"], s.persona_cache), 45)
+                s.store.session(session['id'], sid)  # Disable during setup cannot revive this session.
             except BaseException:
                 self.connections.pop(sid, None)
+                if hasattr(s, 'forget_connection'):
+                    s.forget_connection(self, sid)
                 try:
                     s.store.stop(session["id"], sid)
                 except ValueError:
@@ -100,9 +111,7 @@ class Realtime(WsHandler):
         if state.get("preparing") and event != "convo.stop":
             raise ValueError("Convo is preparing the selected persona")
         if event == "convo.stop":
-            store.stop(session["id"], sid)
-            await self._cancel(state)
-            del self.connections[sid]
+            await self.on_disconnect(sid)
             return {"ok": True}
         if event in {"convo.interrupt", "convo.retarget"}:
             if event == "convo.retarget":

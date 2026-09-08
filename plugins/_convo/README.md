@@ -20,7 +20,7 @@ These are implemented code paths, **not a certification that they work together 
 
 ## Development setup (not performed automatically)
 
-1. Review the plugin and legacy shims together on an isolated host built from this branch. Do not overlay the shims without `_convo`. Keep existing host/plugin config and toggle backups. Use the migration preview before applying; rollback refuses to overwrite newer edits.
+1. Review the plugin and legacy shims together using an existing compatible host image and plugin-only bind mounts. Ordinary plugin source tests do not require a host rebuild. Do not overlay the shims without `_convo`. Keep existing host/plugin config and toggle backups. Use the migration preview before applying; rollback refuses to overwrite newer edits.
 2. Select the existing host Docker network through `CONVO_HOST_NETWORK`. Configure a fresh `CONVO_SIDECAR_TOKEN` in both the host and Convo runtime environments. Credentials are environment references, not browser settings values.
 3. Review `sidecar/compose.yaml` before any deployment. Its default service is the model adapter on private port 8090; the separate `managed-audio` profile adds Convo-owned audio.cpp with fresh `convo-models` and `convo-voices` volumes. That profile requires a separate fresh `CONVO_AUDIO_TOKEN`, shared by runtime and audio service. No existing speech volume or service is mounted or managed. Starting the supervisor does not load models.
 4. For managed audio, set the appropriate CUDA architecture at build time. Use native Studio to inspect the source/revision/license/size, approve a download, explicitly load a model, and create a clone profile from an authorized reference WAV plus exact transcript. Downloads verify every file before directory registration; cancellation preserves partials and failed checksums are quarantined. Storage reserve is enforced. No automatic re-download or overwrite of an installed model.
@@ -32,6 +32,14 @@ Model selection applies at the next session. Speech configuration is frozen per 
 
 Runtime data lives under `usr/plugins/_convo/data`; model/profile data lives in the separate managed volumes. Disabling Convo or stopping voice does not delete either or cancel background work. Existing source checkouts, FasterQwen, Groxaxo and external model servers remain untouched.
 
+## Isolated tests and same-build recovery
+
+Run `tests/in-image.ps1` from PowerShell with `-SourceContainer agentspine-standard-v9.9` or `-SourceContainer agent-zero-v2.11`. The existing host is only inspected, never started or modified. The runner uses its already-installed image with read-only mounts for Convo, legacy shims and the independent developer **Plugin Doctor**. User data is empty temporary storage. No dependency install, model download, GPU, external network, host port or Docker socket is used. Sidecar/FastAPI tests remain in the separate local test environment.
+
+Scratch is capped at **400 MiB** (tmpfs; may use swap), logs at **1 MiB**. September 8 image checks used **32–36 KiB** of writable layer each, excluding Docker metadata/logs and shared image layers. Keep **1 GiB** free for this bounded path; this is an operational allowance, not a CUDA/model build estimate. Set `-Name convo-test-my-check`, then reuse that verified stopped container with the same arguments plus `-Reuse` after source edits. No cleanup is automatic.
+
+Disable Convo through the native plugin manager to invalidate voice sessions, cancel/detach voice and compaction, restore owned Python hooks, and pause new job dispatch. Existing authorized host jobs continue and remain tracked; histories/settings/profiles stay intact. Convo's disable/status-loss handlers release microphone/playback, and the native frontend refresh removes UI extensions; reload the page if old frontend modules remain cached. Use Plugin Doctor while OFF, apply the fix, refresh and rerun tests, then explicitly re-enable. A stale singleton or wedged shared host process may still require an approved **same-image process restart**. Disabling is not an undo for external actions.
+
 ## Verification
 
 From the host repository root:
@@ -42,11 +50,11 @@ node --test plugins/_convo/tests/audio.test.mjs
 node --experimental-vm-modules --test plugins/_convo/tests/ui.test.mjs
 ```
 
-The current source checkpoint passes **47 Python and 8 JavaScript tests** with isolated settings/storage, mocked network/model responses, and no model processes. This includes a 200-turn journal/compaction simulation, retarget races, cancellation/detachment without overlapping native TTS, partial downloads, checksum failures, native-setting preservation and real headless gateway route/auth checks. It does not measure first-audible latency, acoustic judgment or GPU capacity. The reused supervisor currently emits FastAPI lifecycle deprecation warnings; its wrapper owns startup/shutdown explicitly.
+The offline suites cover a 200-turn journal/compaction simulation, retarget races, cancellation/detachment, download checksums, native-setting preservation, headless gateway auth and disable/re-enable recovery. The image runner additionally exercises the actual host loader/toggle functions and Plugin Doctor against a deliberately broken OFF fixture, without importing that fixture. These checks do not measure first-audible latency, acoustic judgment or GPU capacity. The reused supervisor emits FastAPI lifecycle deprecation warnings; its wrapper owns startup/shutdown explicitly.
 
 ## Still incomplete / not release-ready
 
-- Both installed host integrations, image builds, real browser/microphone paths, disable/re-enable cutover, updater compatibility and full rollback rehearsal.
+- Full deployed host integrations, sidecar image builds, real browser/microphone cutover, updater compatibility and live recovery rehearsal. Offline same-process loader/disable recovery has passed in both installed host images; this is not live microphone acceptance.
 - Adaptive coupled-echo protection from standalone, measured semantic endpointing, classifier selection/quality corpus, classifier/main-model combined scheduling and performance instrumentation. Current capture uses browser AEC plus a bounded energy VAD; current inference classifies before answering and does not run speculative drafts.
 - Native camera-context adapter, mid-session persona invalidation, optional compaction-model override, incremental/duplex/omni adapter implementations and true native PCM playback. Their capabilities are reserved, not falsely advertised as implemented.
 - Native Studio profile editing/deletion and full form-based tuning parity, conversation/classifier download presets, and live metadata/download verification. The current download catalog covers audio.cpp Base TTS only.

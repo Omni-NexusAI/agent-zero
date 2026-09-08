@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib
+import asyncio
 import threading
 from pathlib import Path
 
@@ -38,10 +39,42 @@ class Service:
         self.dispatcher = Dispatcher(self.store, self.host)
         self.compactor = Compactor(self.store, self.host)
         self.persona_cache = {}
+        self.connections = {}
+        self.connection_lock = threading.RLock()
+        self.disabled = False
+
+    def register_connection(self, handler, sid):
+        with self.connection_lock:
+            if self.disabled:
+                raise ValueError('Convo was disabled during session setup')
+            self.connections[(id(handler), sid)] = (asyncio.get_running_loop(), handler, sid)
+
+    def forget_connection(self, handler, sid):
+        with self.connection_lock:
+            self.connections.pop((id(handler), sid), None)
+
+    def deactivate(self):
+        with self.connection_lock:
+            self.disabled = True
+        self.dispatcher.pause()
+        with self.store.lock:
+            sessions = list(self.store.db.execute('SELECT id,owner FROM sessions WHERE active=1'))
+            for row in sessions:
+                self.store.stop(row['id'], row['owner'])
+        with self.connection_lock:
+            connections, self.connections = list(self.connections.values()), {}
+        for loop, handler, sid in connections:
+            if not loop.is_closed():
+                # Cancels microphone session/compaction on its owning loop. Never
+                # kill the host agent, loaded models, or a delegated job.
+                loop.call_soon_threadsafe(lambda h=handler, s=sid: asyncio.create_task(h.disable(s)))
 
 
 def service():
     global _instance
+    from . import lifecycle
+    if not lifecycle.enabled():
+        raise ValueError('Convo is disabled')
     with _lock:
         if _instance is None:
             # Plugin module refresh must not create a second dispatcher or reset an
@@ -50,6 +83,13 @@ def service():
             if not hasattr(runtime, "_convo_service"):
                 runtime._convo_service = Service()
             _instance = runtime._convo_service
+        control = lifecycle.state()
+        with control.lock:
+            if control.blocked or control.disabling:
+                raise ValueError('Convo is disabled or updating; explicitly re-enable it before starting')
+            with _instance.connection_lock:
+                _instance.disabled = False
+            control.register('service', _instance.deactivate)
         return _instance
 
 

@@ -157,5 +157,20 @@ class RealtimeTests(unittest.IsolatedAsyncioTestCase):
         self.store.start('replacement','a'); s=self.store.db.execute("SELECT id FROM sessions WHERE active=1").fetchone()
         self.store.stop(s['id'],'replacement')
 
+    async def test_plugin_disable_detaches_pending_voice_without_losing_jobs(self):
+        state = self.handler.connections['browser']
+        state['sidecar'].block = asyncio.Event()
+        job = self.store.submit(self.ids['session_id'],'browser',0,'t','pending','Authorized task')
+        await self.handler.process('convo.turn', {**self.ids,'turn_id':'t','transcript':'Question'}, 'browser')
+        task = state['task']
+        await asyncio.wait_for(state['sidecar'].entered.wait(), 2)
+        await asyncio.wait_for(self.handler.disable('browser'), 2)
+        self.assertTrue(task.cancelled())
+        self.assertEqual(self.handler.connections, {})
+        self.assertEqual(self.store.job(job['id'])['status'],'queued')
+        self.assertEqual(self.handler.sent[-1][1], 'convo.disabled')
+        with self.assertRaises(ValueError):
+            await self.handler.process('convo.turn', {**self.ids,'turn_id':'stale','transcript':'Question'}, 'browser')
+
 
 if __name__ == '__main__': unittest.main()

@@ -50,7 +50,13 @@ export const store = createStore('convo', {
             const data = await callJsonApi(endpoint, { action: 'status' });
             this.settings = data.settings;
             if (!this.enabled && (this.active || this.busy)) await this.stop();
-        } catch (error) { fail(error); }
+        } catch (error) {
+            // Disabled plugins can disappear from the host API registry. Losing
+            // status must release capture/playback, not leave an ambient mic open.
+            this.settings = null;
+            if (this.active || this.busy) await this.stop();
+            fail(error);
+        }
     },
     async show() {
         await this.refresh(); this.panelOpen = true;
@@ -92,6 +98,7 @@ export const store = createStore('convo', {
             if (!this.target) throw new Error('Select or create a chat first.');
             ownedClient = createNamespacedClient('/ws'); client = ownedClient;
             ownedClient.addHandlers(['plugins/_convo/realtime']);
+            await ownedClient.on('convo.disabled', () => { if (client === ownedClient) void this.stop(); });
             ownedClient.onDisconnect(() => { if (client === ownedClient) { fail(new Error('Voice disconnected. Jobs continue in their target chats.')); void this.stop(); } });
             await ownedClient.on('convo.event', envelope => {
                 const event = envelope.data;

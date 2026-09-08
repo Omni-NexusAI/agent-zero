@@ -38,6 +38,13 @@ def _resolve_device(policy: str) -> tuple[str, str]:
     return gpu.resolve_local_device(policy)
 
 
+def _lifecycle():
+    prefix = 'usr.plugins' if Path(__file__).resolve().parents[2].parent.name == 'usr' else 'plugins'
+    return importlib.import_module(prefix + '._convo.helpers.lifecycle')
+
+
+@_lifecycle().owned_patch('whisper', [('plugins._whisper_stt.helpers.runtime', (
+    'normalize_config', 'whisper.load_model', '_agentspine_convo_whisper_patched'))])
 def patch_runtime() -> bool:
     """Make Whisper placement explicit without changing the host plugin."""
     try:

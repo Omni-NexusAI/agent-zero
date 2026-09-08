@@ -143,6 +143,7 @@ Key Files:
 - Settings: Use get_plugin_config(plugin_name, agent=agent) to retrieve settings. Plugins can expose a UI for settings via webui/config.html. Plugin settings modals instantiate a local context from $store.pluginSettingsPrototype; bind plugin fields to config.* and use context.* for modal-level state and actions.
 - Activation: Global and scoped activation rules are stored as .toggle-1 (ON) and .toggle-0 (OFF). Scoped rules are handled via the plugin "Switch" modal.
 - Cleanup rule: Plugins should not permanently modify the system in ways that outlive the plugin. Deleting a plugin should not leave behind symlinks, unmanaged services, or stray files outside plugin-owned paths unless the user explicitly requested that behavior.
+- Development recovery: disable the target plugin, diagnose with independent `usr/plugins/plugin_doctor` (see its `AGENTS.md`), apply a plugin-local fix, refresh/test and explicitly re-enable in the same build. Reuse compatible images with bounded plugin-owned test state; image rollback/rebuild is not the default. Preserve user data and already-authorized host jobs. A crashed shared process may require an approved same-image restart. The developer doctor source is versioned but never baked or installed automatically.
 
 ### Releases
 - Docker publishing automation lives in `.github/workflows/docker-publish.yml`.

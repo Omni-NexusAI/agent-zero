@@ -41,13 +41,20 @@ class Host:
                 with Host.dispatch_lock:
                     return original(context, *args, **kwargs)
             guarded._convo_dispatch_guard = True
-            AgentContext.communicate = guarded
+            from .lifecycle import state
+            state().install('dispatch_guard', lambda: setattr(AgentContext, 'communicate', guarded),
+                            [(AgentContext, 'communicate')])
 
     def begin(self, job):
         from agent import UserMessage
         from helpers import message_queue
+        from . import lifecycle
+        if lifecycle.state().blocked or not lifecycle.enabled():
+            return None
         self.install_dispatch_guard()
         with self.dispatch_lock:
+            if lifecycle.state().blocked or not lifecycle.enabled():
+                return None
             context = self.context(job["target"])
             if context.is_running() or message_queue.get_queue(context):
                 return None
@@ -171,14 +178,19 @@ class Dispatcher:
         self.lock = threading.RLock()
         self.wake = threading.Event()
         self.closed = threading.Event()
+        self.paused = threading.Event()
         self.thread = None
 
     def start(self):
         with self.lock:
+            self.paused.clear()
             if self.thread is None:
                 self.thread = threading.Thread(target=self._run, name="ConvoJobs", daemon=True)
                 self.thread.start()
             self.wake.set()
+
+    def pause(self):
+        self.paused.set()  # Do not wait for a slow host handoff to release voice.
 
     def _run(self):
         while not self.closed.is_set():
@@ -204,10 +216,12 @@ class Dispatcher:
                 self.store.transition(job_id, job["status"], status, result)
                 self.host.log(self.store.job(job_id), status)
                 del self.running[job_id]
+            if self.paused.is_set():
+                return  # Observe already-submitted work; never dispatch while disabled.
             with self.store.lock:
                 queued = [dict(r) for r in self.store.db.execute("SELECT * FROM jobs WHERE status='queued' ORDER BY rowid LIMIT 32")]
             for job in queued:
-                if len(self.running) >= 4:
+                if self.paused.is_set() or len(self.running) >= 4:
                     break
                 try:
                     if not self.host.available(job["target"]):

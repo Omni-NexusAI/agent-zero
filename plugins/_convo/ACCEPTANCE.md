@@ -5,6 +5,8 @@ complete the approved first-functional-release plan.
 
 ## Before deployment
 
+- First run plugin-owned offline tests in existing host images using `tests/in-image.ps1`; image rebuilds and GPU reserve requirements do not apply to this bounded, model-free stage. The actual loader/toggle and independent Plugin Doctor OFF-target checks are included. Live browser/audio acceptance remains separate.
+
 - Record both target host versions and their resolved built-in/user plugin paths.
 - Preserve native Kokoro/Whisper settings, voice/blend values, browser device
   preferences, legacy plugin toggles and Convo rollback journal.
