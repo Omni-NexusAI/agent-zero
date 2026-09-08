@@ -6,6 +6,7 @@ param(
     [switch]$Reuse
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'image-policy.ps1')
 $pluginPath = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $compatPath = (Resolve-Path (Join-Path $pluginPath '../_enhanced_speech')).Path
 $doctorPath = (Resolve-Path (Join-Path $pluginPath '../../usr/plugins/plugin_doctor')).Path
@@ -41,17 +42,7 @@ if ($Reuse) {
         '/git/agent-zero/plugins/_enhanced_speech' = $compatPath
         '/git/agent-zero/usr/plugins/plugin_doctor' = $doctorPath
     }
-    if ($container.Image -ne $imageId -or $container.State.Running -or
-        !$container.HostConfig.ReadonlyRootfs -or $container.HostConfig.NetworkMode -ne 'none' -or
-        $container.Config.Cmd[0] -ne '/git/agent-zero/plugins/_convo/tests/in_image.py' -or
-        $container.Config.Entrypoint[0] -ne '/opt/venv-a0/bin/python') {
-        throw 'Container is not the matching stopped isolated test; refusing reuse.'
-    }
-    $binds = @($container.Mounts | Where-Object Type -eq 'bind')
-    if ($binds.Count -ne 3 -or @($container.Mounts | Where-Object Type -eq 'volume').Count) { throw 'Unexpected mounts; refusing reuse.' }
-    foreach ($mount in $binds) {
-        if ($mount.RW -or $expectedMounts[$mount.Destination] -ne $mount.Source) { throw 'Test source mount mismatch.' }
-    }
+    Assert-ConvoTestContainer $container $imageId $expectedMounts
     docker start -a $Name
 } else { & docker @runArgs }
 $testExit = $LASTEXITCODE

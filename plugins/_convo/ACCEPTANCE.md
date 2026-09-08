@@ -3,6 +3,8 @@
 The code checkpoint is a development preview. Passing isolated tests does not
 complete the approved first-functional-release plan.
 
+The bounded plugin-local test/recovery phase is closed in [LOCAL_TEST_RESULTS.md](LOCAL_TEST_RESULTS.md). Remaining sections are release/deployment gates, not reasons to rebuild an image for ordinary plugin-source iteration.
+
 ## Before deployment
 
 - First run plugin-owned offline tests in existing host images using `tests/in-image.ps1`; image rebuilds and GPU reserve requirements do not apply to this bounded, model-free stage. The actual loader/toggle and independent Plugin Doctor OFF-target checks are included. Live browser/audio acceptance remains separate.

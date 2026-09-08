@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from usr.plugins.plugin_doctor.helpers.diagnostics import inspect, locate
 
@@ -30,3 +31,31 @@ class DiagnosticsTests(unittest.TestCase):
             (target/'huge.py').write_bytes(b' '*(2*1024*1024+1))
             report=inspect([tmp],'ok')
             self.assertTrue(report['truncated']); self.assertFalse(report['passed'])
+
+    def test_manifest_validation_and_file_budget_never_report_false_success(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); target=root/'broken'; target.mkdir()
+            self.assertFalse(inspect([root],'broken')['passed'])
+            for value in ('name: wrong\ntitle: Wrong\n', 'name: broken\n', '[invalid'):
+                (target/'plugin.yaml').write_text(value)
+                self.assertFalse(inspect([root],'broken')['passed'])
+            (target/'plugin.yaml').write_text('name: broken\ntitle: Broken\n')
+            (target/'one.py').write_text('pass\n')
+            with patch('usr.plugins.plugin_doctor.helpers.diagnostics.MAX_FILES',1):
+                report=inspect([root],'broken')
+            self.assertFalse(report['passed']); self.assertTrue(report['truncated'])
+            self.assertEqual(len(report['files']),1)
+
+    def test_linked_manifest_is_not_accepted_or_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); target=root/'broken'; target.mkdir()
+            external=root/'outside.yaml'; external.write_text('name: broken\ntitle: PRIVATE\n')
+            manifest=target/'plugin.yaml'
+            try: manifest.symlink_to(external)
+            except OSError: self.skipTest('Symlink creation requires OS permission; also tested inside both host images')
+            report=inspect([root],'broken')
+            self.assertFalse(report['passed']); self.assertEqual(report['files'],[])
+            self.assertNotIn('PRIVATE',json.dumps(report))
+            with self.assertRaises(ValueError):
+                (root/'linked').symlink_to(target,target_is_directory=True)
+                locate([root],'linked')

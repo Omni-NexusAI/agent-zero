@@ -4,6 +4,7 @@
 - Read-only diagnostics by default. Explicit refresh requires the target to be OFF.
 - No source edits, test execution, shell, network, model operations, settings reads, log dumping, or Docker access from the host API.
 - Inspect bounded source metadata/syntax only. Do not return source text, config values, symlink targets or full exceptions.
+- Missing, invalid or linked manifests and exhausted scan budgets must not report success. Refresh fails closed for active/unknown targets or non-boolean confirmation.
 - Use native auth/CSRF, plugin roots, toggles and cache refresh. Never patch core.
 - Execution/fault-injection tests run outside the live host with isolated state.
 - Keep runtime user files untracked; only this developer plugin's source is versioned, never baked into release images.

@@ -48,7 +48,9 @@ def inspect(roots, target):
     report = {'target':target, 'files':[], 'issues':[], 'bytes':0, 'truncated':False,
               'executed_target_code':False, 'read_configuration':False}
     manifest = root / 'plugin.yaml'
-    if not manifest.is_file():
+    if manifest.is_symlink():
+        report['issues'].append({'file':'plugin.yaml','problem':'Linked manifest requires manual review'})
+    elif not manifest.is_file():
         report['issues'].append({'file':'plugin.yaml','problem':'Manifest is missing'})
     for directory, folders, files in os.walk(root, followlinks=False):
         base = Path(directory)

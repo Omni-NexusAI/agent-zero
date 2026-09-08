@@ -4,6 +4,8 @@ Convo adds a local-first voice conversation alongside Agent Zero's text chat. It
 
 **Development status:** implementation in progress. Not deployed or certified for live use. Existing speech services and the standalone pipeline remain unchanged.
 
+The plugin-local testing and same-build recovery phase is complete; see [local validation results](LOCAL_TEST_RESULTS.md). This closes the offline test scope, not the full functional-release plan below.
+
 ## Implemented source checkpoint
 
 - Capability-based configuration, authenticated host WebSocket and authenticated model sidecar. No browser-selected service URLs, provider fallback or bundled weights.
@@ -38,6 +40,8 @@ Run `tests/in-image.ps1` from PowerShell with `-SourceContainer agentspine-stand
 
 Scratch is capped at **400 MiB** (tmpfs; may use swap), logs at **1 MiB**. September 8 image checks used **32–36 KiB** of writable layer each, excluding Docker metadata/logs and shared image layers. Keep **1 GiB** free for this bounded path; this is an operational allowance, not a CUDA/model build estimate. Set `-Name convo-test-my-check`, then reuse that verified stopped container with the same arguments plus `-Reuse` after source edits. No cleanup is automatic.
 
+Reuse refuses altered commands, writable/unexpected mounts, device/GPU access, exposed ports, weakened isolation, missing resource/log limits, unbounded scratch or missing offline flags. Run `tests/image-policy.test.ps1` in PowerShell to check that guard without Docker.
+
 Disable Convo through the native plugin manager to invalidate voice sessions, cancel/detach voice and compaction, restore owned Python hooks, and pause new job dispatch. Existing authorized host jobs continue and remain tracked; histories/settings/profiles stay intact. Convo's disable/status-loss handlers release microphone/playback, and the native frontend refresh removes UI extensions; reload the page if old frontend modules remain cached. Use Plugin Doctor while OFF, apply the fix, refresh and rerun tests, then explicitly re-enable. A stale singleton or wedged shared host process may still require an approved **same-image process restart**. Disabling is not an undo for external actions.
 
 ## Verification
@@ -46,11 +50,12 @@ From the host repository root:
 
 ```sh
 python -m unittest discover -s plugins/_convo/tests -v
+python -m unittest discover -s usr/plugins/plugin_doctor/tests -v
 node --test plugins/_convo/tests/audio.test.mjs
 node --experimental-vm-modules --test plugins/_convo/tests/ui.test.mjs
 ```
 
-The offline suites cover a 200-turn journal/compaction simulation, retarget races, cancellation/detachment, download checksums, native-setting preservation, headless gateway auth and disable/re-enable recovery. The image runner additionally exercises the actual host loader/toggle functions and Plugin Doctor against a deliberately broken OFF fixture, without importing that fixture. These checks do not measure first-audible latency, acoustic judgment or GPU capacity. The reused supervisor emits FastAPI lifecycle deprecation warnings; its wrapper owns startup/shutdown explicitly.
+The offline suites cover a 200-turn journal/compaction simulation, retarget races, cancellation/detachment, download checksums, native-setting preservation, headless gateway auth and disable/re-enable recovery. The image runner additionally exercises actual HTTP auth/CSRF routing, WebSocket security admission, host loader/toggle functions and Plugin Doctor against a deliberately broken OFF fixture, without importing that fixture. These checks do not measure first-audible latency, acoustic judgment or GPU capacity. The reused supervisor emits FastAPI lifecycle deprecation warnings; its wrapper owns startup/shutdown explicitly. See the dated results for other observed warnings.
 
 ## Still incomplete / not release-ready
 

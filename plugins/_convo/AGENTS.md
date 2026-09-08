@@ -20,6 +20,7 @@
 - Native Kokoro must be already loaded with cached selected voices. Run synchronous synthesis off the WebSocket loop, keep one tracked worker, and withhold new TTS while a detached worker is still finishing.
 - Native plugin OFF must release Convo sessions and owned Python patches, pause new job dispatch, retain histories/settings and observe already-submitted jobs. Track exact patch ownership; never overwrite another plugin's replacement.
 - Use plugin-owned `tests/in-image.ps1` with existing images and bounded, empty test state. No rebuild, dependencies, user volumes, GPU or network for host-only tests. `-Reuse` reruns only a verified matching stopped test container.
+- Reuse validation must retain command identity, read-only source mounts, private namespaces, no added capabilities/devices/ports, bounded scratch/resources/logs and explicit offline flags. Test the validator without contacting Docker via `tests/image-policy.test.ps1`.
 - Keep independent Plugin Doctor available in development while Convo is OFF. A broken shared process can require an approved same-image process restart; do not default to image rollback.
 
 ## Ownership index
@@ -35,4 +36,5 @@
 - Run `python -m unittest discover -s plugins/_convo/tests -v` from the repository root.
 - Run `git diff --check` and parse changed Python/JavaScript files.
 - Run both `node --test plugins/_convo/tests/audio.test.mjs` and `node --experimental-vm-modules --test plugins/_convo/tests/ui.test.mjs`.
+- Actual image smoke checks exercise native HTTP auth/CSRF and WebSocket admission, disabled-target diagnostics, inert OFF hooks, all speech-adapter restoration and byte-preserved native configuration. They never start the application server.
 - Live model, browser and container acceptance is required before release promotion.
