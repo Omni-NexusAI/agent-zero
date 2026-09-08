@@ -1,0 +1,5 @@
+<div x-data class="right-canvas-surface-panel" data-surface-id="convo" x-show="$store.rightCanvas?.activeSurfaceId === 'convo'">
+  <template x-if="$store.rightCanvas?.mountedSurfaces?.convo">
+    <x-component path="/plugins/_convo/webui/main.html"></x-component>
+  </template>
+</div>

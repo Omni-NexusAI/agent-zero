@@ -1,0 +1,44 @@
+<html><head><title>Convo Voice Studio</title></head><body>
+<script type="module">import { studio } from '/plugins/_convo/webui/studio-store.js';</script>
+<template x-if="$store.convoStudio"><div x-data="{ destroy() { $store.convoStudio.stopPreview(); } }" style="padding:1rem">
+  <h3>Voice Studio · Convo-owned audio.cpp</h3>
+  <p>Stop conversation before changing models or profiles. Existing external speech services are never managed here. This preview supports Base cloning and buffered WAV; VoiceDesign and native incremental playback remain unavailable.</p>
+  <button class="btn" @click="$store.convoStudio.refresh()" :disabled="$store.convoStudio.busy">Connect / refresh</button>
+  <p role="alert" x-text="$store.convoStudio.error"></p>
+  <fieldset :disabled="$store.convoStudio.busy">
+    <legend>Model lifecycle</legend>
+    <select x-model="$store.convoStudio.selectedModel"><option value="">Select model</option><template x-for="model in $store.convoStudio.catalog" :key="model.id"><option :value="model.id" x-text="model.id"></option></template></select>
+    <button class="btn" @click="$store.convoStudio.load()">Load</button><button class="btn" @click="$store.convoStudio.unload()">Unload</button>
+    <p x-text="$store.convoStudio.models.state || 'Not connected'"></p>
+    <template x-for="model in $store.convoStudio.catalog" :key="model.id"><div>
+      <strong x-text="model.id"></strong><p x-text="model.hardware"></p>
+      <button class="btn" @click="$store.convoStudio.inspect(model.id)">Inspect download source</button>
+    </div></template>
+    <template x-if="$store.convoStudio.manifest"><div>
+      <p>Source: <span x-text="$store.convoStudio.manifest.source"></span></p>
+      <p>Revision: <code x-text="$store.convoStudio.manifest.revision"></code></p>
+      <p>License: <span x-text="$store.convoStudio.manifest.license"></span>; bytes: <span x-text="$store.convoStudio.manifest.size"></span></p>
+      <button class="btn" @click="$store.convoStudio.download()">Download / resume verified revision</button>
+      <button class="btn" @click="$store.convoStudio.cancelDownload()">Pause download</button>
+      <button class="btn" @click="$store.convoStudio.downloadStatus()">Progress</button>
+      <pre x-text="JSON.stringify($store.convoStudio.progress, null, 2)"></pre>
+    </div></template>
+  </fieldset>
+  <fieldset :disabled="$store.convoStudio.busy"><legend>Clone profiles and preview</legend>
+    <select x-model="$store.convoStudio.selectedVoice"><option value="">Select voice</option><template x-for="voice in $store.convoStudio.profiles" :key="voice.id"><option :value="voice.voice" x-text="voice.name"></option></template></select>
+    <p>Use this voice ID in Convo's TTS settings: <code x-text="$store.convoStudio.selectedVoice"></code></p>
+    <input x-model="$store.convoStudio.previewText" maxlength="400" aria-label="Preview text">
+    <button class="btn" @click="$store.convoStudio.preview()">Preview</button><button class="btn" @click="$store.convoStudio.stopPreview()">Stop preview</button>
+    <label>Profile name<input x-model="$store.convoStudio.cloneName" maxlength="120"></label>
+    <label>Reference WAV<input type="file" accept="audio/wav,.wav" @change="$store.convoStudio.reference($event)"></label>
+    <label>Exact reference transcript<textarea x-model="$store.convoStudio.cloneText" maxlength="4000"></textarea></label>
+    <p>Only upload a reference voice you are authorized to use. It is stored in Convo's persistent profile volume.</p>
+    <button class="btn" @click="$store.convoStudio.createProfile()">Create clone profile</button>
+  </fieldset>
+  <details><summary>Advanced tuning interchange</summary>
+    <p>Backend-validated tuning schema; unsupported fields are rejected. No GPU guard overrides are exposed.</p>
+    <button class="btn" @click="$store.convoStudio.exportTuning()">Read tuning JSON</button>
+    <textarea x-model="$store.convoStudio.tuningJson" rows="12" style="width:100%" aria-label="Tuning JSON"></textarea>
+    <button class="btn" @click="$store.convoStudio.importTuning()">Import tuning JSON</button>
+  </details>
+</div></template></body></html>
