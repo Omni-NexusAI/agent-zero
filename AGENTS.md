@@ -133,6 +133,7 @@ Key Files:
 
 ### Plugin Architecture
 - Location: Always develop new plugins in usr/plugins/.
+- Approved built-in exception: `plugins/_convo` owns Convo voice integration; read its `AGENTS.md` and release gate before changes. `_enhanced_speech` retains compatibility shims only. Convo must not modify standalone/external speech services or replace core chat/dictation.
 - Manifest: Every plugin requires a plugin.yaml with name, description, version, and optionally settings_sections, per_project_config, per_agent_config, and always_enabled.
 - Discovery: Conventions based on folder names (api/, tools/, webui/, extensions/).
 - Plugin-local Python imports: Prefer `usr.plugins.<plugin_name>...` for code that lives under `usr/plugins/`. Avoid `sys.path` hacks and avoid symlink-dependent `plugins.<plugin_name>...` imports for community plugins.

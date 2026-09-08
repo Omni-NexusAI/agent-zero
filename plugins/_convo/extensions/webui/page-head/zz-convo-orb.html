@@ -1,0 +1,10 @@
+<style>
+#microphone-button[data-convo] { position:relative; }
+#microphone-button[data-convo] > * { visibility:hidden; }
+#microphone-button[data-convo]::after { content:''; position:absolute; width:18px; height:18px; inset:0; margin:auto; border-radius:50%; background:radial-gradient(circle at 35% 30%, #c6f9ff, #6598db 45%, #45527e); box-shadow:0 0 5px #7a9fd8; }
+#microphone-button[data-convo="listening"]::after { animation:convo-breathe 2s ease-in-out infinite; }
+#microphone-button[data-convo="speaking"]::after { animation:convo-breathe .65s ease-in-out infinite; filter:hue-rotate(40deg); }
+#microphone-button[data-convo="considering"]::after,#microphone-button[data-convo="connecting"]::after { filter:hue-rotate(110deg); }
+@keyframes convo-breathe { 50% { transform:scale(1.15); box-shadow:0 0 10px #8faeff; } }
+@media(prefers-reduced-motion:reduce) { #microphone-button[data-convo]::after { animation:none; } }
+</style>

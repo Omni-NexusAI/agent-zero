@@ -11,9 +11,25 @@
 - Persist runtime data under the host user plugin root, never the installed source package.
 - All unit tests must use temporary directories and stub host settings/network operations.
 - Report implementation, integration checks and manual listening acceptance separately.
+- General Convo settings saves must not write native provider settings; explicit native/legacy speech controls own those writes.
+- Studio lifecycle commands target only the fixed authenticated `convo-audio` service. Never route lifecycle commands to an arbitrary configured external TTS endpoint.
+- Model downloads require a reviewed source manifest and explicit approval. Verify immutable revision, file sizes/checksums and storage reserve before registration. Preserve partials and quarantine corrupt bytes outside registered models.
+- Retain vendored runtime attribution and isolate Convo adaptations in the headless gateway. No standalone Gradio UI or weights belong in the package.
+- User-visible transcripts and playback-start/completion records are distinct from model drafts. Delayed transcripts update the original turn/target.
+- Keep incomplete capability paths explicit in README and the release gate; no speculative/omni/native-PCM performance claim without measurements.
+- Native Kokoro must be already loaded with cached selected voices. Run synchronous synthesis off the WebSocket loop, keep one tracked worker, and withhold new TTS while a detached worker is still finishing.
+
+## Ownership index
+
+- `helpers/`: configuration, migration, host adapters, SQLite journal, policy, transport and utility compaction.
+- `api/`: host-authenticated voice and control entrypoints; endpoints and credentials are server-owned.
+- `webui/` and `extensions/`: native controls, sidebar, provider compatibility and explicit activation.
+- `sidecar/`: authenticated model adapters and optional managed headless audio.cpp; see `sidecar/AGENTS.md`.
+- `tests/`: temporary-storage, mocked-provider checks; no installed settings, models or services.
 
 ## Verification
 
 - Run `python -m unittest discover -s plugins/_convo/tests -v` from the repository root.
 - Run `git diff --check` and parse changed Python/JavaScript files.
+- Run both `node --test plugins/_convo/tests/audio.test.mjs` and `node --experimental-vm-modules --test plugins/_convo/tests/ui.test.mjs`.
 - Live model, browser and container acceptance is required before release promotion.

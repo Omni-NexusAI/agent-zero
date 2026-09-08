@@ -1,0 +1,44 @@
+<html><head><title>Convo</title></head><body>
+<script type="module">import { store, install } from '/plugins/_convo/webui/convo-store.js'; install();</script>
+<template x-if="$store.convo"><div x-data="{ destroy() { $store.convo.panelOpen = false; } }" x-init="$store.convo.panelOpen = true; $store.convo.history()" class="convo-panel">
+  <div class="section-title">Convo <small>Development preview</small></div>
+  <p>Target: <strong x-text="$store.convo.target || 'No chat selected'"></strong></p>
+  <div class="convo-controls">
+    <button class="btn" @click="$store.convo.toggle()" x-text="$store.convo.active || $store.convo.busy ? 'Stop conversation' : 'Start conversation'"></button>
+    <button class="btn" @click="$store.convo.toggleDictation()" x-text="$store.convo.dictating ? 'Finish dictation' : 'Dictate to composer'"></button>
+    <button class="btn" @click="$store.convo.retarget()">Use selected chat</button>
+    <button class="btn" @click="$store.convo.openSettings()">Settings</button>
+    <button class="btn" @click="$store.convo.openStudio()">Voice Studio</button>
+  </div>
+  <label>Listening mode <select x-model="$store.convo.mode" :disabled="$store.convo.active || $store.convo.busy">
+    <option value="active">Active conversation</option>
+    <option value="ambient" :disabled="!$store.convo.settings?.ambient_enabled">Ambient (opt-in)</option>
+    <option value="name" :disabled="!$store.convo.settings?.ambient_enabled">Name activation (opt-in)</option>
+  </select></label>
+  <p role="status" aria-live="polite"><span x-text="$store.convo.state"></span> · <span x-text="$store.convo.active ? 'Microphone active' : ($store.convo.dictating ? 'Dictation microphone active' : 'Convo microphone off')"></span> · <span x-text="$store.convo.settings?.remote_processing ? 'Remote processing configured' : 'Local providers configured'"></span></p>
+  <p class="convo-error" role="alert" x-show="$store.convo.error" x-text="$store.convo.error"></p>
+  <p class="section-description">Stopping voice leaves background jobs running. Generated text is a draft until its audio is acknowledged. Raw audio is not stored in Convo history.</p>
+  <div class="convo-history" aria-label="Voice history">
+    <template x-for="event in $store.convo.events" :key="event.seq">
+      <div class="convo-event" x-show="$store.convo.settings?.developer_mode || !['context.compacted','assistant.generated'].includes(event.kind)">
+        <small x-text="event.kind"></small><div x-text="$store.convo.eventText(event)"></div>
+      </div>
+    </template>
+    <div x-show="$store.convo.draft"><small>Provisional response</small><div x-text="$store.convo.draft"></div></div>
+  </div>
+  <h3>Background jobs</h3>
+  <template x-for="job in $store.convo.jobs" :key="job.id">
+    <div class="convo-event"><strong x-text="job.status"></strong> <small x-text="job.target"></small>
+      <p x-text="job.prompt"></p><p x-text="job.result"></p>
+      <button class="btn" x-show="['queued','running'].includes(job.status)" @click="$store.convo.cancelJob(job)">Cancel job</button>
+      <button class="btn" x-show="job.status === 'running'" @click="$store.convo.steerJob(job)">Steer explicitly</button>
+    </div>
+  </template>
+</div></template>
+<style>
+.convo-panel { padding: 1rem; color: var(--color-text); } .convo-panel small { opacity: .65; font-size: .8em; }
+.convo-controls { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+.convo-history { max-height:48vh; overflow:auto; padding:.5rem; border:1px solid var(--color-border); }
+.convo-event { padding:.6rem 0; border-bottom:1px solid var(--color-border); white-space:pre-wrap; overflow-wrap:anywhere; }
+.convo-error { color:var(--color-error, #e88787); }
+</style></body></html>
